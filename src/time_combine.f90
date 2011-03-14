@@ -12,12 +12,6 @@ module zone_vars
 
      ! Grid has shape: nx by ny by nz ny 3 by n_time
 
-     double precision, dimension(:,:,:,:,:), pointer :: grid
-
-     ! Vars has shape: il by jl by kl by n_vars by n_time
-
-     double precision, dimension(:,:,:,:,:),pointer :: vars
-
   end type zoneData
 end module zone_vars
 
@@ -33,9 +27,6 @@ program time_combine
   ! File handles for cgns files: cg_current is the current step,
   ! cg_unsteady is the new unsteady file
   integer :: cg_current, cg_unsteady
-
-  !   ! CGNS Zone Counter
-  !   integer  zone
 
   ! CGNS counters for base
   integer current_base,unsteady_base
@@ -70,7 +61,7 @@ program time_combine
   integer :: ii,jj,kk,ind(3)
   integer :: counter,nsols,sol,nfields,field,izone
   logical, dimension(5) :: EV_Exist
-  integer :: temp_shape(6),rmax(3)
+  integer :: temp_shape(6),rmax(3),farStart
 
   ! Time step
   double precision :: dt
@@ -87,7 +78,9 @@ program time_combine
   double precision, allocatable,dimension(:      ) :: data1d
   double precision, allocatable,dimension(:,:    ) :: data2d
   double precision, allocatable,dimension(:,:,:  ) :: data3d
-  double precision, allocatable,dimension(:,:,:,:) :: data4d
+  double precision, allocatable,dimension(:,:,:,:) :: gridTemp
+  double precision, allocatable,dimension(:,:,:  ) :: fieldData
+
   integer         , allocatable,dimension(:)       :: int1d
   integer :: dummy_int
 
@@ -198,10 +191,11 @@ program time_combine
      if (nsols >= 1) then
         call cg_nfields_f(cg_current,current_base,i,1,nfields,ier)
         if (ier .eq. CG_ERROR) call cg_error_exit_f
+
      else
         nfields = 0
      end if
-
+     
      if (cellDim == 2) then
         zone(i)%nx = isize(1)
         zone(i)%ny = isize(2)
@@ -217,121 +211,30 @@ program time_combine
         zone(i)%jl = isize(5)
         zone(i)%kl = isize(6)
      end if
+     
+  end do
 
-     ! Allocate Grid Coords
-     allocate(zone(i)%grid(zone(i)%nx,zone(i)%ny,zone(i)%nz,3,n_steps))
-     zone(i)%grid = 0.0
-     ! Allocate Var Coords
+  ! Allocate some names
+  allocate(fieldNames(nfields))
+  allocate(var_names(nFields+4))
+  allocate(valueLocation(nFields+physDim),&
+       passiveVarList(nFields+physDim),&
+       ShareVarFromZone(nFields+physDim))
 
-     allocate(zone(i)%vars(zone(i)%nx,zone(i)% ny,zone(i)%nz,nfields,n_steps))
-     zone(i)%vars(:,:,:,:,:) = 0.0
+  ! Loop over to get field names
+  do j=1,nFields
+     call cg_field_info_f(cg_current,current_base,1,1,j,&
+          datatype , fieldname , ier )
 
+     fieldNames(j) = fieldName
   end do
 
   call cg_close_f(cg_current,ier)
   if (ier .eq. CG_ERROR) call cg_error_exit_f
 
-
-
   ! ------------------------------------------------------------------
   ! Load in all the data:
   print *,'Reading Data from File: '
-
-  allocate(fieldNames(nfields))
-
-  nn = 0
-  do n=i_start,i_end
-10   format(A,I4)
-11   format(A,I4)
-     write(6,11,advance='yes'),'File ',n
-     nn = nn + 1
-     !  ! Open Current File
-     call getFilename(base_name,n,current_filename)
-     call cg_open_f(current_filename,MODE_READ,cg_current,ier)
-     if (ier .eq. CG_ERROR) call cg_error_exit_f
-     !      ! Goto Base Node in Current File
-     call cg_goto_f(cg_current, current_base, ier, 'end')
-     if (ier .eq. CG_ERROR) call cg_error_exit_f
-
-     ! Loop over the zones
-     do i=1,nzones
-        call cg_zone_read_f(cg_current,current_base,i,zoneNames(i),isize,ier)
-        ! Load the grid coordinates
-
-        rmax(1) = zone(i)%nx
-        rmax(2) = zone(i)%ny
-        rmax(3) = zone(i)%nz
-
-        do j=1,physDim
-           call cg_coord_read_f(cg_current,current_base,i,&
-                coordNames(j),RealDouble,(/1,1,1/),&
-                rmax,zone(i)%grid(:,:,:,j,nn),ier)
-           if (ier .eq. CG_ERROR) call cg_error_exit_f
-        end do
-
-        if (nfields > 0) then
-           ! Read the Rind Data
-           call cg_goto_f(cg_current,current_base,ier,'Zone_t',i, &
-                'FlowSolution_t',1,'end')
-           rinde(:) = 0
-           call cg_rind_read_f(rinde , ier )
-           if (ier .eq. CG_ERROR) call cg_error_exit_f
-
-           ! Load the Variables
-           do j=1,nFields
-
-              call cg_field_info_f(cg_current,current_base,i,1,j,&
-                   datatype , fieldname , ier )
-
-              if (ier .eq. CG_ERROR) call cg_error_exit_f
-              temp_shape(:) = 0
-              temp_shape = (/1 - rinde(1), zone(i)%il + rinde(2), &
-                   1 - rinde(3), zone(i)%jl + rinde(4), &
-                   1 - rinde(5), zone(i)%kl + rinde(6)/)
-
-              ! Allocate Temporary Array for Cell Data, possibly with rind cells
-              allocate(data3d(temp_shape(1):temp_shape(2),&
-                   temp_shape(3):temp_shape(4),&
-                   temp_shape(5):temp_shape(6)))
-
-              rmax(1) = zone(i)%il+rinde(1)+rinde(2)
-              rmax(2) = zone(i)%jl+rinde(3)+rinde(4)
-              rmax(3) = zone(i)%kl+rinde(5)+rinde(6)
-
-              call cg_field_read_f(cg_current,current_base,i,1, &
-                   fieldName, datatype, (/1,1,1/),&
-                   rmax,data3d,ier)
-              if (ier .eq. CG_ERROR) call cg_error_exit_f
-
-              ! Call the interpolate function to reconstruct node data
-              call interpolate(data3d,temp_shape,&
-                   zone(i)%vars(:,:,:,j,nn),&
-                   zone(i)%nx,zone(i)%ny,zone(i)%nz)
-
-              ! Deallocate Temporary Data Array
-              deallocate(data3d)
-
-              ! DO NOT put fieldNames(j) in the cg_field_read_f call!!!!
-              fieldNames(j) = fieldName
-           end do
-        end if
-
-     end do ! Zone Loop
-     ! Close the current file
-
-     call cg_close_f(cg_current,ier)
-     if (ier .eq. CG_ERROR) call cg_error_exit_f
-  end do
-  write(*,*),' '
-
-  ! ------------------------------------------------------------------
-  ! Create the new Tecplot File:
-  print *,'Writing unsteady Tecplot file ...'
-
-  allocate(var_names(nFields+4))
-  allocate(valueLocation(nFields+physDim),&
-       passiveVarList(nFields+physDim),&
-       ShareVarFromZone(nFields+physDim))
 
   ! No Passive Var List or Share from Zone
   passiveVarList(:) = 0
@@ -346,36 +249,130 @@ program time_combine
   end do
 
   do j=1,nFields
-     var_names(j+physDim) = fieldNames(j)
+    var_names(j+physDim) = fieldNames(j)
   end do
   var_names(nFields+3+1) = char(0)
 
-  ! Open Tecplot File
+  ! Open Ouput Tecplot File
   ier = TECINI112("Unsteady Data"//char(0),var_names,trim(output_name)//char(0),"."//char(0),&
        FileType,Debug,VIsDouble)
 
-  ! Loop over timesteps and zones and Write to File
-  do n=1,n_steps
+  nn = 0
+  do n=i_start,i_end
+10   format(A,I4)
+11   format(A,I4)
+     write(6,11,advance='yes'),'File ',n
+     nn = nn + 1
+     ! Open Current File
+     call getFilename(base_name,n,current_filename)
+     call cg_open_f(current_filename,MODE_READ,cg_current,ier)
+     if (ier .eq. CG_ERROR) call cg_error_exit_f
+     !      ! Goto Base Node in Current File
+     call cg_goto_f(cg_current, current_base, ier, 'end')
+     if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+     ! Loop over the zones
      do i=1,nzones
-        ier = TECZNE112(trim(zoneNames(i)),ZoneType,zone(i)%nx,zone(i)%ny,zone(i)%nz,&
-             ICellMax,JCellMax,KCellMax, &
-             dt*dble(n-1),i,ParentZn,IsBlock,NFConns,FNMode,&
-             TotalNumFaceNodes,TotalNumBndryFaces,TotalNumBndryConnections,&
-             PassiveVarList, valueLocation, ShareVarFromZone,ShrConn)
 
-        ! Write Grid Coordinates
-        do j=1,physDim
-           ier   = TECDAT112(zone(i)%nx*zone(i)%ny*zone(i)%nz,&
-                zone(i)%grid(:,:,:,j,n), DIsDouble)
-        end do
+        farStart = INDEX (trim(zoneNames(i)),'Far')
+        
+        if (farStart == 0) then ! We didn't Find a "FarField Zone"
 
-        ! Write out Field Values
+           ! Write Tecplot Zone Data
+           ier = TECZNE112(trim(zoneNames(i)),ZoneType,zone(i)%nx,zone(i)%ny,zone(i)%nz,&
+                ICellMax,JCellMax,KCellMax, &
+                dt*dble(n-1),i,ParentZn,IsBlock,NFConns,FNMode,&
+                TotalNumFaceNodes,TotalNumBndryFaces,TotalNumBndryConnections,&
+                PassiveVarList, valueLocation, ShareVarFromZone,ShrConn)
+        
+           !-------------------------------------------------------------
+           !                         Grid Coodinates 
+           !-------------------------------------------------------------
+           
+           ! Load the grid coordinates
+           call cg_zone_read_f(cg_current,current_base,i,zoneNames(i),isize,ier)
+           
+           rmax(1) = zone(i)%nx
+           rmax(2) = zone(i)%ny
+           rmax(3) = zone(i)%nz
 
-        do j=1,nFields
-           ier   = TECDAT112(zone(i)%nx*zone(i)%ny*zone(i)%nz,&
-                zone(i)%vars(:,:,:,j,n), DIsDouble)
-        end do
-     end do
+           allocate(gridTemp(rmax(1),rmax(2),rmax(3),physDim))
+
+           do j=1,physDim
+              call cg_coord_read_f(cg_current,current_base,i,&
+                   coordNames(j),RealDouble,(/1,1,1/),&
+                   rmax,gridTemp(:,:,:,j),ier)
+              if (ier .eq. CG_ERROR) call cg_error_exit_f
+           end do
+
+           ! Write Grid Coordinates
+           do j=1,physDim
+              ier   = TECDAT112(zone(i)%nx*zone(i)%ny*zone(i)%nz,gridTemp(:,:,:,j),&
+                   DIsDouble)
+           end do
+
+           deallocate(gridTemp)
+
+           !-------------------------------------------------------------
+           !                     Field Values
+           !-------------------------------------------------------------
+
+           if (nfields > 0) then
+              ! Read the Rind Data
+              call cg_goto_f(cg_current,current_base,ier,'Zone_t',i, &
+                   'FlowSolution_t',1,'end')
+              rinde(:) = 0
+              call cg_rind_read_f(rinde , ier )
+              if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+
+              ! Load the Variables
+              do j=1,nFields
+
+                 ! Allocate node based field data
+                 allocate(fieldData(zone(i)%nx,zone(i)%ny,zone(i)%nz))
+
+                 call cg_field_info_f(cg_current,current_base,i,1,j,&
+                      datatype , fieldname , ier )
+
+                 if (ier .eq. CG_ERROR) call cg_error_exit_f
+                 temp_shape(:) = 0
+                 temp_shape = (/1 - rinde(1), zone(i)%il + rinde(2), &
+                      1 - rinde(3), zone(i)%jl + rinde(4), &
+                      1 - rinde(5), zone(i)%kl + rinde(6)/)
+
+                 ! Allocate Temporary Array for Cell Data, possibly with rind cells
+                 allocate(data3d(temp_shape(1):temp_shape(2),&
+                      temp_shape(3):temp_shape(4),&
+                      temp_shape(5):temp_shape(6)))
+
+                 rmax(1) = zone(i)%il+rinde(1)+rinde(2)
+                 rmax(2) = zone(i)%jl+rinde(3)+rinde(4)
+                 rmax(3) = zone(i)%kl+rinde(5)+rinde(6)
+
+                 call cg_field_read_f(cg_current,current_base,i,1, &
+                      fieldName, datatype, (/1,1,1/),&
+                      rmax,data3d,ier)
+                 if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+                 ! Call the interpolate function to reconstruct node data
+                 call interpolate(data3d,temp_shape,&
+                      fieldData,zone(i)%nx,zone(i)%ny,zone(i)%nz)
+
+                 ! Deallocate Temporary Data Array
+                 deallocate(data3d)
+
+                 ! Write out Field Values
+                 ier   = TECDAT112(zone(i)%nx*zone(i)%ny*zone(i)%nz,&
+                      fieldData, DIsDouble)
+                 deallocate(fieldData)
+              end do ! Field Loop
+           end if ! If we have fields
+        end if ! Far Field Check
+     end do ! Zone Loop
+     ! Close the current CGNS file
+     call cg_close_f(cg_current,ier)
+     if (ier .eq. CG_ERROR) call cg_error_exit_f
   end do
 
   ! Close Tecplot File
