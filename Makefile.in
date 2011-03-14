@@ -3,9 +3,9 @@ CGNS_INCLUDE=/usr/local/include -I./
 CGNS_LIB= -lcgns
 
 # Fortran Compiler
-FC = ifort 
+FC = ifort
 FFLAGS = -O2 -fPIC
 
 # Fortran Compiler
-FC = gfortran	
-FFLAGS = -O2 -fPIC
+#FC = gfortran	
+#FFLAGS = -O2 -fPIC
