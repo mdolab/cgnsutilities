@@ -19,10 +19,15 @@ cgns_split:
 	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_split.f90
 	$(FC) cgns_split.o -o cgns_split $(CGNS_LIB)
 
+cgns_create:
+	f2py  -c  -I$(CGNS_INCLUDE) $(CGNS_LIB)  -m cgns_create cgns_create.f90
+
+
 all:	time_combine\
 	ts_combine\
 	cgns_scale \
-	cgns_split
+	cgns_split\
+	cgns_create
 
 clean:
 	-rm *.o
