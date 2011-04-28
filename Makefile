@@ -14,4 +14,8 @@ clean:
 	@echo " Making clean ... "
 
 	(cd src && make clean)
-	rm bin/*
+	rm bin/cgns_create.so
+	rm bin/cgns_scale
+	rm bin/cgns_split
+	rm bin/time_combine
+	rm bin/ts_combine

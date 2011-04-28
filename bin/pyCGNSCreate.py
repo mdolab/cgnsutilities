@@ -21,7 +21,7 @@ import cgns_create
 # This file creates a proper CGNS file form an unconnected CGNS file
 # with only coordinates
 
-in_file = 'coarse_split.cgns'
+in_file = 'w_ste_40k.cgns'
 out_file = 'new.cgns'
 sym = 'y'
 R = 80
@@ -229,7 +229,6 @@ for iUFace in xrange(topo.nFace):
         g_dir_1 = generalized_coord_dir(iFace1)
         g_dir_2 = generalized_coord_dir(iFace2)
 
-
         fl = topo.face_dir[iVol2,iFace2]
 
         # Do the generalized coordinate direction 1
@@ -258,10 +257,6 @@ for iUFace in xrange(topo.nFace):
 
         transform1[g_dir_1[2]] = normal_direction(iFace1,iFace2)*(g_dir_2[2]+1)
         
-        # Face link is the transfrom betwwn the second and first faces:
-        fl = topo.face_dir[iVol2,iFace2]
-
-
         # Now that we have transform1 we can fairly easily get transform2:
         transform2 = [0,0,0]
         for ii in xrange(3):
@@ -271,7 +266,7 @@ for iUFace in xrange(topo.nFace):
         # One last thing to do: if the transform is -ve swap the
         # ranges on the donor
         for ii in xrange(3):
-            if transform1[ii] < 0:
+            if transform2[ii] < 0:
                 temp = pt_start_donor[ii]
                 pt_start_donor[ii] = pt_end_donor[ii]
                 pt_end_donor[ii] = temp
@@ -296,7 +291,7 @@ for iUFace in xrange(topo.nFace):
 
 # Finally write out the BC's to the cgns file
 cg_out = cgns_create.openfile(out_file)
-print 'Writing Boudnary and Connectivity Info...'
+print 'Writing Boundary and Connectivity Info...'
 for iVol in xrange(topo.nVol):
     for iFace in xrange(6):
         if isinstance(face_info[iVol,iFace],BCInfo):
