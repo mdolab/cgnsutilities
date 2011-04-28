@@ -19,6 +19,7 @@ module cgnsGrid
      ! Represents a Boundary Condition on original grid
      integer :: range(6)
      integer :: faceID
+     character*32 :: familyName
   end type cgnsBC
 
   type cgnsBlock
@@ -36,6 +37,8 @@ module cgnsGrid
      type(cgnsBC) , dimension(:) , allocatable :: bcs
 
   end type cgnsBlock
+
+
 end module cgnsGrid
 
 program cgns_split
@@ -47,7 +50,7 @@ program cgns_split
 
   type(cgnsBlock), dimension(:),allocatable :: blocks
   integer  CellDim, PhysDim
-  integer nbases, nzones, zonesize(3)
+  integer nbases, nzones, zonesize(9)
 
   integer ier, zonetype
   integer n,nn,mm,i,j,k,idim
@@ -65,7 +68,7 @@ program cgns_split
 
   character*32 in_filename,out_filename
   character*32 basename, zonename,boconame
-  character*32 connectname,donorname
+  character*32 connectname,donorname, famname
 
   double precision data_double(6)
   double precision, allocatable, dimension(:,:,:,:) :: tempx
@@ -137,6 +140,8 @@ program cgns_split
         call cg_boco_info_f(cg_in, base, nn, mm , boconame,bocotype,&
              ptset_type,npnts,NormalIndex,NormalListFlag,datatype,ndataset,ier)
         call cg_boco_read_f(cg_in, base, nn, mm, points,data_double, ier)
+
+
         blocks(nn)%bcs(mm)%range = points
         if (points(1) == points(4) .and. points(1) == 1) then
            blocks(nn)%bcs(mm)%faceID = 1
@@ -151,6 +156,16 @@ program cgns_split
         else if (points(3) == points(6) .and. points(3) == blocks(nn)%kl) then
            blocks(nn)%bcs(mm)%faceID = 6
         end if
+
+        ! Get the Family Info
+        call cg_goto_f(cg_in,base,ier,"Zone_t",nn,"ZoneBC_t",1,"BC_t",mm,"end")
+        if (ier == 0) then ! Node exits
+           call cg_famname_read_f(famName, ier)
+           blocks(nn)%bcs(mm)%familyName = famName
+        else
+           blocks(nn)%bcs(mm)%familyName = "wall"
+        end if
+
      end do
 
      ! Determine number of 1to1 Conns for this zone
@@ -305,6 +320,11 @@ program cgns_split
                    'CoordinateY',tempx(:,:,:,2), coordID,ier)
               call cg_coord_write_f(cg_out,base,zoneCounter,realDouble,&
                    'CoordinateZ',tempx(:,:,:,3), coordID,ier)
+
+              print *, '------------ Block --------'
+              do mm=1,blocks(nn)%nBcs
+                 print *,blocks(nn)%bcs(mm)%familyName
+              end do
 
               deallocate(tempx)
            end do ! I loop 

@@ -5,6 +5,8 @@ default:
 	mv src/ts_combine ./bin
 	mv src/cgns_scale ./bin
 	mv src/cgns_split ./bin
+	mv src/cgns_create.so ./bin
+
 dirs:
 	mkdir -p bin
 
