@@ -321,11 +321,6 @@ program cgns_split
               call cg_coord_write_f(cg_out,base,zoneCounter,realDouble,&
                    'CoordinateZ',tempx(:,:,:,3), coordID,ier)
 
-              print *, '------------ Block --------'
-              do mm=1,blocks(nn)%nBcs
-                 print *,blocks(nn)%bcs(mm)%familyName
-              end do
-
               deallocate(tempx)
            end do ! I loop 
         end do ! J loop
