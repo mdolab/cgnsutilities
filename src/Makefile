@@ -22,12 +22,17 @@ cgns_split:
 cgns_create:
 	f2py  -c  -I$(CGNS_INCLUDE) $(CGNS_LIB)  -m cgns_create cgns_create.f90
 
+cgns_coarse:
+	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_coarsen.f90
+	$(FC) cgns_coarsen.o -o cgns_coarsen $(CGNS_LIB)
+
 
 all:	time_combine\
 	ts_combine\
 	cgns_scale \
 	cgns_split\
-	cgns_create
+	cgns_create\
+	cgns_coarse
 
 clean:
 	-rm *.o
@@ -36,4 +41,4 @@ clean:
 	-rm ts_combine
 	-rm cgns_split
 	-rm cgns_scale
-
+	-rm cgns_coarsen
