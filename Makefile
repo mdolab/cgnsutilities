@@ -6,7 +6,7 @@ default:
 	mv src/cgns_scale ./bin
 	mv src/cgns_split ./bin
 	mv src/cgns_create.so ./bin
-
+	mv src/cgns_coarsen ./bin
 dirs:
 	mkdir -p bin
 
@@ -19,3 +19,4 @@ clean:
 	rm bin/cgns_split
 	rm bin/time_combine
 	rm bin/ts_combine
+	rm bin/cgns_coarsen
