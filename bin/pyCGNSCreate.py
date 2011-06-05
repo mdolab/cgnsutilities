@@ -21,10 +21,10 @@ import cgns_create
 # This file creates a proper CGNS file form an unconnected CGNS file
 # with only coordinates
 
-in_file = 'w_ste_40k.cgns'
+in_file = 'm6.cgns'#w_ste_40k.cgns'
 out_file = 'new.cgns'
-sym = 'y'
-R = 80
+sym = 'z'
+R = 4
 
 # Preprocess:
 timeA = time.time()
@@ -44,7 +44,8 @@ class BCInfo(object):
         self.pt_start = pt_start
         self.pt_end = pt_end
         self.bcType = bcType
-    # end if
+        
+        return
     
 class B2BInfo(object):
 
@@ -58,7 +59,8 @@ class B2BInfo(object):
         self.pt_start_donor = pt_start_donor
         self.pt_end_donor = pt_end_donor
         self.transform = transform
-    
+        
+        return
 
 def generalized_coord_dir(iFace):
     if iFace in [0,1]:
@@ -140,7 +142,6 @@ for iVol in xrange(nVol):
         face_ptr[iUniqueFace].append([iVol,iFace])
     # end for
 # end for
-
 
 # Now we have to go though and fill up the faceInfo
 face_info = numpy.zeros((topo.nVol,6),numpy.object)
@@ -282,9 +283,9 @@ for iUFace in xrange(topo.nFace):
         face_info[iVol2,iFace2] = B2BInfo(iUFace,iVol2,iVol1,pt_start_donor,
                                           pt_end_donor,pt_start,pt_end,
                                           transform2)
-        
     else:
         print 'Error: More than two faces ocnnected to a unique face. This results in a non-physical topology.'
+        print nFace_connected 
         sys.exit(-1)
     # end if
 # end for
