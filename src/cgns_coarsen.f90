@@ -5,7 +5,6 @@ program cgns_coarsen
   implicit none
   include 'cgnslib_f.h'
 
-  !type(cgnsBlock), dimension(:),allocatable :: blocks
   integer  CellDim, PhysDim
   integer nbases, nzones, in_dims(9),out_dims(9)
 

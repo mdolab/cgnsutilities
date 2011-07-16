@@ -1,12 +1,13 @@
 default: 
 	make dirs
 	(cd src && make)
-	mv src/time_combine ./bin
-	mv src/ts_combine ./bin
-	mv src/cgns_scale ./bin
-	mv src/cgns_split ./bin
-	mv src/cgns_create.so ./bin
-	mv src/cgns_coarsen ./bin
+	cp src/time_combine ./bin
+	cp src/ts_combine ./bin
+	cp src/cgns_scale ./bin
+	cp src/cgns_split ./bin
+	cp src/cgns_create.so ./bin
+	cp src/cgns_coarsen ./bin
+	cp src/cgns_divide ./bin
 dirs:
 	mkdir -p bin
 
@@ -20,3 +21,4 @@ clean:
 	rm bin/time_combine
 	rm bin/ts_combine
 	rm bin/cgns_coarsen
+	rm bin/cgns_divide
