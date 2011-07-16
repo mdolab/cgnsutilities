@@ -21,11 +21,11 @@ import cgns_create
 # This file creates a proper CGNS file form an unconnected CGNS file
 # with only coordinates
 
-in_file = 'naca0012_1107k_split.cgns'
-out_file = 'new.cgns'
-sym = 'z'
-R = 5
-
+in_file = 'coarse_40M_nobc.cgns'
+out_file = 'coarse_40M_split.cgns'
+sym = 'y'
+R = 50
+offset = [25,3,0]
 # Preprocess:
 timeA = time.time()
 print 'Copying Grid and Preprocessing...'
@@ -157,7 +157,7 @@ for iUFace in xrange(topo.nFace):
 
         # By default we don't know what the family is
         bcType = None
-        famName = None
+        bcFam = None
 
         # First check for a symmetry condition:
 
@@ -175,8 +175,8 @@ for iUFace in xrange(topo.nFace):
         # -> Normalize with a zero-lenght check:
         normal /= max(numpy.linalg.norm(normal),1e-14)
 
-        dp_check = numpy.dot(normal,sym_normal) > 0.99
-        coor_check = abs(numpy.average(face_coords[:,sym_normal_index]))<1e-4
+        coor_check = abs(numpy.average(face_coords[:,sym_normal_index]))<1e-3
+        dp_check = numpy.dot(normal,sym_normal) > 0.98 or numpy.dot(normal,sym_normal) < -0.98
       
         if dp_check and coor_check:
             bcType = 0
@@ -185,10 +185,10 @@ for iUFace in xrange(topo.nFace):
 
         # Next check for a wall-type boundary condition:
 
-        inside_sphere = False
+        inside_sphere = True
         for i in xrange(4):
-            if numpy.linalg.norm(face_coords[i]) < R:
-                inside_sphere = True
+            if not numpy.linalg.norm(face_coords[i]-offset) < R:
+                inside_sphere = False
             # end if
         # end for
 
