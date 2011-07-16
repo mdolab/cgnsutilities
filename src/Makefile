@@ -26,13 +26,18 @@ cgns_coarse:
 	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_coarsen.f90
 	$(FC) cgns_coarsen.o -o cgns_coarsen $(CGNS_LIB)
 
+cgns_divide:
+	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_divide.f90
+	$(FC) cgns_divide.o -o cgns_divide $(CGNS_LIB)
+
 
 all:	time_combine\
 	ts_combine\
 	cgns_scale \
 	cgns_split\
 	cgns_create\
-	cgns_coarse
+	cgns_coarse\
+	cgns_divide
 
 clean:
 	-rm *.o
@@ -42,3 +47,4 @@ clean:
 	-rm cgns_split
 	-rm cgns_scale
 	-rm cgns_coarsen
+	-rm cgns_divide

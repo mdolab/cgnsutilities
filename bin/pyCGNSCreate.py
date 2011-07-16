@@ -21,10 +21,10 @@ import cgns_create
 # This file creates a proper CGNS file form an unconnected CGNS file
 # with only coordinates
 
-in_file = 'm6.cgns'#w_ste_40k.cgns'
+in_file = 'naca0012_1107k_split.cgns'
 out_file = 'new.cgns'
 sym = 'z'
-R = 4
+R = 5
 
 # Preprocess:
 timeA = time.time()
@@ -180,7 +180,7 @@ for iUFace in xrange(topo.nFace):
       
         if dp_check and coor_check:
             bcType = 0
-            famName = 'sym'
+            bcFam = 'sym'
         # end if
 
         # Next check for a wall-type boundary condition:
@@ -202,7 +202,7 @@ for iUFace in xrange(topo.nFace):
 
         if bcType is None:
             bcType = 2 # Farfield Condition
-            bfFam = 'far'
+            bcFam = 'far'
         # end if
 
         # Get the starting and ending point ranges
