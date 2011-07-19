@@ -21,11 +21,11 @@ import cgns_create
 # This file creates a proper CGNS file form an unconnected CGNS file
 # with only coordinates
 
-in_file = 'coarse_40M_nobc.cgns'
-out_file = 'coarse_40M_split.cgns'
-sym = 'y'
-R = 50
-offset = [25,3,0]
+in_file = 'naca0012_1107k_split.cgns'
+out_file = 'new.cgns'
+sym = 'z'
+R = 4
+offset = [0,0,0]
 # Preprocess:
 timeA = time.time()
 print 'Copying Grid and Preprocessing...'
