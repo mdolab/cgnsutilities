@@ -98,29 +98,29 @@ subroutine preprocess(f_in,f_out,N,block_dims,coords)
      write(zonename,999) nn
      call cg_zone_write_f(cg_out,base,zonename,dims,Structured,zoneCounter,ier)
      
-     allocate(tempx(3,block_dims(nn,1),block_dims(nn,2),block_dims(nn,3)))
+     allocate(tempx(block_dims(nn,1),block_dims(nn,2),block_dims(nn,3),3))
      blockStart = (/1,1,1/)
      blockEnd   = block_dims(nn,:)
      ! Read Grid Section
      call cg_coord_read_f(cg_in,base,nn,'CoordinateX',RealDouble,&
-          blockStart,blockEnd,tempx(1,:,:,:),ier)
+          blockStart,blockEnd,tempx(:,:,:,1),ier)
      if (ier .eq. CG_ERROR) call cg_error_exit_f
      call cg_coord_read_f(cg_in,base,nn,'CoordinateY',RealDouble,&
-          blockStart,blockEnd,tempx(2,:,:,:),ier)
+          blockStart,blockEnd,tempx(:,:,:,2),ier)
      if (ier .eq. CG_ERROR) call cg_error_exit_f
      call cg_coord_read_f(cg_in,base,nn,'CoordinateZ',RealDouble,&
-          blockStart,blockEnd,tempx(3,:,:,:),ier)
+          blockStart,blockEnd,tempx(:,:,:,3),ier)
      if (ier .eq. CG_ERROR) call cg_error_exit_f
      
      ! Write Grid Section
      call cg_coord_write_f(cg_out,base,zoneCounter,realDouble,&
-          'CoordinateX',tempx(1,:,:,:), coordID,ier)
+          'CoordinateX',tempx(:,:,:,1), coordID,ier)
      if (ier .eq. CG_ERROR) call cg_error_exit_f
      call cg_coord_write_f(cg_out,base,zoneCounter,realDouble,&
-          'CoordinateY',tempx(2,:,:,:), coordID,ier)
+          'CoordinateY',tempx(:,:,:,2), coordID,ier)
      if (ier .eq. CG_ERROR) call cg_error_exit_f
      call cg_coord_write_f(cg_out,base,zoneCounter,realDouble,&
-          'CoordinateZ',tempx(3,:,:,:), coordID,ier)
+          'CoordinateZ',tempx(:,:,:,3), coordID,ier)
      if (ier .eq. CG_ERROR) call cg_error_exit_f
      
      ! Get the required coordinates while we have tempx in memory:
@@ -130,14 +130,14 @@ subroutine preprocess(f_in,f_out,N,block_dims,coords)
      kl = block_dims(nn,3)
 
 
-     coords(nn,1,:) = tempx(:,1 ,1 ,1)
-     coords(nn,2,:) = tempx(:,il,1 ,1)
-     coords(nn,3,:) = tempx(:,1 ,jl,1)
-     coords(nn,4,:) = tempx(:,il,jl,1)
-     coords(nn,5,:) = tempx(:,1 ,1 ,kl)
-     coords(nn,6,:) = tempx(:,il,1 ,kl)
-     coords(nn,7,:) = tempx(:,1 ,jl,kl)
-     coords(nn,8,:) = tempx(:,il,jl,kl)
+     coords(nn,1,:) = tempx(1 ,1 ,1,:)
+     coords(nn,2,:) = tempx(il,1 ,1,:)
+     coords(nn,3,:) = tempx(1 ,jl,1,:)
+     coords(nn,4,:) = tempx(il,jl,1,:)
+     coords(nn,5,:) = tempx(1 ,1 ,kl,:)
+     coords(nn,6,:) = tempx(il,1 ,kl,:)
+     coords(nn,7,:) = tempx(1 ,jl,kl,:)
+     coords(nn,8,:) = tempx(il,jl,kl,:)
 
      ! Mid points of edges
 
@@ -165,47 +165,47 @@ subroutine preprocess(f_in,f_out,N,block_dims,coords)
         midw(2) = kl/2
      end if
 
-     coords(nn,9 ,:) = 0.5*(tempx(:,midu(1) ,1 ,1) + tempx(:,midu(2) ,1 ,1))
-     coords(nn,10,:) = 0.5*(tempx(:,midu(1) ,jl,1) + tempx(:,midu(2) ,jl,1))
-     coords(nn,11,:) = 0.5*(tempx(:,1,midv(1),1)   + tempx(:,1,midv(2),1))
-     coords(nn,12,:) = 0.5*(tempx(:,il,midv(1),1)  + tempx(:,il,midV(2),1))
+     coords(nn,9 ,:) = 0.5*(tempx(midu(1) ,1 ,1,:) + tempx(midu(2) ,1 ,1,:))
+     coords(nn,10,:) = 0.5*(tempx(midu(1) ,jl,1,:) + tempx(midu(2) ,jl,1,:))
+     coords(nn,11,:) = 0.5*(tempx(1,midv(1),1,:)   + tempx(1,midv(2),1,:))
+     coords(nn,12,:) = 0.5*(tempx(il,midv(1),1,:)  + tempx(il,midV(2),1,:))
 
-     coords(nn,13,:) = 0.5*(tempx(:,midu(1) ,1 ,kl) + tempx(:,midu(2) ,1 ,kl))
-     coords(nn,14,:) = 0.5*(tempx(:,midu(1) ,jl,kl) + tempx(:,midu(2) ,jl,kl))
-     coords(nn,15,:) = 0.5*(tempx(:,1,midv(1),kl)   + tempx(:,1,midv(2),kl))
-     coords(nn,16,:) = 0.5*(tempx(:,il,midv(1),kl)  + tempx(:,il,midv(2),kl))
+     coords(nn,13,:) = 0.5*(tempx(midu(1) ,1 ,kl,:) + tempx(midu(2) ,1 ,kl,:))
+     coords(nn,14,:) = 0.5*(tempx(midu(1) ,jl,kl,:) + tempx(midu(2) ,jl,kl,:))
+     coords(nn,15,:) = 0.5*(tempx(1,midv(1),kl,:)   + tempx(1,midv(2),kl,:))
+     coords(nn,16,:) = 0.5*(tempx(il,midv(1),kl,:)  + tempx(il,midv(2),kl,:))
 
-     coords(nn,17,:) = 0.5*(tempx(:,1,1,midw(1)) + tempx(:,1,1,midw(2)))  
-     coords(nn,18,:) = 0.5*(tempx(:,il,1,midw(1))+ tempx(:,il,1,midw(2)))
-     coords(nn,19,:) = 0.5*(tempx(:,1,jl,midw(1))+ tempx(:,1,jl,midw(2)))
-     coords(nn,20,:) = 0.5*(tempx(:,il,jl,midw(1))+tempx(:,il,jl,midw(2)))
+     coords(nn,17,:) = 0.5*(tempx(1,1,midw(1),:) + tempx(1,1,midw(2),:))  
+     coords(nn,18,:) = 0.5*(tempx(il,1,midw(1),:)+ tempx(il,1,midw(2),:))
+     coords(nn,19,:) = 0.5*(tempx(1,jl,midw(1),:)+ tempx(1,jl,midw(2),:))
+     coords(nn,20,:) = 0.5*(tempx(il,jl,midw(1),:)+tempx(il,jl,midw(2),:))
 
      ! Mid Points of faces
 
-     coords(nn,21,:) = .25*(tempx(:,midu(1),midv(1),1) + &
-          tempx(:,midu(2),midv(1),1) + &
-          tempx(:,midu(1),midv(2),1) + &
-          tempx(:,midu(2),midv(2),1))
-     coords(nn,22,:) = .25*(tempx(:,midu(1),midv(1),kl) + &
-          tempx(:,midu(2),midv(1),kl) + &
-          tempx(:,midu(1),midv(2),kl) + &
-          tempx(:,midu(2),midv(2),kl))
-     coords(nn,23,:) = .25*(tempx(:,1,midv(1),midw(1)) + &
-          tempx(:,1,midv(2),midw(1)) + &
-          tempx(:,1,midv(1),midw(2)) + &
-          tempx(:,1,midv(2),midw(2)))
-     coords(nn,24,:) = .25*(tempx(:,il,midv(1),midw(1)) + &
-          tempx(:,il,midv(2),midw(1)) + &
-          tempx(:,il,midv(1),midw(2)) + &
-          tempx(:,il,midv(2),midw(2)))
-     coords(nn,25,:) = .25*(tempx(:,midu(1),1,midw(1)) + &
-          tempx(:,midu(2),1,midw(1)) + &
-          tempx(:,midu(1),1,midw(2)) + &
-          tempx(:,midu(2),1,midw(2)))
-     coords(nn,26,:) = .25*(tempx(:,midu(1),jl,midw(1)) + &
-          tempx(:,midu(2),jl,midw(1)) + &
-          tempx(:,midu(1),jl,midw(2)) + &
-          tempx(:,midu(2),jl,midw(2)))
+     coords(nn,21,:) = .25*(tempx(midu(1),midv(1),1,:) + &
+          tempx(midu(2),midv(1),1,:) + &
+          tempx(midu(1),midv(2),1,:) + &
+          tempx(midu(2),midv(2),1,:))
+     coords(nn,22,:) = .25*(tempx(midu(1),midv(1),kl,:) + &
+          tempx(midu(2),midv(1),kl,:) + &
+          tempx(midu(1),midv(2),kl,:) + &
+          tempx(midu(2),midv(2),kl,:))
+     coords(nn,23,:) = .25*(tempx(1,midv(1),midw(1),:) + &
+          tempx(1,midv(2),midw(1),:) + &
+          tempx(1,midv(1),midw(2),:) + &
+          tempx(1,midv(2),midw(2),:))
+     coords(nn,24,:) = .25*(tempx(il,midv(1),midw(1),:) + &
+          tempx(il,midv(2),midw(1),:) + &
+          tempx(il,midv(1),midw(2),:) + &
+          tempx(il,midv(2),midw(2),:))
+     coords(nn,25,:) = .25*(tempx(midu(1),1,midw(1),:) + &
+          tempx(midu(2),1,midw(1),:) + &
+          tempx(midu(1),1,midw(2),:) + &
+          tempx(midu(2),1,midw(2),:))
+     coords(nn,26,:) = .25*(tempx(midu(1),jl,midw(1),:) + &
+          tempx(midu(2),jl,midw(1),:) + &
+          tempx(midu(1),jl,midw(2),:) + &
+          tempx(midu(2),jl,midw(2),:))
 
      deallocate(tempx)
 
