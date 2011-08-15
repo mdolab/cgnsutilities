@@ -15,24 +15,34 @@ cgns_scale:
 	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_scale.f90
 	$(FC) cgns_scale.o -o cgns_scale $(CGNS_LIB)
 
+cgns_mirror:
+	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_mirror.f90
+	$(FC) cgns_mirror.o -o cgns_mirror $(CGNS_LIB)
+
 cgns_split:
 	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_split.f90
 	$(FC) cgns_split.o -o cgns_split $(CGNS_LIB)
-
-cgns_create:
-	f2py  -c  -I$(CGNS_INCLUDE) $(CGNS_LIB)  -m cgns_create cgns_create.f90
-
-cgns_coarse:
+cgns_coarsen:
 	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_coarsen.f90
 	$(FC) cgns_coarsen.o -o cgns_coarsen $(CGNS_LIB)
+
+cgns_refine:
+	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_refine.f90
+	$(FC) cgns_refine.o -o cgns_refine $(CGNS_LIB)
+
+cgns_create:
+	f2py  -c --f90flags='$(FFLAGS)' -I$(CGNS_INCLUDE) $(CGNS_LIB)  -m cgns_create cgns_create.f90
 
 
 all:	time_combine\
 	ts_combine\
 	cgns_scale \
+	cgns_mirror \
 	cgns_split\
 	cgns_create\
-	cgns_coarse
+	cgns_coarsen\
+	cgns_refine\
+
 
 clean:
 	-rm *.o
@@ -42,3 +52,5 @@ clean:
 	-rm cgns_split
 	-rm cgns_scale
 	-rm cgns_coarsen
+	-rm cgns_refine
+	-rm cgns_mirror

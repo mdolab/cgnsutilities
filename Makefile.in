@@ -4,7 +4,7 @@ CGNS_LIB= -lcgns
 
 # Fortran Compiler
 FC = ifort
-FFLAGS = -O2 -fPIC -w
+FFLAGS = -O2 -fPIC -w -g 
 
 # Fortran Compiler
 #FC = gfortran	
