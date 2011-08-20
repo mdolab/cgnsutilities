@@ -80,6 +80,7 @@ program cgns_refine
   call Minv(MI)
 
   do nn=1,nzones
+     print *,'Processing zone...',nn
      call cg_zone_read_f(cg_in, base, nn, zonename, in_dims, ier)
 
      ! Double up the dimensions:
@@ -169,7 +170,10 @@ program cgns_refine
         ! Get Boundary Condition Info
         call cg_boco_info_f(cg_in, base, nn, mm , boconame,bocotype,&
              ptset_type,npnts,NormalIndex,NormalListFlag,datatype,ndataset,ier)
+        if (ier .eq. CG_ERROR) call cg_error_exit_f
+
         call cg_boco_read_f(cg_in, base, nn, mm, pnts,data_double, ier)
+        if (ier .eq. CG_ERROR) call cg_error_exit_f
 
         ! Process the point range:
         do i=1,3
@@ -187,31 +191,35 @@ program cgns_refine
         call cg_goto_f(cg_in,base,ier,"Zone_t",nn,"ZoneBC_t",1,"BC_t",mm,"end")
         if (ier == 0) then ! Node exits
            call cg_famname_read_f(famName, ier)
+           if (ier .eq. CG_ERROR) call cg_error_exit_f
 
            call cg_goto_f(cg_out,base,ier,'Zone_t', nn,"ZoneBC_t", 1,&
                 "BC_t", BCOut, "end")
            call cg_famname_write_f(famName, ier)
+           if (ier .eq. CG_ERROR) call cg_error_exit_f
         end if
      end do
 
      ! Next read the 1to1 Connectivity if there are any:
      call cg_n1to1_f(cg_in, base, nn, n1to1, ier)
-
+     if (ier .eq. CG_ERROR) call cg_error_exit_f
+  
      do mm=1,n1to1
         call cg_1to1_read_f(cg_in, base, nn, mm, connectName, donorname, &
              pnts,pnts_donor, transform, ier)
+        if (ier .eq. CG_ERROR) call cg_error_exit_f
 
         ! Process the point range:
         do i=1,3
            do j=1,2
               pnts(i,j) = (pnts(i,j)-1)*2+1
-              pnts_donor(i,j) = (pnts_donor(i,j)-1)/2+1
+              pnts_donor(i,j) = (pnts_donor(i,j)-1)*2+1
            end do
         end do
 
         call cg_1to1_write_f(cg_out,base,nn,connectName,donorname,&
              pnts,pnts_donor,transform,nCon,ier)
-
+        if (ier .eq. CG_ERROR) call cg_error_exit_f
      end do ! 1ot1 Loop
   end do ! Zone Loop
 

@@ -25,7 +25,7 @@ program cgns_coarsen
   character*32 in_filename,out_filename
   character*32 basename, zonename,boconame
   character*32 connectname,donorname, famname
-  double precision, allocatable,dimension(:,:,:) :: data3d
+  double precision, allocatable,dimension(:,:,:) :: data3d_in,data3d_out
   double precision data_double(6)
 
   N = IARGC ()
@@ -85,36 +85,43 @@ program cgns_coarsen
 
      call cg_zone_write_f(cg_out,base,zonename,out_dims,Structured,zoneCounter,ier)
 
-     allocate(data3d(in_dims(1),in_dims(2),in_dims(3)))
+     allocate(data3d_in(in_dims(1),in_dims(2),in_dims(3)))
+     allocate(data3d_out(out_dims(1),out_dims(2),out_dims(3)))
 
      blockStart = (/1,1,1/)
      blockEnd   = in_dims(1:3)
 
      ! X coordinate
      call cg_coord_read_f(cg_in,base,nn,'CoordinateX',RealDouble,&
-          blockStart,blockEnd,data3d,ier)
+          blockStart,blockEnd,data3d_in,ier)
      if (ier .eq. CG_ERROR) call cg_error_exit_f
-     
+
+     call coarsen_data(data3d_in,data3d_out,in_dims(1),in_dims(2),in_dims(3))
+
      call cg_coord_write_f(cg_out,base,zoneCounter,realDouble,&
-          'CoordinateX',data3d(1::2,1::2,1::2), coordID,ier)
+          'CoordinateX',data3d_out, coordID,ier)
 
      ! Y coordinate
      call cg_coord_read_f(cg_in,base,nn,'CoordinateY',RealDouble,&
-          blockStart,blockEnd,data3d,ier)
+          blockStart,blockEnd,data3d_in,ier)
      if (ier .eq. CG_ERROR) call cg_error_exit_f
      
+     call coarsen_data(data3d_in,data3d_out,in_dims(1),in_dims(2),in_dims(3))
+
      call cg_coord_write_f(cg_out,base,zoneCounter,realDouble,&
-          'CoordinateY',data3d(1::2,1::2,1::2), coordID,ier)
+          'CoordinateY',data3d_out, coordID,ier)
 
      ! Z coordinate
      call cg_coord_read_f(cg_in,base,nn,'CoordinateZ',RealDouble,&
-          blockStart,blockEnd,data3d,ier)
+          blockStart,blockEnd,data3d_in,ier)
      if (ier .eq. CG_ERROR) call cg_error_exit_f
      
+     call coarsen_data(data3d_in,data3d_out,in_dims(1),in_dims(2),in_dims(3))
+
      call cg_coord_write_f(cg_out,base,zoneCounter,realDouble,&
-          'CoordinateZ',data3d(1::2,1::2,1::2), coordID,ier)
+          'CoordinateZ',data3d_out, coordID,ier)
      
-     deallocate(data3d)
+     deallocate(data3d_in,data3d_out)
 
      ! Next to the BC's if there are any:
      
@@ -177,3 +184,24 @@ program cgns_coarsen
   call cg_close_f(cg_out,ier)
 
 end program cgns_coarsen
+
+subroutine coarsen_data(data_in,data_out,nx,ny,nz)
+  implicit none
+
+  ! Input/Output
+  integer :: nx,ny,nz ! These are the GRID dimensions:
+  real(kind=8),dimension(nx,ny,nz), intent(in) :: data_in
+  real(kind=8),dimension((nx-1)/2+1,(ny-1)/2+1,(nz-1)/2+1),intent(out) :: data_out
+
+  ! Working
+  integer :: i,j,k
+
+  do k=1,(nz-1)/2+1
+     do j=1,(ny-1)/2+1
+        do i=1,(nx-1)/2+1
+           data_out(i,j,k) = data_in(i*2-1,j*2-1,k*2-1)
+        end do
+     end do
+  end do
+
+end subroutine coarsen_data
