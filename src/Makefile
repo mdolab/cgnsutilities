@@ -19,6 +19,10 @@ cgns_mirror:
 	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_mirror.f90
 	$(FC) cgns_mirror.o -o cgns_mirror $(CGNS_LIB)
 
+cgns_divide:
+	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_divide.f90
+	$(FC) cgns_divide.o -o cgns_divide $(CGNS_LIB)
+
 cgns_split:
 	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_split.f90
 	$(FC) cgns_split.o -o cgns_split $(CGNS_LIB)
@@ -42,8 +46,6 @@ all:	time_combine\
 	cgns_create\
 	cgns_coarsen\
 	cgns_refine\
-
-	cgns_coarse\
 	cgns_divide
 
 clean:
