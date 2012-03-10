@@ -4,6 +4,10 @@ TECIO = tecio.a
 
 default: all
 
+cgns_surf_convert:
+	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_surf_convert.f90
+	$(FC) cgns_surf_convert.o $(TECIO) -o cgns_surf_convert $(CGNS_LIB) -lstdc++
+
 time_combine:
 	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) time_combine.f90
 	$(FC) time_combine.o $(TECIO) -o time_combine $(CGNS_LIB) -lstdc++
@@ -38,7 +42,8 @@ cgns_create:
 	f2py  -c --f90flags='$(FFLAGS)' -I$(CGNS_INCLUDE) $(CGNS_LIB)  -m cgns_create cgns_create.f90
 
 
-all:	time_combine\
+all:	cgns_surf_convert\
+	time_combine\
 	ts_combine\
 	cgns_scale \
 	cgns_mirror \
@@ -46,7 +51,8 @@ all:	time_combine\
 	cgns_create\
 	cgns_coarsen\
 	cgns_refine\
-	cgns_divide
+	cgns_divide\
+
 
 clean:
 	-rm *.o

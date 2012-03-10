@@ -34,7 +34,7 @@ block_dims,coords = cgns_create.preprocess(in_file,out_file,nVol)
 
 # Create the Topology:
 print 'Creating Topology...'
-topo = BlockTopology(coords)
+topo = geo_utils.BlockTopology(coords)
 
 class BCInfo(object):
     
@@ -162,7 +162,7 @@ for iUFace in xrange(topo.nFace):
         # First check for a symmetry condition:
 
         # -> Get the coordinates for this face:
-        nodes = nodesFromFace(iFace)
+        nodes = geo_utils.nodesFromFace(iFace)
 
         # -> Extract the coordiantes for this face from coords:
         face_coords = numpy.take(coords[iVol],nodes,axis=0)
