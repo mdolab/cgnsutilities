@@ -21,10 +21,20 @@ import cgns_create
 # This file creates a proper CGNS file form an unconnected CGNS file
 # with only coordinates
 
-in_file = 'naca0012_1107k_split.cgns'
-out_file = 'new.cgns'
-sym = 'z'
-R = 4
+N = len(sys.argv)
+
+in_file = sys.argv[1]
+out_file = sys.argv[2]
+sym = sys.argv[3]
+R = float(sys.argv[4])
+
+try:
+    family_file = sys.argv[5]
+except:
+    family_file = None
+# end if
+
+
 offset = [0,0,0]
 # Preprocess:
 timeA = time.time()

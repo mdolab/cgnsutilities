@@ -19,8 +19,10 @@ program cgns_surf_convert
 
   ! CGNS Names for base, zone and iterative data
   character*32 basename
-  character*32 input_name
-  character*32 output_name
+  character*1024 input_name
+  character*1024 output_name
+  character*1024 max_name
+
   character*32 fieldname
   character*36 zonename
   ! CGNS Data type
@@ -54,6 +56,7 @@ program cgns_surf_convert
   double precision, allocatable,dimension(:,:,:  ) :: data3d
   double precision, allocatable,dimension(:,:,:,:) :: gridTemp
   double precision, allocatable,dimension(:,:,:  ) :: fieldData
+  double precision :: xmin(3), xmax(3)
 
   ! Tecplot Data Stuff
   ! Working 
@@ -83,7 +86,8 @@ program cgns_surf_convert
   coordNames(1) = "CoordinateX"
   coordNames(2) = "CoordinateY"
   coordNames(3) = "CoordinateZ"
-
+  xmin(:) = 0d0
+  xmax(:) = 0d0
   N = IARGC ()
 
   if (.not. ( N == 1 )) then
@@ -101,7 +105,8 @@ program cgns_surf_convert
   end if
  10 format(A,A)
   write(output_name,10),input_name(1:cgnsStart),'plt'
-
+  write(max_name,10),input_name(1:cgnsStart-1),'_max.txt'
+  print *,'Converting file:',trim(input_name)
   ! ------------------------------------------------------------------
   ! Open a file to get the number of zones:
 
@@ -225,6 +230,20 @@ program cgns_surf_convert
                 gridTemp(:,:,:,j),ier)
         end do
 
+        ! Get the min and max vals:
+        if (i == 1) then
+           do j=1,physDim
+              xmin(j) = minval(gridTemp(:,:,:,j))
+              xmax(j) = maxval(gridTemp(:,:,:,j))
+           end do
+        else
+           do j=1,physDim
+              xmin(j) = minval((/minval(gridTemp(:,:,:,j)),xmin(j)/))
+              xmax(j) = maxval((/maxval(gridTemp(:,:,:,j)),xmax(j)/))
+           end do
+        end if
+        
+
         ! Write Grid Coordinates
         do j=1,physDim
            ier   = TECDAT112(nx*ny*nz,gridTemp(:,:,:,j), DIsDouble)
@@ -290,6 +309,16 @@ program cgns_surf_convert
 
   ! Close Tecplot File
   ier = TECEND112()
+
+  ! Open the max file and write the 6 values
+  OPEN(UNIT=11, FILE=max_name, STATUS="replace")
+  write(11, '(15f)') xmin(1)
+  write(11, '(15f)') xmin(2)
+  write(11, '(15f)') xmin(3)
+  write(11, '(15f)') xmax(1)
+  write(11, '(15f)') xmax(2)
+  write(11, '(15f)') xmax(3)
+  close(11)
 
 end program cgns_surf_convert
 
