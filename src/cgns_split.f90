@@ -21,10 +21,6 @@ module cgnsGrid
      integer :: range(6)
      integer :: faceID
      character*32 :: familyName
-     character*32 :: boconame
-     integer :: bocoType
-     integer :: ptSetType
-     integer :: npnts
   end type cgnsBC
 
   type cgnsBlock
@@ -58,7 +54,7 @@ program cgns_split
   integer nbases, nzones, zonesize(9)
 
   integer ier, zonetype
-  integer n,nn,mm,i,j,k,idim,iBC
+  integer n,nn,mm,i,j,k,idim
 
   integer cg_in, cg_out, base, zone, zoneCounter
 
@@ -187,12 +183,8 @@ program cgns_split
         call cg_boco_read_f(cg_in, base, nn, mm, points,data_double, ier)
         if (ier .eq. CG_ERROR) call cg_error_exit_f
 
-!         blocks(nn)%bcs(mm)%range = points
-!         blocks(nn)%bcs(mm)%boconame = boconame
-!         blocks(nn)%bcs(mm)%boconame = bocotype
-!         blocks(nn)%bcs(mm)%ptset_type = ptset_type
-!         blocks(nn)%bcs(mm)%npnts = npnts
 
+        blocks(nn)%bcs(mm)%range = points
         if (points(1) == points(4) .and. points(1) == 1) then
            blocks(nn)%bcs(mm)%faceID = 1
         else if (points(1) == points(4) .and. points(1) == blocks(nn)%il) then
@@ -309,9 +301,9 @@ program cgns_split
 
 
   ! Finally loop over the number of user specified splits:
-!   do mm=1,n_user_split
-!      call addSplit(user_splits(mm,1),user_splits(mm,2),user_splits(mm,3))
-!   end do
+  do mm=1,n_user_split
+     call addSplit(user_splits(mm,1),user_splits(mm,2),user_splits(mm,3))
+  end do
 
   ! The Last step is to take all the blocks splits we have and to
   ! write a new CGNS File
@@ -376,27 +368,6 @@ program cgns_split
                    'CoordinateY',tempx(:,:,:,2), coordID,ier)
               call cg_coord_write_f(cg_out,base,zoneCounter,realDouble,&
                    'CoordinateZ',tempx(:,:,:,3), coordID,ier)
-
-           !    ! Write Boundary Conditions
-!               do mm=1,blocks(nn)%nbcs
-!                  if (writeBC) then
-!                     call cg_boco_write_f(cg_out, base, zonecounter, &
-!                          blocks(nn)%bcs(mm)%boconame, &
-!                          blocks(nn)%bcs(mm)%bocotype,&
-!                          blocks(nn)%bcs(mm)%ptset_type, &
-!                          blocks(nn)%bcs(mm)%nps, & ! Should always be 2
-!                          pts, iBC, ier)  
-
-
-!                     ! write the family info
-!                     call cg_goto_f(cg_out,base,ier,'Zone_t', zoneCounter,&
-!                          "ZoneBC_t", 1,"BC_t", iBC, "end")
-!                     if (ier .eq. CG_ERROR) call cg_error_exit_f
-
-!                     call cg_famname_write_f(blocks(nn)%bcs(mm)%familyName, ier)
-!                     if (ier .eq. CG_ERROR) call cg_error_exit_f
-!                  end if
-!               end do
 
               deallocate(tempx)
            end do ! I loop 

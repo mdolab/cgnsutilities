@@ -30,10 +30,15 @@ R = float(sys.argv[4])
 
 try:
     family_file = sys.argv[5]
+    f = open(family_file,'r')
+    family_override = {}
+    for line in f:
+        line = line.split()
+        family_override[int(line[0])] = line[1]
+    
 except:
-    family_file = None
+    family_override = None
 # end if
-
 
 offset = [0,0,0]
 # Preprocess:
@@ -45,6 +50,22 @@ block_dims,coords = cgns_create.preprocess(in_file,out_file,nVol)
 # Create the Topology:
 print 'Creating Topology...'
 topo = geo_utils.BlockTopology(coords)
+
+# Write Edge and Face files for input:
+
+edge_filename = in_file + '_edges.dat'
+f = open(edge_filename, 'w')
+for iVol in xrange(len(block_dims)):
+    for iEdge in xrange(12):
+        ue = topo.edge_link[iVol, iEdge]
+        dg = topo.edges[ue].dg
+        pt = coords[iVol, 8+iEdge]
+        text_string = 'TEXT CS=GRID3D X=%f,Y=%f,Z=%f,\
+T=\"DG%d\"\n'% (pt[0], pt[1], pt[2], dg)
+        f.write('%s'%(text_string))
+    # end for
+# end for
+f.close()
 
 class BCInfo(object):
     
@@ -299,6 +320,37 @@ for iUFace in xrange(topo.nFace):
         sys.exit(-1)
     # end if
 # end for
+
+# Only write faces for BCs.
+face_filename = in_file + '_faces.dat'
+f = open(face_filename, 'w')
+for iVol in xrange(len(block_dims)):
+    for iFace in xrange(6):
+        if isinstance(face_info[iVol,iFace],BCInfo):
+            uf = topo.face_link[iVol, iFace]
+            pt = coords[iVol,iFace+20]
+            text_string = 'TEXT CS=GRID3D X=%f,Y=%f,Z=%f,\
+T=\"F%d\"\n'% (pt[0], pt[1], pt[2], uf)
+            f.write('%s'%(text_string))
+        # end if
+    # end for
+# end for
+f.close()
+
+# Possibly override families before we write:
+if family_override:
+    for iVol in xrange(topo.nVol):
+        for iFace in xrange(6):
+            uf = topo.face_link[iVol, iFace]
+            try: 
+                new_family = family_override[uf]
+                face_info[iVol, iFace].bcFam = new_family
+            except:
+                pass
+            # end try
+        # end for
+    # end for
+# end if
 
 # Finally write out the BC's to the cgns file
 cg_out = cgns_create.openfile(out_file)
