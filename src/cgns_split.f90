@@ -4,6 +4,7 @@ module cgnsGrid
   ! Maximum number of splits per edge...exceeding this maximum is not
   ! checked so make sure it is large enough!
   integer, parameter :: MAX_SPLITS = 100
+  integer, parameter :: MAX_SUB_BLOCKS = 100
 
   type cgns1to1Conn
      ! Represents a 1to1 point connection on original grid
@@ -20,6 +21,10 @@ module cgnsGrid
      integer :: range(6)
      integer :: faceID
      character*32 :: familyName
+     character*32 :: boconame
+     integer :: bocoType
+     integer :: ptSetType
+     integer :: npnts
   end type cgnsBC
 
   type cgnsBlock
@@ -53,7 +58,7 @@ program cgns_split
   integer nbases, nzones, zonesize(9)
 
   integer ier, zonetype
-  integer n,nn,mm,i,j,k,idim
+  integer n,nn,mm,i,j,k,idim,iBC
 
   integer cg_in, cg_out, base, zone, zoneCounter
 
@@ -64,9 +69,9 @@ program cgns_split
   integer nbocos,n1to1,bocotype
   integer NormalIndex(3), NormalListFlag, ndataset,datatype
   integer ptset_type, npnts, points(6)
-
-
-  character*32 in_filename,out_filename
+  integer n_user_split
+  integer, allocatable, dimension(:,:) ::  user_splits
+  character*32 in_filename,out_filename, split_file
   character*32 basename, zonename,boconame
   character*32 connectname,donorname, famname
 
@@ -75,14 +80,48 @@ program cgns_split
   double precision :: time(3)
 
   N = IARGC ()
-  if (N .ne. 2) then
-     print *,'Error: cgns_split must be called with TWO arguments:'
-     print *,'./cgns_split cgns_in_file.cgns cgns_out_file.cgns'
+  print *,'N:',N
+  if ((N .ne. 2) .and. (N .ne. 3)) then
+     print *,'Error: cgns_split must be called with the following arguments:'
+     print *,'./cgns_split cgns_in_file.cgns cgns_out_file.cgns [split_file]'
+     print *,'The optional split file contains information regarding additional'
+     print *,'splits the user may want. The syntax is as follows:'
+     print *,'3'
+     print *,'1  1  17'
+     print *,'5  2   9'
+     print *,'18 3  33'
+     print *,'The first number, n=3, is the number of splits. The remaining n lines contain'
+     print *,'A zone number, the direction (1=i, 2=j, 3=k) and the index on which to perform'
+     print *,'the split'
      stop
   end if
 
   call getarg(1, in_filename)
   call getarg(2, out_filename)
+
+  if (N == 3) then
+     call getArg(3, split_file)
+     ! Read split file:
+     open(11, FILE=split_file,status='old')
+     read(11,*) n_user_split
+     allocate(user_splits(n_user_split,3))
+     print *,'nsplit:',n_user_split
+     do i=1,n_user_split
+        read(11,*) user_splits(i,1),user_splits(i,2),user_splits(i,3)
+     end do
+
+     ! Write out a check to sceen:
+     print *,'The additional user-supplied splits will be used:'
+     print *,'Block ID    Index    Direction'
+     do i=1,n_user_split
+        write(*,10) user_splits(i,1), user_splits(i,2), user_splits(i,3)
+     end do
+
+10   format(I9, I9, I5)
+  else
+     n_user_split = 0
+     allocate(user_splits(n_user_split,3))
+  end if
 
   call cg_open_f(in_filename,CG_MODE_READ, cg_in, ier)
 
@@ -121,6 +160,8 @@ program cgns_split
   
   do nn=1,nzones
      call cg_zone_read_f(cg_in, base, nn, zonename, zonesize, ier)
+     if (ier .eq. CG_ERROR) call cg_error_exit_f
+
      blocks(nn)%il = zonesize(1)
      blocks(nn)%jl = zonesize(2)
      blocks(nn)%kl = zonesize(3)
@@ -133,16 +174,25 @@ program cgns_split
      
      ! Determine number of bcs for this zone
      call cg_nbocos_f(cg_in, base, nn, nBocos,ier)
+     if (ier .eq. CG_ERROR) call cg_error_exit_f
+
      allocate(blocks(nn)%bcs(nBocos))
      blocks(nn)%nbcs = nBocos
      do mm=1,nBocos
         ! Get Boundary Condition Info
         call cg_boco_info_f(cg_in, base, nn, mm , boconame,bocotype,&
              ptset_type,npnts,NormalIndex,NormalListFlag,datatype,ndataset,ier)
+        if (ier .eq. CG_ERROR) call cg_error_exit_f
+
         call cg_boco_read_f(cg_in, base, nn, mm, points,data_double, ier)
+        if (ier .eq. CG_ERROR) call cg_error_exit_f
 
+!         blocks(nn)%bcs(mm)%range = points
+!         blocks(nn)%bcs(mm)%boconame = boconame
+!         blocks(nn)%bcs(mm)%boconame = bocotype
+!         blocks(nn)%bcs(mm)%ptset_type = ptset_type
+!         blocks(nn)%bcs(mm)%npnts = npnts
 
-        blocks(nn)%bcs(mm)%range = points
         if (points(1) == points(4) .and. points(1) == 1) then
            blocks(nn)%bcs(mm)%faceID = 1
         else if (points(1) == points(4) .and. points(1) == blocks(nn)%il) then
@@ -257,6 +307,12 @@ program cgns_split
      end do
   end do
 
+
+  ! Finally loop over the number of user specified splits:
+!   do mm=1,n_user_split
+!      call addSplit(user_splits(mm,1),user_splits(mm,2),user_splits(mm,3))
+!   end do
+
   ! The Last step is to take all the blocks splits we have and to
   ! write a new CGNS File
   call cg_open_f(out_filename,CG_MODE_WRITE, cg_out, ier)
@@ -269,8 +325,8 @@ program cgns_split
   j = 0
   do nn=1,nZones
 
-     i = (blocks(nn)%nKSplit - 1)*&
-          (blocks(nn)%nJSplit - 1)*&
+     i = (blocks(nn)%nKSplit - 1)* &
+          (blocks(nn)%nJSplit - 1)* &
           (blocks(nn)%nISplit - 1)
      j = j + i
      print *,'Block ',nn, 'is split into ',i,' pieces'
@@ -321,6 +377,27 @@ program cgns_split
               call cg_coord_write_f(cg_out,base,zoneCounter,realDouble,&
                    'CoordinateZ',tempx(:,:,:,3), coordID,ier)
 
+           !    ! Write Boundary Conditions
+!               do mm=1,blocks(nn)%nbcs
+!                  if (writeBC) then
+!                     call cg_boco_write_f(cg_out, base, zonecounter, &
+!                          blocks(nn)%bcs(mm)%boconame, &
+!                          blocks(nn)%bcs(mm)%bocotype,&
+!                          blocks(nn)%bcs(mm)%ptset_type, &
+!                          blocks(nn)%bcs(mm)%nps, & ! Should always be 2
+!                          pts, iBC, ier)  
+
+
+!                     ! write the family info
+!                     call cg_goto_f(cg_out,base,ier,'Zone_t', zoneCounter,&
+!                          "ZoneBC_t", 1,"BC_t", iBC, "end")
+!                     if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+!                     call cg_famname_write_f(blocks(nn)%bcs(mm)%familyName, ier)
+!                     if (ier .eq. CG_ERROR) call cg_error_exit_f
+!                  end if
+!               end do
+
               deallocate(tempx)
            end do ! I loop 
         end do ! J loop
@@ -333,6 +410,7 @@ program cgns_split
 
   ! Memory Cleanup
   deallocate(blocks)
+  !deallocate(user_splits)
   call cpu_time(time(3))       
 
   ! Output some timing info
