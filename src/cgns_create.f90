@@ -129,7 +129,6 @@ subroutine preprocess(f_in,f_out,N,block_dims,coords)
      jl = block_dims(nn,2)
      kl = block_dims(nn,3)
 
-
      coords(nn,1,:) = tempx(1 ,1 ,1,:)
      coords(nn,2,:) = tempx(il,1 ,1,:)
      coords(nn,3,:) = tempx(1 ,jl,1,:)
@@ -219,7 +218,6 @@ subroutine preprocess(f_in,f_out,N,block_dims,coords)
  
 end subroutine preprocess
 
-
 subroutine openFile(f_out,cg_out)
   implicit none
   include 'cgnslib_f.h'
@@ -236,7 +234,6 @@ subroutine openFile(f_out,cg_out)
   if (ier .eq. CG_ERROR) call cg_error_exit_f
 
 end subroutine openFile
-
 
 subroutine writeBC(cg_out,nn,bcName,bcFam,pt_start,pt_end,bcType)
 
@@ -284,7 +281,6 @@ subroutine writeBC(cg_out,nn,bcName,bcFam,pt_start,pt_end,bcType)
 
 end subroutine writeBC
 
-
 subroutine writeB2B(cg_out,nn,conName,donorName,pt_start,pt_end,pt_start_donor,&
      pt_end_donor,transform)
 
@@ -316,7 +312,6 @@ subroutine writeB2B(cg_out,nn,conName,donorName,pt_start,pt_end,pt_start_donor,&
 
   pnts_donor(:,1) = pt_start_donor
   pnts_donor(:,2) = pt_end_donor
-
 
   call cg_1to1_write_f(cg_out,base,nn+1,conName,donorName,pnts,pnts_donor, &
        transform,nCon,ier)

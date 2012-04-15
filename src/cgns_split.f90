@@ -8,8 +8,8 @@ module cgnsGrid
 
   type cgns1to1Conn
      ! Represents a 1to1 point connection on original grid
-     character*32 :: connectName
-     character*32 :: donorName
+     character*128 :: connectName
+     character*128 :: donorName
      integer :: range(6)
      integer :: donor_range(6)
      integer :: transform(3)
@@ -20,7 +20,9 @@ module cgnsGrid
      ! Represents a Boundary Condition on original grid
      integer :: range(6)
      integer :: faceID
-     character*32 :: familyName
+     character*128 :: familyName
+     integer :: bocotype
+     character*128 :: boconame
   end type cgnsBC
 
   type cgnsBlock
@@ -33,7 +35,7 @@ module cgnsGrid
 
      integer :: nISplit, nJSplit, nKSplit
      integer :: n1to1, nbcs
-     character*32 :: zoneName
+     character*128 :: zoneName
      type(cgns1to1Conn) , dimension(:) , allocatable :: b2bConn
      type(cgnsBC) , dimension(:) , allocatable :: bcs
 
@@ -54,26 +56,27 @@ program cgns_split
   integer nbases, nzones, zonesize(9)
 
   integer ier, zonetype
-  integer n,nn,mm,i,j,k,idim
+  integer n,nn,mm,i,j,k,idim,ll
 
   integer cg_in, cg_out, base, zone, zoneCounter
 
   integer :: ptSetType, normalDataType
-  integer :: sizes(9),coordID,blockStart(3),blockEnd(3)
+  integer :: sizes(9),coordID,blockStart(3),blockEnd(3), bocoCounter
 
   integer donor_range(6),transform(3)
   integer nbocos,n1to1,bocotype
   integer NormalIndex(3), NormalListFlag, ndataset,datatype
-  integer ptset_type, npnts, points(6)
+  integer ptset_type, npnts, points(6),bcrange(6),bcOut,writeRange(6)
   integer n_user_split
   integer, allocatable, dimension(:,:) ::  user_splits
-  character*32 in_filename,out_filename, split_file
-  character*32 basename, zonename,boconame
-  character*32 connectname,donorname, famname
+  character*128 in_filename,out_filename, split_file
+  character*256 basename, zonename, boconame
+  character*128 connectname,donorname, famname
 
   double precision data_double(6)
   double precision, allocatable, dimension(:,:,:,:) :: tempx
   double precision :: time(3)
+  integer newRange(6)
 
   N = IARGC ()
   print *,'N:',N
@@ -101,7 +104,6 @@ program cgns_split
      open(11, FILE=split_file,status='old')
      read(11,*) n_user_split
      allocate(user_splits(n_user_split,3))
-     print *,'nsplit:',n_user_split
      do i=1,n_user_split
         read(11,*) user_splits(i,1),user_splits(i,2),user_splits(i,3)
      end do
@@ -180,9 +182,12 @@ program cgns_split
              ptset_type,npnts,NormalIndex,NormalListFlag,datatype,ndataset,ier)
         if (ier .eq. CG_ERROR) call cg_error_exit_f
 
+        ! Store bc name and type
+        blocks(nn)%bcs(mm)%boconame = boconame
+        blocks(nn)%bcs(mm)%bocotype = bocotype
+
         call cg_boco_read_f(cg_in, base, nn, mm, points,data_double, ier)
         if (ier .eq. CG_ERROR) call cg_error_exit_f
-
 
         blocks(nn)%bcs(mm)%range = points
         if (points(1) == points(4) .and. points(1) == 1) then
@@ -299,7 +304,6 @@ program cgns_split
      end do
   end do
 
-
   ! Finally loop over the number of user specified splits:
   do mm=1,n_user_split
      call addSplit(user_splits(mm,1),user_splits(mm,2),user_splits(mm,3))
@@ -327,6 +331,7 @@ program cgns_split
 
   call cpu_time(time(2))     
   do nn=1,nZones
+     bocoCounter = 0
      do k=1,blocks(nn)%nKSplit - 1
         do j=1,blocks(nn)%nJSplit - 1
            do i=1,blocks(nn)%nISplit - 1             
@@ -348,7 +353,8 @@ program cgns_split
 999           FORMAT('zone',I4.4)
               write(zonename,999) zoneCounter
               zoneCounter = zoneCounter + 1           
-              call cg_zone_write_f(cg_out,base,zonename,sizes,Structured,zone,ier)
+              call cg_zone_write_f(cg_out, base, zonename, sizes, Structured, &
+                   zone,ier)
               if (ier .eq. CG_ERROR)  call cg_error_exit_f
              
               allocate(tempx(sizes(1),sizes(2),sizes(3),3))
@@ -369,7 +375,122 @@ program cgns_split
               call cg_coord_write_f(cg_out,base,zoneCounter,realDouble,&
                    'CoordinateZ',tempx(:,:,:,3), coordID,ier)
 
-              deallocate(tempx)
+              ! We really want to write out the boundary condition
+              ! info along with the family info. We can still use
+              ! pyCGNGScreate to get the general connectivities, but
+              ! at least we will have the BC info ok. 
+
+              ! For each face on the newly split block, determine if
+              ! any of these faces are fully contained within the
+              ! original boundary conditions:
+              
+              do mm=1,6
+                 writeRange(1:3) = 1
+                 writeRange(4:6) = sizes(1:3)
+                 select case (mm)
+                    case (1) ! iLow
+                       newRange = (/&
+                            blocks(nn)%iSplit(i),&
+                            blocks(nn)%jSplit(j),&
+                            blocks(nn)%kSplit(k),&
+                            blocks(nn)%iSplit(i  ),&
+                            blocks(nn)%jSplit(j+1),&
+                            blocks(nn)%kSplit(k+1)/)
+                       writeRange(1) = 1
+                       writeRange(4) = 1
+                    case (2) ! iHigh
+                       newRange = (/&
+                            blocks(nn)%iSplit(i+1),&
+                            blocks(nn)%jSplit(j  ),&
+                            blocks(nn)%kSplit(k)  ,&
+                            blocks(nn)%iSplit(i+1),&
+                            blocks(nn)%jSplit(j+1),&
+                            blocks(nn)%kSplit(k+1)/)
+                       writeRange(1) = sizes(4)
+                       writeRange(4) = sizes(4)
+                    case (3) ! jLow
+                       newRange = (/&
+                            blocks(nn)%iSplit(i),&
+                            blocks(nn)%jSplit(j),&
+                            blocks(nn)%kSplit(k),&
+                            blocks(nn)%iSplit(i+1),&
+                            blocks(nn)%jSplit(j  ),&
+                            blocks(nn)%kSplit(k+1)/)
+                       writeRange(2) = 1
+                       writeRange(5) = 1
+                    case (4) ! jHigh
+                       newRange = (/&
+                            blocks(nn)%iSplit(i),&
+                            blocks(nn)%jSplit(j+1),&
+                            blocks(nn)%kSplit(k),&
+                            blocks(nn)%iSplit(i+1),&
+                            blocks(nn)%jSplit(j+1),&
+                            blocks(nn)%kSplit(k+1)/)
+                       writeRange(2) = sizes(5)
+                       writeRange(5) = sizes(5)
+                    case (5) ! kLow
+                       newRange = (/&
+                            blocks(nn)%iSplit(i),&
+                            blocks(nn)%jSplit(j),&
+                            blocks(nn)%kSplit(k),&
+                            blocks(nn)%iSplit(i+1),&
+                            blocks(nn)%jSplit(j+1),&
+                            blocks(nn)%kSplit(k)/)
+                       writeRange(3) = 1
+                       writeRange(6) = 1
+                    case (6) ! kHigh
+                       newRange = (/&
+                            blocks(nn)%iSplit(i),&
+                            blocks(nn)%jSplit(j),&
+                            blocks(nn)%kSplit(k+1),&
+                            blocks(nn)%iSplit(i+1),&
+                            blocks(nn)%jSplit(j+1),&
+                            blocks(nn)%kSplit(k+1)/)
+                       writeRange(3) = sizes(6)
+                       writeRange(6) = sizes(6)
+                    end select
+        
+                    ! Now we have the start and end index for the face
+                    ! we're interested in. One of the indices MUST be
+                    ! repeated. This indicates the face it is on
+
+                    ! Loop over the actual BC's for this block and see
+                    ! if one matches the current bound
+
+                    nBocos =  blocks(nn)%nbcs
+                    do ll=1,nBocos
+                       BCrange = blocks(nn)%bcs(ll)%range
+
+                       ! BC Check
+                       if (&
+                            newRange(1) >= BCrange(1) .and. &
+                            newRange(4) <= BCRange(4) .and. &
+                            newRange(2) >= BCrange(2) .and. &
+                            newRange(5) <= BCrange(5) .and. &
+                            newRange(3) >= BCrange(3) .and. &
+                            newRange(6) <= BCrange(6)) then
+                          
+                          call cg_boco_write_f(cg_out, base, zone, &
+                               blocks(nn)%bcs(ll)%boconame, &
+                               blocks(nn)%bcs(ll)%bocotype, &
+                               PointRange, 2, writeRange, BCout, ier)
+
+                          if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+                          call cg_goto_f(cg_out,base,ier,'Zone_t', &
+                               zone,"ZoneBC_t", 1, "BC_t", BCOut, "end")
+                          if (ier .eq. CG_ERROR) call cg_error_exit_f
+                          
+                          call cg_famname_write_f(&
+                               blocks(nn)%bcs(ll)%familyName, ier)
+                          if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+                       end if
+                    end do ! ll loop
+                 end do ! mm loop
+
+                 deallocate(tempx)
+
            end do ! I loop 
         end do ! J loop
      end do !K loop
@@ -381,7 +502,7 @@ program cgns_split
 
   ! Memory Cleanup
   deallocate(blocks)
-  !deallocate(user_splits)
+  deallocate(user_splits)
   call cpu_time(time(3))       
 
   ! Output some timing info
