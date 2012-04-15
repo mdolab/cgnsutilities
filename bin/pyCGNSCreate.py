@@ -2,7 +2,7 @@
 # Standard Python modules
 # =============================================================================
 
-import os, sys, string, copy, pdb, time
+import sys, time
 
 # =============================================================================
 # External Python modules
@@ -13,13 +13,15 @@ import numpy
 # Extension modules
 # =============================================================================
 
-from mdo_import_helper import *
+from mdo_import_helper import import_modules
 exec(import_modules('geo_utils'))
 import cgns_create
 
-
 # This file creates a proper CGNS file form an unconnected CGNS file
-# with only coordinates
+# with only coordinates. It can also be used to generate just the
+# connectivity of a CGNS file if the Boundary Condition data is
+# already included. Additionally, it can be used to overwrite family
+# info that may or may not be present in the grid. 
 
 N = len(sys.argv)
 
@@ -35,7 +37,6 @@ try:
     for line in f:
         line = line.split()
         family_override[int(line[0])] = line[1]
-    
 except:
     family_override = None
 # end if
@@ -52,7 +53,6 @@ print 'Creating Topology...'
 topo = geo_utils.BlockTopology(coords)
 
 # Write Edge and Face files for input:
-
 edge_filename = in_file + '_edges.dat'
 f = open(edge_filename, 'w')
 for iVol in xrange(len(block_dims)):
@@ -207,7 +207,8 @@ for iUFace in xrange(topo.nFace):
         normal /= max(numpy.linalg.norm(normal),1e-14)
 
         coor_check = abs(numpy.average(face_coords[:,sym_normal_index]))<1e-3
-        dp_check = numpy.dot(normal,sym_normal) > 0.98 or numpy.dot(normal,sym_normal) < -0.98
+        dp_check = (numpy.dot(normal,sym_normal) > 0.98 or 
+                    numpy.dot(normal,sym_normal) < -0.98)
       
         if dp_check and coor_check:
             bcType = 0
@@ -315,7 +316,8 @@ for iUFace in xrange(topo.nFace):
                                           pt_end_donor,pt_start,pt_end,
                                           transform2)
     else:
-        print 'Error: More than two faces ocnnected to a unique face. This results in a non-physical topology.'
+        print 'Error: More than two faces connected to a unique face.\
+ This results in a non-physical topology.'
         print nFace_connected 
         sys.exit(-1)
     # end if

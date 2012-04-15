@@ -10,7 +10,7 @@ default:
 	mv src/cgns_divide ./bin
 	mv src/cgns_refine ./bin
 	mv src/cgns_surf_convert ./bin
-
+	mv src/cgns_mirror ./bin
 dirs:
 	mkdir -p bin
 
