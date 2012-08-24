@@ -79,7 +79,7 @@ program cgns_mirror
      call cg_zone_read_f(cg_in, base, nn, zonename, in_dims, ier)
 
      ! ------------------------ Regular Zone ----------------
-999  FORMAT('zone',I4.4)
+999  FORMAT('domain.',I5.5)
      write(zonename,999) 2*nn-1
      call cg_zone_write_f(cg_out,base,zonename,in_dims,Structured,zoneCounter,ier)
      write(zonename,999) 2*nn
