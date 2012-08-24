@@ -28,23 +28,23 @@ subroutine getNBlocks(f_in,N)
 
 end subroutine getNBlocks
 
-subroutine preprocess(f_in,f_out,N,block_dims,coords)
+subroutine preprocess(f,N,block_dims,coords)
 
-  ! This function takes f_in and copies all the grid data to f_out,
-  ! and returns to python the block dimensions and the coordindates of
-  ! the corners, midpoints of edges and midpoints of faces
+  ! This function takes f and returns to python the block dimensions
+  ! and the coordindates of the corners, midpoints of edges and
+  ! midpoints of faces
 
   implicit none
   include 'cgnslib_f.h'
 
   ! Input/Output
-  character*(*), intent(in) :: f_in,f_out
+  character*(*), intent(in) :: f
   integer,intent(in) :: N
   integer, dimension(N,3), intent(out) :: block_dims
   double precision, dimension(N,26,3), intent(out) :: coords
   
   ! Working
-  integer :: ier,cg_in,cg_out,base,nbases,nn,dims(9)
+  integer :: ier,cg_in,base,nbases,nn,dims(9)
   character*32  zonename, basename
   double precision, allocatable, dimension(:,:,:,:) :: tempx
   integer  CellDim, PhysDim,blockStart(3),blockEnd(3)
@@ -52,7 +52,7 @@ subroutine preprocess(f_in,f_out,N,block_dims,coords)
   integer :: midu(2),midv(2),midw(2)
 
   ! Open and read zone sizes:
-  call cg_open_f(f_in, MODE_READ, cg_in, ier)
+  call cg_open_f(f, MODE_READ, cg_in, ier)
   if (ier .eq. CG_ERROR) call cg_error_exit_f
 
   call cg_nbases_f(cg_in, nbases, ier)
@@ -83,21 +83,9 @@ subroutine preprocess(f_in,f_out,N,block_dims,coords)
      if (ier .eq. CG_ERROR) call cg_error_exit_f
   end do
 
-  ! Open Output File:
-  call cg_open_f(f_out,CG_MODE_WRITE, cg_out, ier)
-  if (ier .eq. CG_ERROR) call cg_error_exit_f
-
-  call cg_base_write_f(cg_out,"Base#1", Celldim,Physdim, base, ier)
-
   do nn=1,N
      call cg_zone_read_f(cg_in, base, nn, zonename, dims, ier)
-
-999  FORMAT('domain.',I5.5)
-     write(zonename,999) nn
-
-     write(zonename,999) nn
-     call cg_zone_write_f(cg_out,base,zonename,dims,Structured,zoneCounter,ier)
-     
+    
      allocate(tempx(block_dims(nn,1),block_dims(nn,2),block_dims(nn,3),3))
      blockStart = (/1,1,1/)
      blockEnd   = block_dims(nn,:)
@@ -110,17 +98,6 @@ subroutine preprocess(f_in,f_out,N,block_dims,coords)
      if (ier .eq. CG_ERROR) call cg_error_exit_f
      call cg_coord_read_f(cg_in,base,nn,'CoordinateZ',RealDouble,&
           blockStart,blockEnd,tempx(:,:,:,3),ier)
-     if (ier .eq. CG_ERROR) call cg_error_exit_f
-     
-     ! Write Grid Section
-     call cg_coord_write_f(cg_out,base,zoneCounter,realDouble,&
-          'CoordinateX',tempx(:,:,:,1), coordID,ier)
-     if (ier .eq. CG_ERROR) call cg_error_exit_f
-     call cg_coord_write_f(cg_out,base,zoneCounter,realDouble,&
-          'CoordinateY',tempx(:,:,:,2), coordID,ier)
-     if (ier .eq. CG_ERROR) call cg_error_exit_f
-     call cg_coord_write_f(cg_out,base,zoneCounter,realDouble,&
-          'CoordinateZ',tempx(:,:,:,3), coordID,ier)
      if (ier .eq. CG_ERROR) call cg_error_exit_f
      
      ! Get the required coordinates while we have tempx in memory:
@@ -213,9 +190,6 @@ subroutine preprocess(f_in,f_out,N,block_dims,coords)
   call cg_close_f(cg_in,ier)
   if (ier .eq. ERROR) call cg_error_exit_f
 
-  call cg_close_f(cg_out,ier)
-  if (ier .eq. ERROR) call cg_error_exit_f
- 
 end subroutine preprocess
 
 subroutine openFile(f_out,cg_out)

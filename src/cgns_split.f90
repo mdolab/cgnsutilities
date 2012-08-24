@@ -77,7 +77,7 @@ program cgns_split
   double precision, allocatable, dimension(:,:,:,:) :: tempx
   double precision :: time(3)
   integer newRange(6)
-
+ 
   N = IARGC ()
   print *,'N:',N
   if ((N .ne. 2) .and. (N .ne. 3)) then
@@ -330,8 +330,9 @@ program cgns_split
   print *,'There are ',j,' zones in the new file.'
 
   call cpu_time(time(2))     
+  bocoCounter = 0
   do nn=1,nZones
-     bocoCounter = 0
+   
      do k=1,blocks(nn)%nKSplit - 1
         do j=1,blocks(nn)%nJSplit - 1
            do i=1,blocks(nn)%nISplit - 1             
@@ -350,9 +351,10 @@ program cgns_split
               sizes(8) = 0
               sizes(9) = 0
 
-999           FORMAT('zone',I4.4)
-              write(zonename,999) zoneCounter
               zoneCounter = zoneCounter + 1           
+999           FORMAT('domain.',I5.5)
+              write(zonename,999) zoneCounter
+
               call cg_zone_write_f(cg_out, base, zonename, sizes, Structured, &
                    zone,ier)
               if (ier .eq. CG_ERROR)  call cg_error_exit_f
@@ -406,8 +408,8 @@ program cgns_split
                             blocks(nn)%iSplit(i+1),&
                             blocks(nn)%jSplit(j+1),&
                             blocks(nn)%kSplit(k+1)/)
-                       writeRange(1) = sizes(4)
-                       writeRange(4) = sizes(4)
+                       writeRange(1) = sizes(1)
+                       writeRange(4) = sizes(1)
                     case (3) ! jLow
                        newRange = (/&
                             blocks(nn)%iSplit(i),&
@@ -426,8 +428,8 @@ program cgns_split
                             blocks(nn)%iSplit(i+1),&
                             blocks(nn)%jSplit(j+1),&
                             blocks(nn)%kSplit(k+1)/)
-                       writeRange(2) = sizes(5)
-                       writeRange(5) = sizes(5)
+                       writeRange(2) = sizes(2)
+                       writeRange(5) = sizes(2)
                     case (5) ! kLow
                        newRange = (/&
                             blocks(nn)%iSplit(i),&
@@ -446,8 +448,8 @@ program cgns_split
                             blocks(nn)%iSplit(i+1),&
                             blocks(nn)%jSplit(j+1),&
                             blocks(nn)%kSplit(k+1)/)
-                       writeRange(3) = sizes(6)
-                       writeRange(6) = sizes(6)
+                       writeRange(3) = sizes(3)
+                       writeRange(6) = sizes(3)
                     end select
         
                     ! Now we have the start and end index for the face
@@ -469,9 +471,15 @@ program cgns_split
                             newRange(5) <= BCrange(5) .and. &
                             newRange(3) >= BCrange(3) .and. &
                             newRange(6) <= BCrange(6)) then
+
+
+1999                      format (a,I5.5) 
+                          write(boconame,1999) 'BC_',bocoCounter
+                          bococounter = bococounter + 1
                           
                           call cg_boco_write_f(cg_out, base, zone, &
-                               blocks(nn)%bcs(ll)%boconame, &
+                               !blocks(nn)%bcs(ll)%boconame, &
+                               boconame, &
                                blocks(nn)%bcs(ll)%bocotype, &
                                PointRange, 2, writeRange, BCout, ier)
 
@@ -485,7 +493,7 @@ program cgns_split
                                blocks(nn)%bcs(ll)%familyName, ier)
                           if (ier .eq. CG_ERROR) call cg_error_exit_f
 
-                       end if
+                       end if   !
                     end do ! ll loop
                  end do ! mm loop
 

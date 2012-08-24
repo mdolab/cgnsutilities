@@ -2,7 +2,7 @@
 # Standard Python modules
 # =============================================================================
 
-import sys, time
+import sys, time, shutil
 
 # =============================================================================
 # External Python modules
@@ -13,8 +13,7 @@ import numpy
 # Extension modules
 # =============================================================================
 
-from mdo_import_helper import import_modules
-exec(import_modules('geo_utils'))
+import helper_file
 import cgns_create
 
 # This file creates a proper CGNS file form an unconnected CGNS file
@@ -46,11 +45,14 @@ offset = [0,0,0]
 timeA = time.time()
 print 'Copying Grid and Preprocessing...'
 nVol = cgns_create.getnblocks(in_file)
-block_dims,coords = cgns_create.preprocess(in_file,out_file,nVol)
+# Copy in_file to out_file
+shutil.copyfile(in_file, out_file)
+
+block_dims,coords = cgns_create.preprocess(in_file,nVol)
 
 # Create the Topology:
 print 'Creating Topology...'
-topo = geo_utils.BlockTopology(coords)
+topo = helper_file.BlockTopology(coords)
 
 # Write Edge and Face files for input:
 edge_filename = in_file + '_edges.dat'
@@ -193,7 +195,7 @@ for iUFace in xrange(topo.nFace):
         # First check for a symmetry condition:
 
         # -> Get the coordinates for this face:
-        nodes = geo_utils.nodesFromFace(iFace)
+        nodes = helper_file.nodesFromFace(iFace)
 
         # -> Extract the coordiantes for this face from coords:
         face_coords = numpy.take(coords[iVol],nodes,axis=0)

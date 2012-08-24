@@ -251,7 +251,6 @@ subroutine addData(temp,data_in,nx,ny,nz,idx)
 
 end subroutine addData
 
-
 subroutine convertOutput(data_out,temp,nx,ny,nz,idx)
   implicit none
 

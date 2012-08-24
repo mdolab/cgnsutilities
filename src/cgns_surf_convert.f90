@@ -93,7 +93,7 @@ program cgns_surf_convert
   if (.not. ( N == 1 )) then
      print *,'Error: cgns_surf_convert must be called with ONE argument:'
      print *,'./cgns_surf_convert <infile.cgns>'
-     print *,'Output file will be caleed <infile.plt>'
+     print *,'Output file will be called <infile.plt>'
      stop
   end if
   CALL GETARG(1 , input_name)
