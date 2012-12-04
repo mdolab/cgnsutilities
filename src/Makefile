@@ -19,6 +19,10 @@ cgns_scale:
 	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_scale.f90
 	$(FC) cgns_scale.o -o cgns_scale $(CGNS_LIB)
 
+cgns_flip:
+	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_flip.f90
+	$(FC) cgns_flip.o -o cgns_flip $(CGNS_LIB)
+
 cgns_mirror:
 	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_mirror.f90
 	$(FC) cgns_mirror.o -o cgns_mirror $(CGNS_LIB)
@@ -46,6 +50,7 @@ all:	cgns_surf_convert\
 	time_combine\
 	ts_combine\
 	cgns_scale \
+	cgns_flip \
 	cgns_mirror \
 	cgns_split\
 	cgns_create\
@@ -61,6 +66,8 @@ clean:
 	-rm ts_combine
 	-rm cgns_split
 	-rm cgns_scale
+	-rm cgns_flip
+	-rm cgns_flip
 	-rm cgns_coarsen
 	-rm cgns_divide
 	-rm cgns_refine
