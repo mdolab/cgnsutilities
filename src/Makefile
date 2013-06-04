@@ -46,10 +46,7 @@ cgns_create:
 	f2py  -c --f90flags='$(FFLAGS)' -I$(CGNS_INCLUDE) $(CGNS_LIB)  -m cgns_create cgns_create.f90
 
 
-all:	cgns_surf_convert\
-	time_combine\
-	ts_combine\
-	cgns_scale \
+all:	cgns_scale \
 	cgns_flip \
 	cgns_mirror \
 	cgns_split\
@@ -57,7 +54,9 @@ all:	cgns_surf_convert\
 	cgns_coarsen\
 	cgns_refine\
 	cgns_divide\
-
+	time_combine\
+	ts_combine\
+	cgns_surf_convert\
 
 clean:
 	-rm *.o
