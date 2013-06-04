@@ -97,7 +97,7 @@ program cgns_divide
               
               ! We need a unique zone name:
               zoneCounter = zoneCounter + 1
-999           FORMAT('zone',I4.4)
+999           FORMAT('domain.',I5.5)
               write(zonename,999) zoneCounter
 
               call cg_zone_write_f(cg_out,base,zonename,out_dims,Structured,tempInt,ier)
