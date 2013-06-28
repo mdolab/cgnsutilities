@@ -312,12 +312,12 @@ program cgns_surf_convert
 
   ! Open the max file and write the 6 values
   OPEN(UNIT=11, FILE=max_name, STATUS="replace")
-  write(11, '(15f)') xmin(1)
-  write(11, '(15f)') xmin(2)
-  write(11, '(15f)') xmin(3)
-  write(11, '(15f)') xmax(1)
-  write(11, '(15f)') xmax(2)
-  write(11, '(15f)') xmax(3)
+  write(11, '(20F15.10)') xmin(1)
+  write(11, '(20F15.10)') xmin(2)
+  write(11, '(20F15.10)') xmin(3)
+  write(11, '(20F15.10)') xmax(1)
+  write(11, '(20F15.10)') xmax(2)
+  write(11, '(20F15.10)') xmax(3)
   close(11)
 
 end program cgns_surf_convert
