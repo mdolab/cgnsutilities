@@ -26,6 +26,7 @@ program cgns_divide
   character*32 basename, zonename,boconame
   character*32 connectname,donorname, famname
   double precision, allocatable,dimension(:,:,:) :: data3d
+  double precision, allocatable,dimension(:,:,:) :: data3dtmp
   double precision data_double(6)
 
   N = IARGC ()
@@ -113,29 +114,61 @@ program cgns_divide
               kstart = (kk-1)*(out_dims(3)-1) + 1
               kend   = kstart + out_dims(3)-1
 
+              allocate(data3dTmp(istart:iend, jstart:jend, kstart:kend))
+          
               ! X coordinate
               call cg_coord_read_f(cg_in,base,nn,'CoordinateX',RealDouble,&
                    blockStart,blockEnd,data3d,ier)
               if (ier .eq. CG_ERROR) call cg_error_exit_f
      
+              ! Copy
+              do k=kstart,kend
+                 do j=jstart,jend
+                    do i=istart,iend
+                       data3dtmp(i,j,k) = data3d(i,j,k)
+                    end do
+                 end do
+              end do
+
               call cg_coord_write_f(cg_out,base,zoneCounter,realDouble,&
-                   'CoordinateX',data3d(istart:iend,jstart:jend,kstart:kend), coordID,ier)
+                   'CoordinateX',data3dtmp, coordID,ier)
               
               ! Y coordinate
               call cg_coord_read_f(cg_in,base,nn,'CoordinateY',RealDouble,&
                    blockStart,blockEnd,data3d,ier)
               if (ier .eq. CG_ERROR) call cg_error_exit_f
-     
+
+              ! Copy
+              do k=kstart,kend
+                 do j=jstart,jend
+                    do i=istart,iend
+                       data3dtmp(i,j,k) = data3d(i,j,k)
+                    end do
+                 end do
+              end do
+
               call cg_coord_write_f(cg_out,base,zoneCounter,realDouble,&
-                   'CoordinateY',data3d(istart:iend,jstart:jend,kstart:kend), coordID,ier)
+                   'CoordinateY',data3dtmp, coordID,ier)
               
               ! Z coordinate
               call cg_coord_read_f(cg_in,base,nn,'CoordinateZ',RealDouble,&
                    blockStart,blockEnd,data3d,ier)
               if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+              ! Copy
+              do k=kstart,kend
+                 do j=jstart,jend
+                    do i=istart,iend
+                       data3dtmp(i,j,k) = data3d(i,j,k)
+                    end do
+                 end do
+              end do
      
               call cg_coord_write_f(cg_out,base,zoneCounter,realDouble,&
-                   'CoordinateZ',data3d(istart:iend,jstart:jend,kstart:kend), coordID,ier)
+                   'CoordinateZ',data3dtmp, coordID,ier)
+
+              deallocate(data3dTmp)
+
            end do
         end do
      end do
