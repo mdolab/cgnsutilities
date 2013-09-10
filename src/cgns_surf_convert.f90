@@ -43,7 +43,7 @@ program cgns_surf_convert
   integer ier
 
   ! Integer Counters etc
-  integer :: N,i,j
+  integer :: N,i,j,ii,jj,kk
   integer :: nx,ny,nz,il,jl,kl
   integer :: nsols,sol,nfields,field
   integer :: temp_shape(6),rmax(3)
@@ -56,6 +56,7 @@ program cgns_surf_convert
   double precision, allocatable,dimension(:,:,:  ) :: data3d
   double precision, allocatable,dimension(:,:,:,:) :: gridTemp
   double precision, allocatable,dimension(:,:,:  ) :: fieldData
+  real(kind=4), allocatable, dimension(:, :, :) :: data3dSingle
   double precision :: xmin(3), xmax(3)
 
   ! Tecplot Data Stuff
@@ -275,7 +276,7 @@ program cgns_surf_convert
                    1 - rinde(3), jl + rinde(4), &
                    1 - rinde(5), kl + rinde(6)/)
 
-              ! Allocate Temporary Array for Cell Data, possibly with rind cells
+              ! Allocate Temporary Array for Cell Data, possibly with rind cells              
               allocate(data3d(temp_shape(1):temp_shape(2),&
                    temp_shape(3):temp_shape(4),&
                    temp_shape(5):temp_shape(6)))
@@ -284,11 +285,31 @@ program cgns_surf_convert
               rmax(2) = jl+rinde(3)+rinde(4)
               rmax(3) = kl+rinde(5)+rinde(6)
 
-              call cg_field_read_f(cg_current,current_base,i,1, &
-                   fieldName, datatype, (/1,1,1/),&
-                   rmax,data3d,ier)
-              if (ier .eq. CG_ERROR) call cg_error_exit_f
+              if (dataType == RealSingle) then
+                 allocate(data3dSingle(temp_shape(1):temp_shape(2),&
+                      temp_shape(3):temp_shape(4),&
+                      temp_shape(5):temp_shape(6)))
 
+                 call cg_field_read_f(cg_current,current_base,i,1, &
+                      fieldName, datatype, (/1,1,1/),&
+                      rmax,data3dSingle,ier)
+                 if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+                 do kk=temp_shape(5),temp_shape(6)
+                    do jj=temp_shape(3),temp_shape(4)
+                       do ii=temp_shape(1),temp_shape(2)
+                          data3d(ii,jj,kk) = data3dSingle(ii,jj,kk)
+                       end do
+                    end do
+                 end do
+                 deallocate(data3dSingle)
+              else
+                 call cg_field_read_f(cg_current,current_base,i,1, &
+                      fieldName, datatype, (/1,1,1/),&
+                      rmax,data3d,ier)
+                 if (ier .eq. CG_ERROR) call cg_error_exit_f
+              end if
+                 
               ! Call the interpolate function to reconstruct node data
               call interpolate(data3d,temp_shape,&
                    fieldData,nx,ny,nz)
