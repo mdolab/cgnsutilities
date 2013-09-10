@@ -43,7 +43,7 @@ program cgns_surf_convert
   integer ier
 
   ! Integer Counters etc
-  integer :: N,i,j,ii,jj,kk
+  integer :: N,i,j,ii,jj,kk,tt
   integer :: nx,ny,nz,il,jl,kl
   integer :: nsols,sol,nfields,field
   integer :: temp_shape(6),rmax(3)
@@ -55,6 +55,7 @@ program cgns_surf_convert
   ! Misc Data Arrays
   double precision, allocatable,dimension(:,:,:  ) :: data3d
   double precision, allocatable,dimension(:,:,:,:) :: gridTemp
+  real(kind=4), allocatable, dimension(:,:,:,:) :: gridTempSingle
   double precision, allocatable,dimension(:,:,:  ) :: fieldData
   real(kind=4), allocatable, dimension(:, :, :) :: data3dSingle
   double precision :: xmin(3), xmax(3)
@@ -222,14 +223,42 @@ program cgns_surf_convert
         !-------------------------------------------------------------
         !                         Grid Coodinates 
         !-------------------------------------------------------------
-
+        
+        ! Find out the datatype
+        call cg_coord_info_f(cg_current,current_base,i,&
+             1,DataType,coordNames(1),ier)
+             
         allocate(gridTemp(nx,ny,nz,physDim))
 
-        do j=1,physDim
-           call cg_coord_read_f(cg_current,current_base,i,&
-                coordNames(j),RealDouble,(/1,1,1/),(/nx,ny,nz/),&
-                gridTemp(:,:,:,j),ier)
-        end do
+        if (dataType == RealSingle) then  
+           allocate(gridTempSingle(nx,ny,nz,physDim))
+           do j=1,physDim
+              call cg_coord_read_f(cg_current,current_base,i,&
+                   coordNames(j),dataType,(/1,1,1/),(/nx,ny,nz/),&
+                   gridTemp(:,:,:,j),ier)
+              if (ier .eq. CG_ERROR) call cg_error_exit_f
+           end do
+           
+           do ii=1,nx
+              do jj=1,ny
+                 do kk = 1,nz
+                    do tt = 1,physDim
+                       gridTemp(ii,jj,kk,tt) = gridTempSingle(ii,jj,kk,tt)
+                    end do
+                 end do
+              end do
+           end do
+        
+           deallocate(gridTempSingle)
+        else
+           
+           do j=1,physDim
+              call cg_coord_read_f(cg_current,current_base,i,&
+                   coordNames(j),dataType,(/1,1,1/),(/nx,ny,nz/),&
+                   gridTemp(:,:,:,j),ier)
+              if (ier .eq. CG_ERROR) call cg_error_exit_f
+           end do
+        end if
 
         ! Get the min and max vals:
         if (i == 1) then

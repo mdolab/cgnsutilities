@@ -1,6 +1,6 @@
 # Define the CNGS include directory and linking flags for CGNSlib
-CGNS_INCLUDE=/usr/local/include 
-CGNS_LIB= -lcgns
+CGNS_INCLUDE= ${HOME}/dev/cgnslib
+CGNS_LIB= -L${HOME}/dev/cgnslib -lcgns
 
 # Fortran Compiler
 FC = ifort
