@@ -3,9 +3,9 @@ CGNS_INCLUDE= ${HOME}/dev/cgnslib
 CGNS_LIB= -L${HOME}/dev/cgnslib -lcgns
 
 # Fortran Compiler
-FC = ifort
-FFLAGS = -O2 -fPIC -w -g 
+#FC = ifort
+#FFLAGS = -O2 -fPIC -w -g 
 
 # Fortran Compiler
-#FC = gfortran	
-#FFLAGS = -O2 -fPIC
+FC = gfortran	
+FFLAGS = -O2 -fPIC
