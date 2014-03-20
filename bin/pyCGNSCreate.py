@@ -2,7 +2,7 @@
 # Standard Python modules
 # =============================================================================
 
-import sys, time, shutil
+import sys, time, shutil, argparse
 
 # =============================================================================
 # External Python modules
@@ -22,12 +22,28 @@ import cgns_create
 # already included. Additionally, it can be used to overwrite family
 # info that may or may not be present in the grid. 
 
-N = len(sys.argv)
+parser = argparse.ArgumentParser()
+parser.add_argument('--inFile', help='CGNS input grid',
+                    type=str,default='input.cgns')
+parser.add_argument('--outFile', help='CGNS output grid',
+                    type=str,default='output.cgns')
+parser.add_argument('--sym', help='symmetry plane x, y or z',
+                    type=str,default='y')
+parser.add_argument('--radius', help='radius that contains the geometry',
+                    type=float,default=100)
+parser.add_argument('--writeBC', help='flag (True or False) for whether to write BC',
+                    type=str,default='True')
 
-in_file = sys.argv[1]
-out_file = sys.argv[2]
-sym = sys.argv[3]
-R = float(sys.argv[4])
+args = parser.parse_args()
+
+in_file = args.inFile
+out_file = args.outFile
+sym = args.sym
+R = args.radius
+if args.writeBC == "True":
+    writeBC = True
+else:
+    writeBC = False
 
 try:
     family_file = sys.argv[5]
@@ -362,12 +378,16 @@ print 'Writing Boundary and Connectivity Info...'
 for iVol in xrange(topo.nVol):
     for iFace in xrange(6):
         if isinstance(face_info[iVol,iFace],BCInfo):
-            cgns_create.writebc(cg_out,iVol,
-                                face_info[iVol,iFace].bcName,
-                                face_info[iVol,iFace].bcFam,
-                                face_info[iVol,iFace].pt_start,
-                                face_info[iVol,iFace].pt_end,
-                                face_info[iVol,iFace].bcType)
+            if writeBC:
+                cgns_create.writebc(cg_out,iVol,
+                                    face_info[iVol,iFace].bcName,
+                                    face_info[iVol,iFace].bcFam,
+                                    face_info[iVol,iFace].pt_start,
+                                    face_info[iVol,iFace].pt_end,
+                                    face_info[iVol,iFace].bcType)
+            else:
+                pass
+            #end if
         # end if
         elif isinstance(face_info[iVol,iFace],B2BInfo):
             cgns_create.writeb2b(cg_out,iVol,
