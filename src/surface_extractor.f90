@@ -18,7 +18,7 @@ program surface_extractor
   integer nbocos,bocotype
   integer NormalIndex(3), NormalListFlag, ndataset,datatype
   integer ptset_type, npnts, pnts(6),nval
-  double precision x(100000),y(10000),z(10000),data_double(6)
+  double precision x(1000000),y(100000),z(100000),data_double(6)
   integer wall_bcs(1000,8),bc_counter ! Max number of walls
   CHARACTER *100 BUFFER
 

@@ -12,6 +12,7 @@ default:
 	mv src/cgns_refine ./bin
 	mv src/cgns_surf_convert ./bin
 	mv src/cgns_mirror ./bin
+	mv src/surface_extractor ./bin
 dirs:
 	mkdir -p bin
 
@@ -27,3 +28,4 @@ clean:
 	rm bin/cgns_coarsen
 	rm bin/cgns_refine
 	rm bin/cgns_mirror
+	rm bin/surface_extractor

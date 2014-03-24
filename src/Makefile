@@ -46,6 +46,11 @@ cgns_create:
 	f2py  -c --f90flags='$(FFLAGS)' -I$(CGNS_INCLUDE) $(CGNS_LIB)  -m cgns_create cgns_create.f90
 
 
+surface_extractor:
+	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) surface_extractor.f90
+	$(FC) surface_extractor.o -o surface_extractor $(CGNS_LIB)
+
+
 all:	cgns_scale \
 	cgns_flip \
 	cgns_mirror \
@@ -57,7 +62,7 @@ all:	cgns_scale \
 	time_combine\
 	ts_combine\
 	cgns_surf_convert\
-
+	surface_extractor
 clean:
 	-rm *.o
 	-rm *.mod
