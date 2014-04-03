@@ -1,0 +1,928 @@
+#!/usr/bin/python
+"""
+This is the new gateway program to all of the cgns_utils.
+
+Run cgns_utils -help to get a list of all available options. The basic
+idea is as follows:
+
+                                              | write new file
+read cngs file -> Do some operations on it -> |     .or. 
+                                              | write modified file
+Developped by Dr. Gaetan K. W. Kenway
+"""
+from __future__ import print_function, division
+import sys
+import os
+import copy
+import shutil
+import tempfile
+import argparse
+import numpy
+import libcgns_utils
+import helper_file
+
+# List out all of the possible options here. 
+parser = argparse.ArgumentParser(prog='cgns_utils')
+
+subparsers = parser.add_subparsers(
+    help='Choose one of the listed operations to perform', dest='mode')
+
+p_scale = subparsers.add_parser('scale',
+                                help='Scale a grid by a constant factor')
+p_scale.add_argument('gridFile', help='Name of input CGNS file')
+p_scale.add_argument('scale', help='scale factor', type=float)
+p_scale.add_argument('outFile', nargs='?', default=None,
+                     help='Optional output file')
+
+p_flip = subparsers.add_parser('flip', help='Flip a grid about a plane defined \
+by an axis')
+p_flip.add_argument('gridFile',
+                    help='Name of input CGNS file')
+p_flip.add_argument('axis', help="Flip the mesh about plane defined by \
+axis: 'x', 'y', 'z'")
+
+p_flip.add_argument('outFile', nargs='?', default=None,
+                    help='Optional output file')
+
+p_coarsen = subparsers.add_parser('coarsen', help='Coarsen a grid uniformly')
+p_coarsen.add_argument('gridFile', help='Name of input CGNS file')
+p_coarsen.add_argument('outFile', nargs='?', default=None,
+                       help='Optional output file')
+
+p_refine = subparsers.add_parser('refine', help='Refine a grid uniformly')
+p_refine.add_argument('gridFile', help='Name of input CGNS file')
+p_refine.add_argument('outFile', nargs='?', default=None,
+                      help='Optional output file')
+
+p_extract = subparsers.add_parser('extract',
+                                  help='Extract a wall surface from file')
+p_extract.add_argument('gridFile', help='Name of input CGNS file')
+p_extract.add_argument('surfFile', help='Name of plot3d surface file')
+
+p_mirror = subparsers.add_parser('mirror',
+                                 help='Mirror a grid about a plane defined \
+                                 by an axis. This doubles the grid size')
+p_mirror.add_argument('gridFile', help='Name of input CGNS file')
+p_mirror.add_argument('axis',
+                      help="Mirror about plane defined by axis: 'x', 'y', 'z'")
+p_mirror.add_argument('outFile', nargs='?', default=None,
+                      help='Optional output file')
+
+p_split = subparsers.add_parser('split',
+                                help='Face-match a grid. If the grid is \
+                                already faced matched, this witll have no \
+                                effect')
+p_split.add_argument('gridFile', help='Name of input CGNS file')
+p_split.add_argument('outFile', nargs='?', default=None,
+                     help='Optional output file')
+p_split.add_argument('--splitFile', nargs='?', default=None,
+                     help='Add additional splits specified in split file. Each\
+                     line must contain a block index (1 based), idim (1, 2, or 3),\
+                     and a 1-based index of the block to split at')
+p_connect = subparsers.add_parser(
+    'connect',help='Determine the block-to-block connectivity information \
+    for a face-matched grid')
+p_connect.add_argument('gridFile', help='Name of input CGNS file')
+p_connect.add_argument('outFile', nargs='?', default=None,
+                     help='Optional output file')
+
+p_divide = subparsers.add_parser(
+    'divide',help='Divide all blocks in the grid into 8 sub-blocks')
+p_divide.add_argument('gridFile', help='Name of input CGNS file')
+p_divide.add_argument('outFile', nargs='?', default=None,
+                     help='Optional output file')
+
+p_bc = subparsers.add_parser(
+    'autobc',help='Try to determine boundary conditions for blocks. Only \
+    suitable for external flow applications.')
+p_bc.add_argument('gridFile', help='Name of input CGNS file')
+p_bc.add_argument('sym', help='Normal for possible symmetry plane.',
+                  choices=['x', 'y', 'z'])
+p_bc.add_argument('radius', help='Radius of sphere containing bodies',
+                  type=float, default=10.0)
+p_bc.add_argument('outFile', nargs='?', default=None,
+                     help='Optional output file')
+p_bc.add_argument('--xOffset', nargs='?', default=0.0, type=float,
+                     help='x-coordinate of sphere origin')
+p_bc.add_argument('--yOffset', nargs='?', default=0.0, type=float,
+                     help='y-coordinate of sphere origin')
+p_bc.add_argument('--zOffset', nargs='?', default=0.0, type=float,
+                     help='z--coordinate of sphere origin')
+
+# Finally get the arguments we need!
+args = parser.parse_args()
+
+# These are taken from the CNGS include file
+BCFarfield              = 7
+BCSymmetryPlane         = 16
+BCWall                  = 20
+BCWallInviscid          = 21
+BCWallViscous           = 22
+BCWallViscousHeatFlux   = 23
+BCWallViscousIsothermal = 24
+
+CG_MODE_READ = 0
+CG_MODE_WRITE = 1
+
+class Grid(object):
+    """Represent a complete 3D multiblock grid"""
+    def __init__(self):
+        self.blocks = []
+        self.topo = None
+        
+    def addBlock(self, blk):
+        """Add a block to the grid"""
+        self.blocks.append(blk)
+
+    def writeToCGNS(self, fileName):
+        """Write what is in this gridTree to the fileName provided"""
+        outFile = libcgns_utils.openfile(fileName, CG_MODE_WRITE)
+        for blk in self.blocks:
+            blk.writeToCGNS(outFile)
+        libcgns_utils.closefile(outFile)
+
+    def scale(self, scaleFact):
+        """Scale blocks in this grid"""
+        for blk in self.blocks:
+            blk.scale(scaleFact)
+            
+    def flip(self, axis):
+        """Flip the grid about a axis, 'x', 'y' or 'z'"""
+        for blk in self.blocks:
+            blk.flip(axis)
+
+    def coarsen(self):
+        """Coarsen the block by taking every-other grid line"""
+        for blk in self.blocks:
+            blk.coarsen()
+            
+    def refine(self):
+        """Refinet he block by interpolating every-other grid line"""
+        for blk in self.blocks:
+            blk.refine()
+                
+    def renameBlocks(self):
+        """Rename all blocks in a consistent fashion"""
+        i = 0
+        for blk in self.blocks:
+            blk.name = 'domain.%5.5d'% i
+            i += 1
+    def renameBCs(self):
+        """Rename all block boundary conditions in a consistent fashion"""
+        i = 0
+        for blk in self.blocks:
+            for boco in blk.bocos:
+                boco.name = 'BC%d'% i
+                i += 1
+                
+    def extractSurface(self, fileName):
+        """ Extract wall surfaces and write to plot3d file"""
+        patches = []
+        for blk in self.blocks:
+            patches.extend(blk.extractWallSurfaces())
+        if len(patches) > 0:
+            f = open(fileName, 'w')
+            f.write('%d\n' % len(patches))
+            for i in range(len(patches)):
+
+                f.write('%d %d 1\n' %(patches[i].shape[0], 
+                                      patches[i].shape[1]))
+            for i in range(len(patches)):
+                patches[i][:, :, 0].flatten(1).tofile(f, sep='\n')
+                f.write('\n')
+                patches[i][:, :, 1].flatten(1).tofile(f, sep='\n')
+                f.write('\n')
+                patches[i][:, :, 2].flatten(1).tofile(f, sep='\n')
+                f.write('\n')
+            f.close()
+        else:
+            print ('Warning: No wall surfaces found!')
+            
+    def split(self, extraSplits):
+        """Recursively propagate splits due to boundary conditions or
+        B2B information"""
+        for iBlock in range(len(self.blocks)):
+            splits = []
+            for boco in self.blocks[iBlock].bocos:
+                splits.extend(getSplits(boco.ptRange))
+            for b2b in self.blocks[iBlock].B2Bs:
+                splits.extend(getSplits(b2b.ptRange))
+
+            # Now just add the (unique) splits for this block:
+            splits = numpy.unique(splits)
+            for split in splits:
+                self._addSplit(iBlock, split[0]+1, split[1])
+                
+        # And Add the extra splits:
+        for split in extraSplits:
+            self._addSplit(split[0]-1, split[1], split[2]-1)
+
+    def _addSplit(self, iBlock, iDim, index):
+        """Recursive routine to add a split to block 'iBlock', on
+        dimension 'iDim' at index 'index'. NOTE IDIM is 1 based!"""
+        if index in self.blocks[iBlock].splits[iDim-1]:
+            return # This is the main recursive return
+        else:
+            # Add the split and call any others we need
+            self.blocks[iBlock].splits[iDim-1].append(index)
+            self.blocks[iBlock].splits[iDim-1].sort()
+
+            for b2b in self.blocks[iBlock].B2Bs:
+                low = min(b2b.ptRange[iDim-1, :])
+                high = max(b2b.ptRange[iDim-1, :])
+
+                # Index must be fully contained:
+                if index > low and index < high:
+                    newBlock = self._findZone(b2b.donorName)
+                    iDim_new = b2b.transform[iDim-1]
+                    offset = index - low
+                    abs_idim = abs(iDim_new)
+                    donor_high = max(b2b.donorRange[abs_idim-1, :])
+                    donor_low = min(b2b.donorRange[abs_idim-1, :])
+
+                    if iDim_new >= 0:
+                        index_new = donor_low + offset
+                    else:
+                        index_new = donor_high - offset
+
+                    # Finally recursively call itself for the new
+                    # block, dimension and index
+                    self._addSplit(newBlock, abs_idim, index_new)
+                            
+    def _findZone(self, zoneName):
+        """Return the index of the zone with the given name"""
+        for iBlock in range(len(self.blocks)):
+            if self.blocks[iBlock].name == zoneName:
+                return iBlock
+        print ("Error in splitting procedure...Looking for zone name '%s', "
+               " but could not find it."% zoneName)
+        sys.exit(0)
+
+    def _preprocess(self):
+        """Preprocess some common info for connect and autoBC"""
+        coords = numpy.zeros((len(self.blocks), 8, 3))
+        blkDims = []
+        for i in range(len(self.blocks)):
+            coords[i] = self.blocks[i].getCorners()
+            blkDims.append(self.blocks[i].dims)
+
+        self.topo = helper_file.BlockTopology(coords)
+        face_ptr = [ [] for i in range(self.topo.nFace)]
+
+        for iVol in range(len(self.blocks)):
+            for iFace in xrange(6):
+                iUniqueFace = self.topo.face_link[iVol, iFace]
+                face_ptr[iUniqueFace].append([iVol, iFace])
+        return coords, blkDims, face_ptr
+    
+    def connect(self):
+        """Generate block-to-block connectivity information for a grid
+        that is already face matched"""
+        __, blkDims, face_ptr = self._preprocess()
+        
+        for iUFace in range(self.topo.nFace):
+            if len(face_ptr[iUFace]) == 2: # Block-to-block
+                # The are the faces:
+                iVol1  = face_ptr[iUFace][0][0]
+                iFace1 = face_ptr[iUFace][0][1]
+
+                iVol2  = face_ptr[iUFace][1][0]
+                iFace2 = face_ptr[iUFace][1][1]
+
+                # Get the pt ranges:
+                ptRange = getPointRange(iFace1, blkDims[iVol1])
+                ptRangeDonor = getPointRange(iFace2, blkDims[iVol2])
+
+                # Now for the fun part...the transformation matrix:
+                transform1 = [0, 0, 0]
+
+                g_dir_1 = generalizedCoordDir(iFace1)
+                g_dir_2 = generalizedCoordDir(iFace2)
+
+                fl = self.topo.face_dir[iVol2, iFace2]
+
+                # Do the generalized coordinate direction 1
+                if fl in [0, 2]:
+                    transform1[g_dir_1[0]] =  (g_dir_2[0] + 1)
+                if fl in [1, 3]:
+                    transform1[g_dir_1[0]] = -(g_dir_2[0] + 1)
+                if fl in [4, 6]:
+                    transform1[g_dir_1[0]] =  (g_dir_2[1] + 1)
+                if fl in [5, 7]:
+                    transform1[g_dir_1[0]] = -(g_dir_2[1] + 1)
+
+                # Do the generalized coordinate direction 2
+                if fl in [0, 1]:
+                    transform1[g_dir_1[1]] =  (g_dir_2[1] + 1)
+                if fl in [2, 3]:
+                    transform1[g_dir_1[1]] = -(g_dir_2[1] + 1)
+                if fl in [4, 5]:
+                    transform1[g_dir_1[1]] =  (g_dir_2[0] + 1)
+                if fl in [6, 7]:
+                    transform1[g_dir_1[1]] = -(g_dir_2[0] + 1)
+
+                # Do the generalized coordiante direction 3 (or normal)
+                transform1[g_dir_1[2]] = (
+                    normal_direction(iFace1,iFace2)*(g_dir_2[2]+1))
+        
+                # Now that we have transform1 we can fairly easily get
+                # transform2:
+                transform2 = [0, 0, 0]
+                for ii in xrange(3):
+                    ind = abs(transform1[ii])-1
+                    transform2[ind] = numpy.sign(transform1[ii])*(ii+1)
+
+                # One last thing to do: if the transform is -ve swap the
+                # ranges on the donor
+                for ii in xrange(3):
+                    if transform2[ii] < 0:
+                        (ptRangeDonor[ii][0], ptRangeDonor[ii][1]) = \
+                            (ptRangeDonor[ii][1], ptRangeDonor[ii][0])
+                connectName = 'subFace%d'% iUFace
+
+                # Add the block-to-block info for the two blocks
+                self.blocks[iVol1].addB2B(B2B(
+                    connectName, self.blocks[iVol2].name, ptRange,
+                    ptRangeDonor, transform1))
+
+                self.blocks[iVol2].addB2B(B2B(
+                    connectName, self.blocks[iVol1].name, ptRangeDonor,
+                    ptRange, transform2))
+
+    def autoBC(self, radius, sym, offset):
+        """This function will try to generate boundary condition
+        information for all patches that are not part of a
+        block-to-block connection. If a surface is inside the sphere,
+        it gets counted as a wall, if it is outside it is a farfield
+        condition. If the surface is flat and a coordinate is zero, it
+        gets treated as a synmmetry plane."""
+
+        # Remove any BCinfo/B2B info we may have.
+        for blk in self.blocks:
+            blk.bocos = []
+            blk.B2Bs = []
+
+        # Do the b2b by running connect:
+        self.connect()
+        coords, blkDims, face_ptr = self._preprocess()
+
+        for i in range(len(self.blocks)):
+            blkDims.append(self.blocks[i].dims)
+        if sym == 'x':
+            symAxis = 0
+        elif sym == 'y':
+            symAxis = 1
+        else:
+            symAxis = 2
+
+        symNormal = [0.0, 0.0, 0.0]
+        symNormal[symAxis] = 1.0
+        # Now do the rest of the faces with only 1 connection:
+        for iUFace in xrange(self.topo.nFace):
+            if len(face_ptr[iUFace]) == 1:
+    
+                # The is only one face here
+                iVol = face_ptr[iUFace][0][0]
+                iFace = face_ptr[iUFace][0][1]
+
+                # First check for a symmetry condition:
+
+                # -> Get the coordinates for this face:
+                nodes = helper_file.nodesFromFace(iFace)
+
+                # -> Extract the coordiantes for this face from coords:
+                face_coords = numpy.take(coords[iVol], nodes, axis=0)
+
+                # -> Take the cross-product to get the normal:
+                v1 = face_coords[3]-face_coords[0]
+                v2 = face_coords[2]-face_coords[1]
+                normal = numpy.cross(v1, v2)
+
+                # -> Normalize with a zero-lenght check:
+                normal /= max(numpy.linalg.norm(normal), 1e-14)
+
+                coor_check = abs(numpy.average(face_coords[:, symAxis])) < 1e-3
+                dp_check = (numpy.dot(normal, symNormal) > 0.98 or 
+                            numpy.dot(normal, symNormal) < -0.98)
+
+                ptRange = getPointRange(iFace, blkDims[iVol])
+                if dp_check and coor_check:
+                    # Definitely a sym plane
+                    self.blocks[iVol].addBoco(Boco(
+                        'dummy', BCSymmetryPlane, ptRange, 'sym'))
+                else:
+                    # Next check for a wall-type boundary condition:
+                    insideSphere = True
+                    for i in range(4):
+                        if not numpy.linalg.norm(
+                            face_coords[i]-offset) < radius:
+                            insideSphere = False
+                    if insideSphere:
+                        # Definitely a wall condition:
+                        self.blocks[iVol].addBoco(Boco(
+                            'dummy', BCWallViscous, ptRange, 'wall'))
+                    else:
+                        # Definitely a farfield condition
+                        self.blocks[iVol].addBoco(Boco(
+                            'dummy', BCFarfield, ptRange, 'far'))
+
+        # Lastly rename the BCs to be consistent
+        self.renameBCs()
+            
+class Block(object):
+    """Class for storing information related to a single block
+    structured zone"""
+    
+    def __init__(self, zoneName, dims, coords):
+        self.name = zoneName.strip()
+        self.dims = dims
+        self.coords = coords
+        self.bocos = []
+        self.B2Bs = []
+        self.splits = [[1, dims[0]], 
+                       [1, dims[1]], 
+                       [1, dims[2]]]
+        
+    def addBoco(self, boco):
+        """ A add a boundary condition to this block"""
+        self.bocos.append(boco)
+        
+    def addB2B(self, b2b):
+        """ A  block-2-block connection to this block"""
+        self.B2Bs.append(b2b)
+
+    def writeToCGNS(self, cg):
+        """ Write all information in this block to the cg file handle"""
+        zoneID = libcgns_utils.writezone(cg, self.name, self.dims)
+        libcgns_utils.writecoordinates(cg, zoneID, self.coords)
+
+        for boco in self.bocos:
+            libcgns_utils.writebc(cg, zoneID, boco.name, boco.family, 
+                               boco.ptRange, boco.type)
+
+        for b2b in self.B2Bs:
+            libcgns_utils.writeb2b(cg, zoneID, b2b.name, b2b.donorName,
+                                   b2b.ptRange, b2b.donorRange,
+                                   b2b.transform)
+
+    def scale(self, scaleFact):
+        """Scale the coordinates"""
+        self.coords *= scaleFact
+
+    def flip(self, axis):
+        """Flip coordinates by plane defined by 'axis'"""
+        if axis.lower() == 'x':
+            index = 0
+        elif axis.lower() == 'y':
+            index = 1
+        elif axis.lower() == 'z':
+            index = 2
+        self.coords[:, :, :, index] = -self.coords[:, :, :, index]
+
+    def coarsen(self):
+        """Coarsen the block uniformly. We will update the boundary
+        conditions and B2B if necessary"""
+        self.coords = self.coords[0::2, 0::2, 0::2, :]
+        self.dims[0] = self.coords.shape[0]
+        self.dims[1] = self.coords.shape[1]
+        self.dims[2] = self.coords.shape[2]
+        for boco in self.bocos:
+            boco.coarsen()
+        for b2b in self.B2Bs:
+            b2b.coarsen()
+
+    def refine(self):
+        """Refine the block uniformly. We will also update the
+        boundary conditions and B2Bs if ncessary"""
+        self.coords = libcgns_utils.refine(self.coords)
+        self.dims[0] = self.coords.shape[0]
+        self.dims[1] = self.coords.shape[1]
+        self.dims[2] = self.coords.shape[2]
+        for boco in self.bocos:
+            boco.refine()
+        for b2b in self.B2Bs:
+            b2b.refine()
+
+    def getSplitBlocks(self):
+        """Return a list of blocks that have been split according to
+        the self.splits array. This is used for the 'split' operation
+        as well as for the 'divide' operation. Boundary information is
+        kept but connectivity information is removed"""
+        blkList = []
+        s = self.splits # For cleaner code below
+
+        for i in range(len(s[0])-1):
+            for j in range(len(s[1])-1):
+                for k in range(len(s[2])-1):
+                    newCoords = self.coords[
+                        s[0][i]-1:s[0][i+1],
+                        s[1][j]-1:s[1][j+1],
+                        s[2][k]-1:s[2][k+1], :].copy()
+
+                    dims = [newCoords.shape[0], newCoords.shape[1],
+                            newCoords.shape[2]]
+                    blk = Block('dummy', dims, newCoords)
+
+                    # Loop over the 6 faces and determine what BC they
+                    # came from:
+
+                    for boco in self.bocos:
+                        # iLow
+                        chkRange = [[s[0][i], s[0][i]],
+                                    [s[1][j], s[1][j+1]],
+                                    [s[2][k], s[2][k+1]]]
+                        
+                        if inRange(boco.ptRange, chkRange):
+                            blk.addBoco(Boco(
+                                boco.name, boco.type,
+                                [[1, 1], [1, dims[1]], [1, dims[2]]],
+                                 boco.family))
+
+                        # iHigh
+                        chkRange = [[s[0][i+1], s[0][i+1]],
+                                    [s[1][j],   s[1][j+1]],
+                                    [s[2][k],   s[2][k+1]]]
+                        
+                        if inRange(boco.ptRange, chkRange):
+                            blk.addBoco(Boco(
+                                boco.name, boco.type,
+                                [[dims[0], dims[0]], [1, dims[1]], [1, dims[2]]],
+                                boco.family))
+
+                        # jLow
+                        chkRange = [[s[0][i], s[0][i+1]],
+                                    [s[1][j], s[1][j]],
+                                    [s[2][k], s[2][k+1]]]
+                        
+                        if inRange(boco.ptRange, chkRange):
+                            blk.addBoco(Boco(
+                                boco.name, boco.type,
+                                [[1, dims[0]], [1, 1], [1, dims[2]]],
+                                 boco.family))
+
+                        # jHigh
+                        chkRange = [[s[0][i  ], s[0][i+1]],
+                                    [s[1][j+1], s[1][j+1]],
+                                    [s[2][k]  , s[2][k+1]]]
+                        
+                        if inRange(boco.ptRange, chkRange):
+                            blk.addBoco(Boco(
+                                boco.name, boco.type,
+                                [[1, dims[0]], [dims[1], dims[1]], [1, dims[2]]],
+                                boco.family))
+
+                        # kLow
+                        chkRange = [[s[0][i], s[0][i+1]],
+                                    [s[1][j], s[1][j+1]],
+                                    [s[2][k], s[2][k]]]
+                        
+                        if inRange(boco.ptRange, chkRange):
+                            blk.addBoco(Boco(
+                                boco.name, boco.type,
+                                [[1, dims[0]], [1, dims[1]], [1, 1]],
+                                 boco.family))
+
+                        # kHigh
+                        chkRange = [[s[0][i]  , s[0][i+1]],
+                                    [s[1][j]  , s[1][j+1]],
+                                    [s[2][k+1], s[2][k+1]]]
+                        
+                        if inRange(boco.ptRange, chkRange):
+                            blk.addBoco(Boco(
+                                boco.name, boco.type,
+                                [[1, dims[0]], [1, dims[1]], [dims[2], dims[2]]],
+                                 boco.family))
+
+                    blkList.append(blk)
+        return blkList
+    
+    def divide(self):
+        """Return a list of 8 blocks split derivied from the current
+        block. Boundary condition information is kept, but
+        connectivity information is removed"""
+
+        # Just add the splits and run getSplitBlocks
+        for iDim in range(3):
+            self.splits[iDim].append((self.dims[iDim]-1)//2 + 1)
+            self.splits[iDim].sort()
+            
+        return self.getSplitBlocks()
+    
+    def getCorners(self):
+        """Return coordinates of the corners"""
+        
+        return  [self.coords[0,  0,  0], self.coords[-1,  0,  0],
+                 self.coords[0, -1,  0], self.coords[-1, -1,  0],
+                 self.coords[0,  0, -1], self.coords[-1,  0, -1],
+                 self.coords[0, -1, -1], self.coords[-1, -1, -1]]
+    
+    def removeSymBCs(self):
+        """Remove any sym BC's there may be"""
+        self.bocos = [boco for boco in self.bocos
+                      if not boco.type == BCSymmetryPlane]
+
+    def extractWallSurfaces(self):
+        """Return patches for any surfaces that have BCViscous on them"""
+        patches = []
+        for boco in self.bocos:
+            if isWall(boco.type):
+                ptRange = boco.ptRange - 1 # Convert to python ordering
+                patches.append(self.coords[
+                    ptRange[0, 0]:ptRange[0, 1]+1, 
+                    ptRange[1, 0]:ptRange[1, 1]+1, 
+                    ptRange[2, 0]:ptRange[2, 1]+1, :].squeeze())
+                return patches
+
+class Boco(object):
+    """Class for storing information related to a boundary condition"""
+    def __init__(self, bocoName, bocoType, ptRange, family):
+        self.name = bocoName.strip()
+        self.type = bocoType
+        self.ptRange = ptRange
+            
+        if family is None or family.strip() == '':
+            self.family = 'default'
+        else:
+            self.family = family
+
+    def coarsen(self):
+        """Coarsen the range of the BC"""
+        for i in range(3):
+            for j in range(2):
+                self.ptRange[i, j] = (self.ptRange[i, j]-1)//2 + 1
+
+    def refine(self):
+        """refine the range of the BC"""
+        for i in range(3):
+            for j in range(2):
+                self.ptRange[i, j] = (self.ptRange[i, j]-1)*2 + 1
+
+                   
+class B2B(object):
+    """Class for storing information related to a Block-to-block or
+    (1to1 in cgns speak) connection"""
+    def __init__(self, connectName, donorName, ptRange, donorRange, transform):
+        self.name = connectName.strip()
+        self.donorName = donorName.strip()
+        self.ptRange = ptRange
+        self.donorRange = donorRange
+        self.transform = transform
+
+    def coarsen(self):
+        """Coarsen the range of the B2B"""
+        for i in range(3):
+            for j in range(2):
+                self.ptRange[i, j] = (self.ptRange[i, j]-1)//2 + 1
+                self.donorRange[i, j] = (self.donorRange[i, j]-1)//2 + 1
+    def refine(self):
+        """refine the range of the B2B"""
+        for i in range(3):
+            for j in range(2):
+                self.ptRange[i, j] = (self.ptRange[i, j]-1)*2 + 1
+                self.donorRange[i, j] = (self.donorRange[i, j]-1)*2 + 1
+
+
+# --------------------------------------
+# These are miscalenous helper functions
+# --------------------------------------
+def isWall(bc):
+    """Determine if a bc is a wall-type boundary condition"""
+    if bc == BCWall or bc == BCWallInviscid or bc == BCWallViscous or \
+       bc == BCWallViscousHeatFlux or bc == BCWallViscousIsothermal:
+        return True
+    else:
+        return False
+
+def getSplits(ptRange):
+    """Return info required to split this face to make it face
+    matched"""
+    if ptRange[0][0] == ptRange[0][1]:
+        splits = [(1, ptRange[1][0]), 
+                  (1, ptRange[1][1]), 
+                  (2, ptRange[2][0]), 
+                  (2, ptRange[2][1])]
+    elif ptRange[1][0] == ptRange[1][1]:
+        splits = [(0, ptRange[0][0]), 
+                  (0, ptRange[0][1]), 
+                  (2, ptRange[2][0]), 
+                  (2, ptRange[2][1])]
+    elif ptRange[2][0] == ptRange[2][1]:
+        splits = [(0, ptRange[0][0]), 
+                  (0, ptRange[0][1]), 
+                  (1, ptRange[1][0]), 
+                  (1, ptRange[1][1])]
+    return splits
+
+def generalizedCoordDir(iFace):
+    """Not really sure how this works..."""
+    if iFace in [0, 1]:
+        return [0, 1, 2]
+    elif iFace in [2, 3]:
+        return [1, 2, 0]
+    elif iFace in [4, 5]:
+        return [0, 2, 1]
+
+def isodd(num):
+    """check if a number is odd"""
+    return num & 1 and True or False
+
+def getPointRange(iFace, dims):
+    """Return the correct point range for face iFace on a block with
+    dimensions given in dims"""
+    il = dims[0]
+    jl = dims[1]
+    kl = dims[2]
+    if iFace == 0:
+        return [[1, il], [1, jl], [1, 1]]
+    elif iFace == 1:
+        return [[1, il], [1, jl], [kl, kl]]
+    elif iFace == 2:
+        return [[1, 1], [1, jl], [1, kl]]
+    elif iFace == 3:
+        return [[il, il], [1, jl], [1, kl]]
+    elif iFace == 4:
+        return [[1, il], [1, 1], [1, kl]]
+    elif iFace == 5:
+        return [[1, il], [jl, jl], [1, kl]]
+
+def inRange(ptRange, chkRange):
+    """Determine if 'chkRange' fully overlaps with 'ptRange'"""
+    val = True
+    for iDim in range(3):
+        if not (chkRange[iDim][0] >= ptRange[iDim][0] and 
+                chkRange[iDim][1] <= ptRange[iDim][1]):
+            val = False
+
+    return val
+             
+def normal_direction(iFace1, iFace2):
+    """Normal direction is positive if iFace1 and iFace two are of
+    opposite odditiy, even if they are the same oddity"""
+    isOdd1 = isodd(iFace1)
+    isOdd2 = isodd(iFace2)
+
+    if isOdd1 is True and isOdd2 is True:
+        return -1
+    if isOdd1 is False and isOdd2 is False:
+        return -1
+
+    # otherwise:
+    return 1
+
+# -----------------------------------------------------------------
+# These functions perform operations that return new 'Grid' objects
+# -----------------------------------------------------------------
+def readGrid(fileName):
+    """Internal routine to return a 'grid' object that contains all
+    the information that is in the file 'fileName'"""
+
+    inFile = libcgns_utils.openfile(fileName, CG_MODE_READ)
+    nBlock = libcgns_utils.getnblocks(inFile)
+    newGrid = Grid()
+
+    for iBlock in range(1, nBlock+1):
+        zoneName, dims, nBoco, nB2B = libcgns_utils.getblockinfo(inFile, iBlock)
+        coords = libcgns_utils.getcoordinates(inFile, iBlock,
+                                              dims[0], dims[1], dims[2])
+        blk = Block(zoneName, dims, coords)
+
+        for iBoco in range(1, nBoco+1):
+            bocoName, bocoType, ptRange, family = libcgns_utils.getbcinfo(
+                inFile, iBlock, iBoco)
+            blk.addBoco(Boco(bocoName, bocoType, ptRange, family))
+        for iB2B in range(1, nB2B+1):
+            connectName, donorName, ptRange, donorRange, transform = \
+                         libcgns_utils.getb2binfo(inFile, iBlock, iB2B)
+            blk.addB2B(B2B(connectName, donorName, ptRange, donorRange,
+                           transform))
+       
+        newGrid.addBlock(blk)
+
+    libcgns_utils.closefile(inFile)
+
+    return newGrid
+
+def mirrorGrid(grid, axis):
+    """Method that takes a grid and mirrors about the axis. Boundary
+    condition information is retained if possible"""
+
+    # First make sure the grid is face matched:
+    grid.split()
+
+    # Now copy original blocks
+    newGrid = Grid()
+    for blk in grid.blocks:
+        blk.removeSymBCs()
+        blk.B2Bs = []
+        newGrid.addBlock(blk)
+
+        mirrorBlk = copy.deepcopy(blk)
+        mirrorBlk.flip(axis)
+        newGrid.addBlock(mirrorBlk)
+
+    # Now rename the blocks and redo-connectivity
+    newGrid.renameBlocks()
+    newGrid.renameBCs()
+    newGrid.connect()
+
+    return newGrid
+
+def divideGrid(grid):
+    """Method that takes a grid and generates a new grid with 8 times
+    as many blocks"""
+    newGrid = Grid()
+    for blk in grid.blocks:
+        newBlks = blk.divide()
+        for nblk in newBlks:
+            newGrid.addBlock(nblk)
+
+    # Now rename the blocks and redo-connectivity
+    newGrid.renameBlocks()
+    newGrid.renameBCs()
+    newGrid.connect()
+
+    return newGrid
+
+def splitGrid(grid, splitFile):
+    """Method that takes a grid and propagates any splits using
+    connectivity information. This is a rewrite of the original
+    Fortran implementation that is quite a bit simplier due to Python"""
+    # Split the current grid
+    extraSplits = []
+    if splitFile is not None:
+        f = open(splitFile,'r')
+        for line in f:
+            aux = line.split()
+            extraSplits.append([int(aux[0]), int(aux[1]), int(aux[2])])
+        f.close()
+    grid.split(extraSplits=extraSplits)
+
+    # New grid
+    newGrid = Grid()
+    for blk in grid.blocks:
+        newBlks = blk.getSplitBlocks()
+        for nblk in newBlks:
+            newGrid.addBlock(nblk)
+
+    # # Now rename the blocks, bcs and redo-connectivity
+    newGrid.renameBlocks()
+    newGrid.renameBCs()
+    newGrid.connect()
+
+    return newGrid
+
+# Get the current working grid 'curGrid' by reading the input
+curGrid = readGrid(args.gridFile)
+
+# The extract is special and done first:
+if args.mode == 'extract':
+    curGrid.extractSurface(args.surfFile)
+    sys.exit(0)
+    
+# Determine if we have an output file:
+if args.outFile is None:
+    # Determine where to put a file:
+    dirpath = tempfile.mkdtemp()
+
+    # Define a temp output file
+    outFileName = os.path.join(dirpath, 'tmp.cgns')
+else:
+    outFileName = args.outFile
+
+# Perform one of the following actions:
+if args.mode == 'flip':
+    curGrid.flip(args.axis)
+
+elif args.mode == 'scale':
+    curGrid.scale(args.scale)
+
+elif args.mode == 'mirror':
+    curGrid = mirrorGrid(curGrid, args.axis)
+
+elif args.mode == 'coarsen':
+    curGrid.coarsen()
+
+elif args.mode == 'refine':
+    curGrid.refine()
+
+elif args.mode == 'split':
+    curGrid = splitGrid(curGrid, args.splitFile)
+
+elif args.mode == 'connect':
+    curGrid.connect()
+
+elif args.mode == 'divide':
+    curGrid = divideGrid(curGrid)
+
+elif args.mode == 'autobc':
+    curGrid.autoBC(args.radius, args.sym,
+                   [args.xOffset, args.yOffset, args.zOffset])
+    
+# Write out the grid. 
+curGrid.writeToCGNS(outFileName)
+
+# Possibly copy back to the original:
+if args.outFile is None:
+    print('Copying temporary file to input...')
+    shutil.copyfile(outFileName, args.gridFile)
+    shutil.rmtree(dirpath)

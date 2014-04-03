@@ -1,0 +1,15 @@
+# Define the CNGS include directory and linking flags for CGNSlib
+CGNS_INCLUDE_FLAGS = -I$(HOME)/packages/cgnslib_3.2.1/src
+CGNS_LINKER_FLAGS =  -L$(HOME)/packages/cgnslib_3.2.1/src -lcgns
+
+# Intel Fortran Compiler
+CC = gcc 
+CFLAGS = -O2 -fPIC
+FC = ifort
+FFLAGS = -O2 -r8 -g -fPIC 
+
+
+# Define potentially different python, python-config and f2py executables:
+PYTHON = python
+PYTHON-CONFIG = python-config
+F2PY = f2py
