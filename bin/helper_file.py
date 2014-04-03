@@ -403,7 +403,7 @@ class BlockTopology(topology):
         if coords.shape[1] == 8: # Just the corners are given --- Just
                                  # put in np.zeros for the edge and face
                                  # mid points
-            temp = np.zeros((nvol, (8 + 12 + 6), 3))
+            temp = np.zeros((nVol, (8 + 12 + 6), 3))
             temp[:, 0:8, :] = coords
             coords = temp.copy()
         # end if
