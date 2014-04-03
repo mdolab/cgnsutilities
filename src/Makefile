@@ -1,78 +1,46 @@
-# TECIO LIB
-include ../Makefile.in
-TECIO = tecio.a
+include ../config.mk
 
-default: all
+PYTHON_OBJECTS = fortranobject.o \
+		 libcgns_utilsmodule.o
 
-cgns_surf_convert:
-	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_surf_convert.f90
-	$(FC) cgns_surf_convert.o $(TECIO) -o cgns_surf_convert $(CGNS_LIB) -lstdc++
+default:
 
-time_combine:
-	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) time_combine.f90
-	$(FC) time_combine.o $(TECIO) -o time_combine $(CGNS_LIB) -lstdc++
-ts_combine:
-	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) ts_combine.f90
-	$(FC) ts_combine.o $(TECIO) -o ts_combine $(CGNS_LIB) -lstdc++
+# Compile the source files:
+	$(FC) -c $(FFLAGS) $(CGNS_INCLUDE_FLAGS) cgns_utilities.F90
 
-cgns_scale:
-	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_scale.f90
-	$(FC) cgns_scale.o -o cgns_scale $(CGNS_LIB)
+# Generate Python inlude directory
+	 $(eval PYTHON_INCLUDES = $(shell $(PYTHON-CONFIG) --includes))
+	 @echo "#------------------------------------------------------#"
+	 @echo Python Inclue Flags $(PYTHON_INCLUDES)
+	 @echo "#------------------------------------------------------#"
 
-cgns_flip:
-	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_flip.f90
-	$(FC) cgns_flip.o -o cgns_flip $(CGNS_LIB)
+# Generate Numpy inlude directory
+	$(eval NUMPY_INCLUDES = $(shell $(PYTHON) -c 'import numpy; print numpy.get_include()'))
+	@echo "#------------------------------------------------------#"
+	@echo Numpy Include Directory: $(NUMPY_INCLUDES)
+	@echo "#------------------------------------------------------#"
 
-cgns_mirror:
-	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_mirror.f90
-	$(FC) cgns_mirror.o -o cgns_mirror $(CGNS_LIB)
+# Generate f2py root directory
+	$(eval F2PY_ROOT = $(shell $(PYTHON) get_f2py.py))
+	@echo "#------------------------------------------------------#"
+	@echo f2py root directory: $(F2PY_ROOT)
+	@echo "#------------------------------------------------------#"
 
-cgns_divide:
-	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_divide.f90
-	$(FC) cgns_divide.o -o cgns_divide $(CGNS_LIB)
+# Generate pyf file automatically
+	f2py -m  --overwrite-signature libcgns_utils -h cgns_utils.pyf cgns_utilities.F90
 
-cgns_split:
-	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_split.f90
-	$(FC) cgns_split.o -o cgns_split $(CGNS_LIB)
-cgns_coarsen:
-	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_coarsen.f90
-	$(FC) cgns_coarsen.o -o cgns_coarsen $(CGNS_LIB)
+# Generate wrapper file:
+	f2py cgns_utils.pyf
 
-cgns_refine:
-	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) cgns_refine.f90
-	$(FC) cgns_refine.o -o cgns_refine $(CGNS_LIB)
+# Compile c wrapper
+	$(CC) $(CFLAGS) $(PYTHON_INCLUDES) -I$(NUMPY_INCLUDES) \
+	-I$(F2PY_ROOT)/src -c libcgns_utilsmodule.c
 
-cgns_create:
-	f2py  -c --f90flags='$(FFLAGS)' -I$(CGNS_INCLUDE) $(CGNS_LIB)  -m cgns_create cgns_create.f90
+# Compile fortranobject needed by all f2py modules
+	$(CC) $(CFLAGS) $(PYTHON_INCLUDES) -I$(NUMPY_INCLUDES) \
+	-c $(F2PY_ROOT)/src/fortranobject.c -o fortranobject.o
 
-
-surface_extractor:
-	$(FC) -c $(FFLAGS) -I$(CGNS_INCLUDE) surface_extractor.f90
-	$(FC) surface_extractor.o -o surface_extractor $(CGNS_LIB)
-
-
-all:	cgns_scale \
-	cgns_flip \
-	cgns_mirror \
-	cgns_split\
-	cgns_create\
-	cgns_coarsen\
-	cgns_refine\
-	cgns_divide\
-	time_combine\
-	ts_combine\
-	cgns_surf_convert\
-	surface_extractor
-clean:
-	-rm *.o
-	-rm *.mod
-	-rm time_combine
-	-rm ts_combine
-	-rm cgns_split
-	-rm cgns_scale
-	-rm cgns_flip
-	-rm cgns_flip
-	-rm cgns_coarsen
-	-rm cgns_divide
-	-rm cgns_refine
-	-rm cgns_mirror
+# Final Link:
+	$(FC) -shared $(PYTHON_OBJECTS) $(FFLAGS) $(CGNS_LINKER_FLAGS) cgns_utilities.o -o libcgns_utils.so
+	python importTest.py
+	mv libcgns_utils.so ../bin
