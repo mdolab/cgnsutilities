@@ -27,6 +27,7 @@ parser = argparse.ArgumentParser(prog='cgns_utils')
 subparsers = parser.add_subparsers(
     help='Choose one of the listed operations to perform', dest='mode')
 
+# ------------- Options for 'scale' mode --------------------
 p_scale = subparsers.add_parser('scale',
                                 help='Scale a grid by a constant factor')
 p_scale.add_argument('gridFile', help='Name of input CGNS file')
@@ -34,16 +35,17 @@ p_scale.add_argument('scale', help='scale factor', type=float)
 p_scale.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
+# ------------- Options for 'flip' mode --------------------
 p_flip = subparsers.add_parser('flip', help='Flip a grid about a plane defined \
 by an axis')
 p_flip.add_argument('gridFile',
                     help='Name of input CGNS file')
 p_flip.add_argument('axis', help="Flip the mesh about plane defined by \
 axis: 'x', 'y', 'z'")
-
 p_flip.add_argument('outFile', nargs='?', default=None,
                     help='Optional output file')
 
+# ------------- Options for 'coarsen' mode --------------------
 p_coarsen = subparsers.add_parser('coarsen', help='Coarsen a grid uniformly')
 p_coarsen.add_argument('gridFile', help='Name of input CGNS file')
 p_coarsen.add_argument('outFile', nargs='?', default=None,
@@ -54,11 +56,13 @@ p_refine.add_argument('gridFile', help='Name of input CGNS file')
 p_refine.add_argument('outFile', nargs='?', default=None,
                       help='Optional output file')
 
+# ------------- Options for 'extract' mode --------------------
 p_extract = subparsers.add_parser('extract',
                                   help='Extract a wall surface from file')
 p_extract.add_argument('gridFile', help='Name of input CGNS file')
 p_extract.add_argument('surfFile', help='Name of plot3d surface file')
 
+# ------------- Options for 'mirror' mode --------------------
 p_mirror = subparsers.add_parser('mirror',
                                  help='Mirror a grid about a plane defined \
                                  by an axis. This doubles the grid size')
@@ -68,6 +72,7 @@ p_mirror.add_argument('axis',
 p_mirror.add_argument('outFile', nargs='?', default=None,
                       help='Optional output file')
 
+# ------------- Options for 'split' mode --------------------
 p_split = subparsers.add_parser('split',
                                 help='Face-match a grid. If the grid is \
                                 already faced matched, this witll have no \
@@ -79,6 +84,8 @@ p_split.add_argument('--splitFile', nargs='?', default=None,
                      help='Add additional splits specified in split file. Each\
                      line must contain a block index (1 based), idim (1, 2, or 3),\
                      and a 1-based index of the block to split at')
+
+# ------------- Options for 'connect' mode --------------------
 p_connect = subparsers.add_parser(
     'connect',help='Determine the block-to-block connectivity information \
     for a face-matched grid')
@@ -86,12 +93,14 @@ p_connect.add_argument('gridFile', help='Name of input CGNS file')
 p_connect.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
+# ------------- Options for 'divide' mode --------------------
 p_divide = subparsers.add_parser(
     'divide',help='Divide all blocks in the grid into 8 sub-blocks')
 p_divide.add_argument('gridFile', help='Name of input CGNS file')
 p_divide.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
+# ------------- Options for 'autobc' mode --------------------
 p_bc = subparsers.add_parser(
     'autobc',help='Try to determine boundary conditions for blocks. Only \
     suitable for external flow applications.')
@@ -109,6 +118,16 @@ p_bc.add_argument('--yOffset', nargs='?', default=0.0, type=float,
 p_bc.add_argument('--zOffset', nargs='?', default=0.0, type=float,
                      help='z--coordinate of sphere origin')
 
+# ------------ Options for 'family' mode --------------------
+p_fam = subparsers.add_parser(
+    'family',help='Overwrite family information')
+p_fam.add_argument('gridFile', help='Name of input CGNS file')
+p_fam.add_argument('familyFile', help='File containing additional family \
+information. Format is (one per line, 1-based blockID): blockID, \
+{iLow, iHigh etc}, newFamilyName')
+p_fam.add_argument('outFile', nargs='?', default=None,
+                     help='Optional output file')
+
 # Finally get the arguments we need!
 args = parser.parse_args()
 
@@ -120,7 +139,6 @@ BCWallInviscid          = 21
 BCWallViscous           = 22
 BCWallViscousHeatFlux   = 23
 BCWallViscousIsothermal = 24
-
 CG_MODE_READ = 0
 CG_MODE_WRITE = 1
 
@@ -163,13 +181,13 @@ class Grid(object):
                 
     def renameBlocks(self):
         """Rename all blocks in a consistent fashion"""
-        i = 0
+        i = 1
         for blk in self.blocks:
             blk.name = 'domain.%5.5d'% i
             i += 1
     def renameBCs(self):
         """Rename all block boundary conditions in a consistent fashion"""
-        i = 0
+        i = 1
         for blk in self.blocks:
             for boco in blk.bocos:
                 boco.name = 'BC%d'% i
@@ -197,7 +215,21 @@ class Grid(object):
             f.close()
         else:
             print ('Warning: No wall surfaces found!')
-            
+
+    def overwriteFamilies(self, familyFile):
+        """Overwrite families of BC with information given in the
+        family file"""
+        fams = []
+        f = open(familyFile,'r')
+        for line in f:
+            aux = line.split()
+            if len(aux) == 3:
+                fams.append([int(aux[0]), aux[1].lower(), aux[2]])
+        f.close()
+
+        for fam in fams:
+            self.blocks[fam[0]-1].overWriteFamily(fam[1], fam[2])
+
     def split(self, extraSplits):
         """Recursively propagate splits due to boundary conditions or
         B2B information"""
@@ -633,6 +665,21 @@ class Block(object):
                     ptRange[2, 0]:ptRange[2, 1]+1, :].squeeze())
                 return patches
 
+    def overWriteFamily(self, faceStr, family):
+        """Possibly overwrite the family in the bocos if possible"""
+        for boco in self.bocos:
+            r = boco.ptRange
+            match = (
+                (r[0][0] == r[0][1] == 1 and faceStr == 'ilow') or
+                (r[0][0] == r[0][1] == self.dims[0] and faceStr == 'ihigh') or
+                (r[1][0] == r[1][1] == 1 and faceStr == 'jlow') or
+                (r[1][0] == r[1][1] == self.dims[1] and faceStr == 'jhigh') or
+                (r[2][0] == r[2][1] == 1 and faceStr == 'klow') or
+                (r[2][0] == r[2][1] == self.dims[2] and faceStr == 'khigh'))
+
+            if match:
+                boco.family = family
+
 class Boco(object):
     """Class for storing information related to a boundary condition"""
     def __init__(self, bocoName, bocoType, ptRange, family):
@@ -657,7 +704,7 @@ class Boco(object):
             for j in range(2):
                 self.ptRange[i, j] = (self.ptRange[i, j]-1)*2 + 1
 
-                   
+
 class B2B(object):
     """Class for storing information related to a Block-to-block or
     (1to1 in cgns speak) connection"""
@@ -917,6 +964,9 @@ elif args.mode == 'divide':
 elif args.mode == 'autobc':
     curGrid.autoBC(args.radius, args.sym,
                    [args.xOffset, args.yOffset, args.zOffset])
+
+elif args.mode == 'family':
+    curGrid.overwriteFamilies(args.familyFile)
     
 # Write out the grid. 
 curGrid.writeToCGNS(outFileName)
