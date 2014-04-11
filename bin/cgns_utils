@@ -130,7 +130,7 @@ p_fam.add_argument('outFile', nargs='?', default=None,
 
 # ------------ Options for 'rebunch' mode --------------------
 p_bunch = subparsers.add_parser(
-    'rebunch', help='Overwrite family information')
+    'rebunch', help='Rebunch offwall spacing (experimental')
 p_bunch.add_argument('gridFile', help='Name of input CGNS file')
 p_bunch.add_argument('spacing', help='The desired off-wall spacing', type=float)
 p_bunch.add_argument('outFile', nargs='?', default=None,
