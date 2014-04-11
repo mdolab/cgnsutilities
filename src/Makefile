@@ -41,6 +41,6 @@ default:
 	-c $(F2PY_ROOT)/src/fortranobject.c -o fortranobject.o
 
 # Final Link:
-	$(FC) -shared $(PYTHON_OBJECTS) $(FFLAGS) $(CGNS_LINKER_FLAGS) cgns_utilities.o -o libcgns_utils.so
+	$(FC) -shared $(PYTHON_OBJECTS) cgns_utilities.o $(CGNS_LINKER_FLAGS) -o libcgns_utils.so
 	python importTest.py
 	mv libcgns_utils.so ../bin
