@@ -8,13 +8,13 @@ default:
 # Compile the source files:
 	$(FC) -c $(FFLAGS) $(CGNS_INCLUDE_FLAGS) cgns_utilities.F90
 
-# Generate Python inlude directory
+# Generate Python include directory
 	 $(eval PYTHON_INCLUDES = $(shell $(PYTHON-CONFIG) --includes))
 	 @echo "#------------------------------------------------------#"
 	 @echo Python Inclue Flags $(PYTHON_INCLUDES)
 	 @echo "#------------------------------------------------------#"
 
-# Generate Numpy inlude directory
+# Generate Numpy include directory
 	$(eval NUMPY_INCLUDES = $(shell $(PYTHON) -c 'import numpy; print numpy.get_include()'))
 	@echo "#------------------------------------------------------#"
 	@echo Numpy Include Directory: $(NUMPY_INCLUDES)
