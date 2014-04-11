@@ -8,7 +8,7 @@ idea is as follows:
                                               | write new file
 read cngs file -> Do some operations on it -> |     .or. 
                                               | write modified file
-Developped by Dr. Gaetan K. W. Kenway
+Developed by Dr. Gaetan K. W. Kenway
 """
 from __future__ import print_function, division
 import sys
@@ -87,7 +87,7 @@ p_split.add_argument('--splitFile', nargs='?', default=None,
 
 # ------------- Options for 'connect' mode --------------------
 p_connect = subparsers.add_parser(
-    'connect',help='Determine the block-to-block connectivity information \
+    'connect', help='Determine the block-to-block connectivity information \
     for a face-matched grid')
 p_connect.add_argument('gridFile', help='Name of input CGNS file')
 p_connect.add_argument('outFile', nargs='?', default=None,
@@ -95,14 +95,14 @@ p_connect.add_argument('outFile', nargs='?', default=None,
 
 # ------------- Options for 'divide' mode --------------------
 p_divide = subparsers.add_parser(
-    'divide',help='Divide all blocks in the grid into 8 sub-blocks')
+    'divide', help='Divide all blocks in the grid into 8 sub-blocks')
 p_divide.add_argument('gridFile', help='Name of input CGNS file')
 p_divide.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
 # ------------- Options for 'autobc' mode --------------------
 p_bc = subparsers.add_parser(
-    'autobc',help='Try to determine boundary conditions for blocks. Only \
+    'autobc', help='Try to determine boundary conditions for blocks. Only \
     suitable for external flow applications.')
 p_bc.add_argument('gridFile', help='Name of input CGNS file')
 p_bc.add_argument('sym', help='Normal for possible symmetry plane.',
@@ -120,13 +120,31 @@ p_bc.add_argument('--zOffset', nargs='?', default=0.0, type=float,
 
 # ------------ Options for 'family' mode --------------------
 p_fam = subparsers.add_parser(
-    'family',help='Overwrite family information')
+    'family', help='Overwrite family information')
 p_fam.add_argument('gridFile', help='Name of input CGNS file')
 p_fam.add_argument('familyFile', help='File containing additional family \
 information. Format is (one per line, 1-based blockID): blockID, \
 {iLow, iHigh etc}, newFamilyName')
 p_fam.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
+
+# ------------ Options for 'rebunch' mode --------------------
+p_bunch = subparsers.add_parser(
+    'rebunch', help='Overwrite family information')
+p_bunch.add_argument('gridFile', help='Name of input CGNS file')
+p_bunch.add_argument('spacing', help='The desired off-wall spacing', type=float)
+p_bunch.add_argument('outFile', nargs='?', default=None,
+                     help='Optional output file')
+p_bunch.add_argument('--extraCells', help='Number of additional cells to \
+use in re-bunching. *SHOULD BE A MG NUMBER*.', type=int, default=0)
+p_bunch.add_argument('--nodes', help="Only rebunch the first 'nodes' in the \
+offwall direction", type=int, default=1)
+
+# ------------ Options for 'cgns2plot3d' mode --------------------
+p3d = subparsers.add_parser(
+    'cgns2plot3d', help='Convert a cgns file to a plain plot3d file')
+p3d.add_argument('gridFile', help='Name of input CGNS file')
+p3d.add_argument('plot3dFile', help='Name of output plot3d file')
 
 # Finally get the arguments we need!
 args = parser.parse_args()
@@ -153,12 +171,23 @@ class Grid(object):
         self.blocks.append(blk)
 
     def writeToCGNS(self, fileName):
-        """Write what is in this gridTree to the fileName provided"""
+        """Write what is in this grid tree to the fileName provided"""
         outFile = libcgns_utils.openfile(fileName, CG_MODE_WRITE)
         for blk in self.blocks:
             blk.writeToCGNS(outFile)
         libcgns_utils.closefile(outFile)
 
+    def writePlot3d(self, fileName):
+        """Write what is in this grid tree to the plot3d filename
+        provided. This is mostly done in python so will be slow-ish."""
+        f = open(fileName, 'w')
+        f.write('%d\n'% len(self.blocks))
+        for blk in self.blocks:
+            blk.writeDimsPlot3d(f)
+        for blk in self.blocks:
+            blk.writeCoordsPlot3d(f)
+        f.close()
+        
     def scale(self, scaleFact):
         """Scale blocks in this grid"""
         for blk in self.blocks:
@@ -175,7 +204,7 @@ class Grid(object):
             blk.coarsen()
             
     def refine(self):
-        """Refinet he block by interpolating every-other grid line"""
+        """Refine he block by interpolating every-other grid line"""
         for blk in self.blocks:
             blk.refine()
                 
@@ -353,7 +382,7 @@ class Grid(object):
                 if fl in [6, 7]:
                     transform1[g_dir_1[1]] = -(g_dir_2[0] + 1)
 
-                # Do the generalized coordiante direction 3 (or normal)
+                # Do the generalized coordinate direction 3 (or normal)
                 transform1[g_dir_1[2]] = (
                     normal_direction(iFace1,iFace2)*(g_dir_2[2]+1))
         
@@ -387,7 +416,7 @@ class Grid(object):
         block-to-block connection. If a surface is inside the sphere,
         it gets counted as a wall, if it is outside it is a farfield
         condition. If the surface is flat and a coordinate is zero, it
-        gets treated as a synmmetry plane."""
+        gets treated as a symmetry plane."""
 
         # Remove any BCinfo/B2B info we may have.
         for blk in self.blocks:
@@ -422,7 +451,7 @@ class Grid(object):
                 # -> Get the coordinates for this face:
                 nodes = helper_file.nodesFromFace(iFace)
 
-                # -> Extract the coordiantes for this face from coords:
+                # -> Extract the coordinates for this face from coords:
                 face_coords = numpy.take(coords[iVol], nodes, axis=0)
 
                 # -> Take the cross-product to get the normal:
@@ -430,7 +459,7 @@ class Grid(object):
                 v2 = face_coords[2]-face_coords[1]
                 normal = numpy.cross(v1, v2)
 
-                # -> Normalize with a zero-lenght check:
+                # -> Normalize with a zero-length check:
                 normal /= max(numpy.linalg.norm(normal), 1e-14)
 
                 coor_check = abs(numpy.average(face_coords[:, symAxis])) < 1e-3
@@ -460,7 +489,21 @@ class Grid(object):
 
         # Lastly rename the BCs to be consistent
         self.renameBCs()
-            
+
+    def rebunch(self, spacing, extraCells, nStar):
+        """Perform rebunching on offwall-directions. The user should
+        be *VERY* careful with this function. It will *only* work for
+        grids that that have 'O-type' topologies around the
+        surface. This is typical of viscous grids. The main
+        application is to rebunch nodes in the boundary layer to adapt
+        an existing grid for a different reynolds number"""
+
+        for blk in self.blocks:
+            blk.rebunch(spacing, extraCells, nStar)
+            blk.B2Bs = []
+            blk.BCs = []
+        self.connect()
+        
 class Block(object):
     """Class for storing information related to a single block
     structured zone"""
@@ -497,6 +540,16 @@ class Block(object):
                                    b2b.ptRange, b2b.donorRange,
                                    b2b.transform)
 
+    def writeDimsPlot3d(self, f):
+        """Write dimensions to a plot3d file"""
+        f.write('%d %d %d\n'% (self.dims[0], self.dims[1], self.dims[2]))
+
+    def writeCoordsPlot3d(self, f):
+        """Write coordinates to plot3d file"""
+        for iDim in range(3):
+            self.coords[:, :, :, iDim].flatten(1).tofile(f, sep="\n")
+            f.write('\n')
+            
     def scale(self, scaleFact):
         """Scale the coordinates"""
         self.coords *= scaleFact
@@ -525,7 +578,7 @@ class Block(object):
 
     def refine(self):
         """Refine the block uniformly. We will also update the
-        boundary conditions and B2Bs if ncessary"""
+        boundary conditions and B2Bs if necessary"""
         self.coords = libcgns_utils.refine(self.coords)
         self.dims[0] = self.coords.shape[0]
         self.dims[1] = self.coords.shape[1]
@@ -680,6 +733,38 @@ class Block(object):
             if match:
                 boco.family = family
 
+    def rebunch(self, spacing, extraCells, nStar):
+        """Perform rebunching for this block"""
+        from pyspline import Curve
+
+        # ********* WARNING THIS HARD CODED TO K-MIN PLANES *********
+        self.dims[2] += extraCells
+        if nStar == -1:
+            nStar = self.dims[2]
+            
+        newNodes = numpy.zeros((self.dims[0], self.dims[1], self.dims[2] ,3))
+        for i in range(self.dims[0]):
+            for j in range(self.dims[1]):
+
+                xx = self.coords[i, j, :, :]
+                c = Curve(X=xx, localInterp=True)
+                # First get the distance off-wall:
+                d = numpy.linalg.norm(self.coords[i, j, 0, :] -
+                                      self.coords[i, j, 1, :])
+        
+                # This is the segment of S we are dealing with:
+                sSegment = c.s[0:nStar]
+
+                # Compute the new S0
+                s0 = (spacing / d)*c.s[1]
+                # Get the newS. 
+                newS = getS(len(sSegment) + extraCells + 1, s0, sSegment[-1])
+                # The final 's' for evaluation
+                newS = numpy.hstack([newS, c.s[nStar+1:]])
+                newNodes[i, j, :, :] = c(newS)
+
+        self.coords = newNodes
+
 class Boco(object):
     """Class for storing information related to a boundary condition"""
     def __init__(self, bocoName, bocoType, ptRange, family):
@@ -729,9 +814,9 @@ class B2B(object):
                 self.donorRange[i, j] = (self.donorRange[i, j]-1)*2 + 1
 
 
-# --------------------------------------
-# These are miscalenous helper functions
-# --------------------------------------
+# ----------------------------------------
+# These are miscellaneous helper functions
+# ----------------------------------------
 def isWall(bc):
     """Determine if a bc is a wall-type boundary condition"""
     if bc == BCWall or bc == BCWallInviscid or bc == BCWallViscous or \
@@ -740,6 +825,47 @@ def isWall(bc):
     else:
         return False
 
+def getS(N, s0, S):
+    """Determine the new set of parameters that geometrically fit N
+    nodes with the last distance S"""
+    
+    # function 'f' is 1 - s0*(1-r^n)/(1-r), s0 is initial ratio and r
+    # is the grid ratio.
+
+    M = N-1
+    # Bisection search:
+    a = 1.0 + 1e-8
+    b = 4.0
+
+    def f(r):
+        s = numpy.zeros(N)
+        s[1]= s0
+        for i in range(2, N):
+            s[i] = s[i-1] + r*(s[i-1] - s[i-2])
+
+        return s[-1]
+
+    fa = S - f(a)
+    fb = S - f(b)
+
+    for i in range(100):
+        c = 0.5*(a + b)
+        ff = S - f(c)
+        if abs(ff) < 1e-6:
+            break
+     
+        if ff * fa > 0:
+            a = c
+        else:
+            b = c
+    s = numpy.zeros(N)
+    s[1] = s0
+  
+    for i in range(2, N):
+        s[i] = s[i-1] + c*(s[i-1] - s[i-2])
+
+    return s
+  
 def getSplits(ptRange):
     """Return info required to split this face to make it face
     matched"""
@@ -804,7 +930,7 @@ def inRange(ptRange, chkRange):
              
 def normal_direction(iFace1, iFace2):
     """Normal direction is positive if iFace1 and iFace two are of
-    opposite odditiy, even if they are the same oddity"""
+    opposite oddity, even if they are the same oddity"""
     isOdd1 = isodd(iFace1)
     isOdd2 = isodd(iFace2)
 
@@ -893,7 +1019,7 @@ def divideGrid(grid):
 def splitGrid(grid, splitFile):
     """Method that takes a grid and propagates any splits using
     connectivity information. This is a rewrite of the original
-    Fortran implementation that is quite a bit simplier due to Python"""
+    Fortran implementation that is quite a bit simpler due to Python"""
     # Split the current grid
     extraSplits = []
     if splitFile is not None:
@@ -921,9 +1047,13 @@ def splitGrid(grid, splitFile):
 # Get the current working grid 'curGrid' by reading the input
 curGrid = readGrid(args.gridFile)
 
-# The extract is special and done first:
+# The extract/cgns2plot3d are special and done first:
 if args.mode == 'extract':
     curGrid.extractSurface(args.surfFile)
+    sys.exit(0)
+
+if args.mode == 'cgns2plot3d':
+    curGrid.writePlot3d(args.plot3dFile)
     sys.exit(0)
     
 # Determine if we have an output file:
@@ -967,6 +1097,10 @@ elif args.mode == 'autobc':
 
 elif args.mode == 'family':
     curGrid.overwriteFamilies(args.familyFile)
+
+elif args.mode == 'rebunch':
+    curGrid.rebunch(args.spacing, args.extraCells, args.nodes)
+
     
 # Write out the grid. 
 curGrid.writeToCGNS(outFileName)
