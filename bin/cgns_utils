@@ -1,5 +1,4 @@
-#!/usr/bin/python
-#PYTHON_ARGCOMPLETE_OK
+#!/usr/bin/env python
 """
 This is the new gateway program to all of the cgns_utils.
 
