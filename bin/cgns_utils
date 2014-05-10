@@ -1,4 +1,5 @@
 #!/usr/bin/python
+#PYTHON_ARGCOMPLETE_OK
 """
 This is the new gateway program to all of the cgns_utils.
 
@@ -20,7 +21,7 @@ import argparse
 import numpy
 import libcgns_utils
 import helper_file
-
+    
 # List out all of the possible options here. 
 parser = argparse.ArgumentParser(prog='cgns_utils')
 
@@ -235,11 +236,11 @@ class Grid(object):
                 f.write('%d %d 1\n' %(patches[i].shape[0], 
                                       patches[i].shape[1]))
             for i in range(len(patches)):
-                patches[i][:, :, 0].flatten(1).tofile(f, sep='\n')
+                patches[i][:, :, 0].flatten(1).tofile(f, sep='\n', format='%20.15g')
                 f.write('\n')
-                patches[i][:, :, 1].flatten(1).tofile(f, sep='\n')
+                patches[i][:, :, 1].flatten(1).tofile(f, sep='\n', format='%20.15g')
                 f.write('\n')
-                patches[i][:, :, 2].flatten(1).tofile(f, sep='\n')
+                patches[i][:, :, 2].flatten(1).tofile(f, sep='\n', format='%20.15g')
                 f.write('\n')
             f.close()
         else:
@@ -547,7 +548,7 @@ class Block(object):
     def writeCoordsPlot3d(self, f):
         """Write coordinates to plot3d file"""
         for iDim in range(3):
-            self.coords[:, :, :, iDim].flatten(1).tofile(f, sep="\n")
+            self.coords[:, :, :, iDim].flatten(1).tofile(f, sep="\n", format='%20.15g')
             f.write('\n')
             
     def scale(self, scaleFact):
@@ -950,11 +951,14 @@ def readGrid(fileName):
     the information that is in the file 'fileName'"""
 
     inFile = libcgns_utils.openfile(fileName, CG_MODE_READ)
+    cellDim = libcgns_utils.getgriddimension(inFile)
     nBlock = libcgns_utils.getnblocks(inFile)
     newGrid = Grid()
-
+    
     for iBlock in range(1, nBlock+1):
         zoneName, dims, nBoco, nB2B = libcgns_utils.getblockinfo(inFile, iBlock)
+        if cellDim == 2:
+            dims[2] = 1
         coords = libcgns_utils.getcoordinates(inFile, iBlock,
                                               dims[0], dims[1], dims[2])
         blk = Block(zoneName, dims, coords)

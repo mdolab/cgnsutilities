@@ -73,6 +73,25 @@ subroutine getNBlocks(cg, N)
 
 end subroutine getNBlocks
 
+subroutine getGridDimension(cg, cellDim)
+  ! Determine the dimension of the grid. Should be one of 2 or 3
+
+  implicit none
+  include 'cgnslib_f.h'
+
+  ! Input/Output
+  integer, intent(in) :: cg
+  integer, intent(out) :: cellDim
+
+  ! Working
+  integer :: ier, base, physDim
+  character(len=512) :: baseName
+  base = 1
+  call cg_base_read_f(cg, base, baseName, cellDim, physDim, ier)
+  if (ier .eq. ERROR) call cg_error_exit_f
+
+end subroutine getGridDimension
+
 subroutine getBlockInfo(cg, iBlock, zoneName, dims, nBoco, nB2B)
   ! Determine the critical meta information of the block, iBlock. We
   ! return dims -- the nodal size of the block, nBocos the number of
