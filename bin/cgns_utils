@@ -270,7 +270,12 @@ class Grid(object):
                 splits.extend(getSplits(b2b.ptRange))
 
             # Now just add the (unique) splits for this block:
-            splits = numpy.unique(splits)
+            newSplits = []
+            for split in splits:
+                if not split in newSplits:
+                    newSplits.append(split)
+            splits = newSplits
+
             for split in splits:
                 self._addSplit(iBlock, split[0]+1, split[1])
                 
