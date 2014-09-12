@@ -269,7 +269,8 @@ class Grid(object):
             for b2b in self.blocks[iBlock].B2Bs:
                 splits.extend(getSplits(b2b.ptRange))
 
-            # Now just add the (unique) splits for this block:
+            # Now just add the (unique) splits for this block: DON't
+            # USE numpy.unique it doesn't actually work for tuples.
             newSplits = []
             for split in splits:
                 if not split in newSplits:
@@ -569,6 +570,25 @@ class Block(object):
             index = 2
         self.coords[:, :, :, index] = -self.coords[:, :, :, index]
 
+        # HOWEVER just doing this results in a left-handed block (if
+        # the original block was right handed). So we have to also
+        # reverse ONE of the indices 
+        for k in range(self.dims[2]):
+            for j in range(self.dims[1]):
+                for idim in range(3):
+                    self.coords[:, j, k, idim] = self.coords[::-1, j, k, idim]
+        # AND we now have to flip the BC's on i-faces since they will
+        # now be on the other side:
+        for boco in self.bocos:
+            if (boco.ptRange[0, 0] == boco.ptRange[0, 1] and 
+                boco.ptRange[0, 0] == 1):
+                boco.ptRange[0,0] = self.dims[0]
+                boco.ptRange[0,1] = self.dims[0]
+            elif (boco.ptRange[0, 0] == boco.ptRange[0, 1] and 
+                  boco.ptRange[0, 0] == self.dims[0]):
+                boco.ptRange[0,0] = 1
+                boco.ptRange[0,1] = 1
+
     def coarsen(self):
         """Coarsen the block uniformly. We will update the boundary
         conditions and B2B if necessary"""
@@ -721,7 +741,19 @@ class Block(object):
                     ptRange[0, 0]:ptRange[0, 1]+1, 
                     ptRange[1, 0]:ptRange[1, 1]+1, 
                     ptRange[2, 0]:ptRange[2, 1]+1, :].squeeze())
-                return patches
+                # Make sure the patch is correctly orientated since we
+                # might have left-handed faces. Essentially we have to
+                # flip an index on any "high" boundary condition:
+
+                if ((ptRange[0, 0] == ptRange[0, 1] and 
+                     ptRange[0, 0]+1 == self.dims[0]) or 
+                    (ptRange[1, 0] == ptRange[1, 1] and 
+                     ptRange[1, 0]+1 == 1) or 
+                    (ptRange[2, 0] == ptRange[2, 1] and 
+                     ptRange[2, 0]+1 == self.dims[2])):
+                    patches[-1] = patches[-1][::-1, :, :]
+
+        return patches
 
     def overWriteFamily(self, faceStr, family):
         """Possibly overwrite the family in the bocos if possible"""
@@ -988,7 +1020,7 @@ def mirrorGrid(grid, axis):
     condition information is retained if possible"""
 
     # First make sure the grid is face matched:
-    grid.split()
+    grid.split([])
 
     # Now copy original blocks
     newGrid = Grid()
