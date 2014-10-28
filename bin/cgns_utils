@@ -128,6 +128,14 @@ information. Format is (one per line, 1-based blockID): blockID, \
 p_fam.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
+# ------------ Options for 'overwritebc' mode --------------------
+p_fam = subparsers.add_parser(
+    'overwritebc', help='Overwrite boundary condition information')
+p_fam.add_argument('gridFile', help='Name of input CGNS file')
+p_fam.add_argument('bcFile', help='File containing additional bc info')
+p_fam.add_argument('outFile', nargs='?', default=None,
+                     help='Optional output file')
+
 # ------------ Options for 'rebunch' mode --------------------
 p_bunch = subparsers.add_parser(
     'rebunch', help='Rebunch offwall spacing (experimental')
@@ -150,13 +158,18 @@ p3d.add_argument('plot3dFile', help='Name of output plot3d file')
 args = parser.parse_args()
 
 # These are taken from the CNGS include file
-BCFarfield              = 7
-BCSymmetryPlane         = 16
-BCWall                  = 20
-BCWallInviscid          = 21
-BCWallViscous           = 22
-BCWallViscousHeatFlux   = 23
-BCWallViscousIsothermal = 24
+BC = {'bcfarfield':7,
+      'bcsymmetryplane':16,
+      'bcwall':20,
+      'bcwallinvisicd':21,
+      'bcwallviscous':22,
+      'bcwallviscousheatflux':23,
+      'bcwallviscousisothermal':24,
+      'bcoutflow':13,
+      'bcoutflowsubsonic':14,
+      'bcoutflowsupersonic':15,
+      'bcinflowsubsonic':10}
+
 CG_MODE_READ = 0
 CG_MODE_WRITE = 1
 
@@ -257,7 +270,24 @@ class Grid(object):
         f.close()
 
         for fam in fams:
-            self.blocks[fam[0]-1].overWriteFamily(fam[1], fam[2])
+            self.blocks[fam[0]-1].overwriteFamily(fam[1], fam[2])
+
+    def overwriteBCs(self, bcFile):
+        """Overwrite BCs with information given in the file"""
+
+        f = open(bcFile, 'r')
+        for line in f:
+            aux = line.split()
+            block = int(aux[0])-1
+            face = aux[1]
+            bctype = aux[2]
+            data = {}
+            for i in range(3, len(aux), 2):
+                data[aux[i]] = float(aux[i+1])
+                
+            self.blocks[block].overwriteBCs(face, bctype, data)
+        f.close()
+
 
     def split(self, extraSplits):
         """Recursively propagate splits due to boundary conditions or
@@ -476,7 +506,7 @@ class Grid(object):
                 if dp_check and coor_check:
                     # Definitely a sym plane
                     self.blocks[iVol].addBoco(Boco(
-                        'dummy', BCSymmetryPlane, ptRange, 'sym'))
+                        'dummy', BC['bcsymmetryplane'], ptRange, 'sym'))
                 else:
                     # Next check for a wall-type boundary condition:
                     insideSphere = True
@@ -487,11 +517,11 @@ class Grid(object):
                     if insideSphere:
                         # Definitely a wall condition:
                         self.blocks[iVol].addBoco(Boco(
-                            'dummy', BCWallViscous, ptRange, 'wall'))
+                            'dummy', BC['bcwallviscous'], ptRange, 'wall'))
                     else:
                         # Definitely a farfield condition
                         self.blocks[iVol].addBoco(Boco(
-                            'dummy', BCFarfield, ptRange, 'far'))
+                            'dummy', BC['farfield'], ptRange, 'far'))
 
         # Lastly rename the BCs to be consistent
         self.renameBCs()
@@ -538,8 +568,13 @@ class Block(object):
         libcgns_utils.writecoordinates(cg, zoneID, self.coords)
 
         for boco in self.bocos:
-            libcgns_utils.writebc(cg, zoneID, boco.name, boco.family, 
-                               boco.ptRange, boco.type)
+            iBC = libcgns_utils.writebc(cg, zoneID, boco.name, boco.family, 
+                                        boco.ptRange, boco.type)
+            writeHeader = True
+            for key in boco.data:
+                libcgns_utils.writebcdata(cg, zoneID, boco.type, iBC, 
+                                          key, boco.data[key], writeHeader)
+                writeHeader = False
 
         for b2b in self.B2Bs:
             libcgns_utils.writeb2b(cg, zoneID, b2b.name, b2b.donorName,
@@ -728,8 +763,8 @@ class Block(object):
     
     def removeSymBCs(self):
         """Remove any sym BC's there may be"""
-        self.bocos = [boco for boco in self.bocos
-                      if not boco.type == BCSymmetryPlane]
+        self.bocos = [boco for boco in self.bocos 
+                      if not boco.type == BC['bcsymmetryplane']]
 
     def extractWallSurfaces(self):
         """Return patches for any surfaces that have BCViscous on them"""
@@ -755,7 +790,7 @@ class Block(object):
 
         return patches
 
-    def overWriteFamily(self, faceStr, family):
+    def overwriteFamily(self, faceStr, family):
         """Possibly overwrite the family in the bocos if possible"""
         for boco in self.bocos:
             r = boco.ptRange
@@ -769,6 +804,22 @@ class Block(object):
 
             if match:
                 boco.family = family
+
+    def overwriteBCs(self, faceStr, bcType, data):
+        """Possibly overwrite the bc data """
+        for boco in self.bocos:
+            r = boco.ptRange
+            match = (
+                (r[0][0] == r[0][1] == 1 and faceStr == 'ilow') or
+                (r[0][0] == r[0][1] == self.dims[0] and faceStr == 'ihigh') or
+                (r[1][0] == r[1][1] == 1 and faceStr == 'jlow') or
+                (r[1][0] == r[1][1] == self.dims[1] and faceStr == 'jhigh') or
+                (r[2][0] == r[2][1] == 1 and faceStr == 'klow') or
+                (r[2][0] == r[2][1] == self.dims[2] and faceStr == 'khigh'))
+
+            if match:
+                boco.data = data
+                boco.type = BC[bcType.lower()]
 
     def rebunch(self, spacing, extraCells, nStar):
         """Perform rebunching for this block"""
@@ -804,11 +855,12 @@ class Block(object):
 
 class Boco(object):
     """Class for storing information related to a boundary condition"""
-    def __init__(self, bocoName, bocoType, ptRange, family):
+    def __init__(self, bocoName, bocoType, ptRange, family, bcData=None):
         self.name = bocoName.strip()
         self.type = bocoType
         self.ptRange = ptRange
-            
+        self.data = {}
+
         if family is None or family.strip() == '':
             self.family = 'default'
         else:
@@ -856,8 +908,11 @@ class B2B(object):
 # ----------------------------------------
 def isWall(bc):
     """Determine if a bc is a wall-type boundary condition"""
-    if bc == BCWall or bc == BCWallInviscid or bc == BCWallViscous or \
-       bc == BCWallViscousHeatFlux or bc == BCWallViscousIsothermal:
+    if (bc == BC['bcwall'] or 
+        bc == BC['bcwallinviscid'] or 
+        bc == BC['bcwallviscous'] or 
+        bc == BC['bcwallviscousheatflux'] or 
+        bc == BC['bcwallviscousisothermal']):
         return True
     else:
         return False
@@ -1137,6 +1192,9 @@ elif args.mode == 'autobc':
 
 elif args.mode == 'family':
     curGrid.overwriteFamilies(args.familyFile)
+
+elif args.mode == 'overwritebc':
+    curGrid.overwriteBCs(args.bcFile)
 
 elif args.mode == 'rebunch':
     curGrid.rebunch(args.spacing, args.extraCells, args.nodes)
