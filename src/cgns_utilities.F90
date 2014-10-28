@@ -277,7 +277,7 @@ subroutine writeCoordinates(cg, iBlock, il, jl, kl, X)
 
 end subroutine writeCoordinates
 
-subroutine writeBC(cg, iBlock, bcName, bcFam, ptRange, bcType)
+subroutine writeBC(cg, iBlock, bcName, bcFam, ptRange, bcType, bcOut)
 
   ! This function writes a BC to 'iBlockt' with bcName 'bcName' and
   ! family of 'bcFam'. The pt_start and pt_end range defines the range
@@ -291,9 +291,9 @@ subroutine writeBC(cg, iBlock, bcName, bcFam, ptRange, bcType)
   integer,intent(in) :: cg, iBlock, ptRange(3,2), bcType
   character*(*), intent(in) :: bcName
   character*(*), intent(in) :: bcFam
-
+  integer, intent(out) :: bcOut
   ! Working
-  integer :: ier, base, BCOut
+  integer :: ier, base
   
   base = 1
 
@@ -310,6 +310,43 @@ subroutine writeBC(cg, iBlock, bcName, bcFam, ptRange, bcType)
   if (ier .eq. CG_ERROR) call cg_error_exit_f
 
 end subroutine writeBC
+
+subroutine writeBCData(cg, iBlock, bcType, bcIn, dataName, dataValue, writeHeader)
+
+  ! This function writes actual BCData. The writeBCDataHeader must
+  ! have already been called. 
+  implicit none
+  include 'cgnslib_f.h'
+
+  ! Input/Output
+  integer,intent(in) :: cg, iBlock, bcIn, bcType 
+  character*(*),  intent(in) :: dataName
+  real(kind=8), intent(in) :: dataValue
+  logical :: writeHeader
+  ! Working
+  integer :: ier, base, i, iDataSet
+  
+  base = 1
+  iDataSet = 1
+
+  if (writeHeader) then 
+     call cg_dataset_write_f(cg, base, iBlock, bcIn, "data", BCType, idataset, ier )
+     if (ier .eq. CG_ERROR) call cg_error_exit_f
+     
+     call cg_bcdata_write_f(cg, base, iBlock, bcIn, iDataSet, Dirichlet, ier)
+     if (ier .eq. CG_ERROR) call cg_error_exit_f
+  end if
+  
+  call cg_goto_f(cg, base, ier, 'Zone_t', iBlock, "ZoneBC_t", 1, &
+       "BC_t", BCIn, "BCDataSet_t", idataSet, "BCData_t", Dirichlet, &
+       "end")
+  if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+  call cg_array_write_f(trim(dataName), RealDouble, 1, (/1/), dataValue, ier)
+  if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+end subroutine writeBCData
+
 
 subroutine writeB2B(cg, iBlock, connectName, donorName, pts, ptsDonor, transform)
 
