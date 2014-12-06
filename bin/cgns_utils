@@ -312,7 +312,7 @@ class Grid(object):
                 
         # And Add the extra splits:
         for split in extraSplits:
-            self._addSplit(split[0]-1, split[1], split[2]-1)
+            self._addSplit(split[0]-1, split[1], split[2])
 
     def _addSplit(self, iBlock, iDim, index):
         """Recursive routine to add a split to block 'iBlock', on
@@ -521,7 +521,7 @@ class Grid(object):
                     else:
                         # Definitely a farfield condition
                         self.blocks[iVol].addBoco(Boco(
-                            'dummy', BC['farfield'], ptRange, 'far'))
+                            'dummy', BC['bcfarfield'], ptRange, 'far'))
 
         # Lastly rename the BCs to be consistent
         self.renameBCs()
