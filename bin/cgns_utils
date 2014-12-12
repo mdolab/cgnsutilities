@@ -154,6 +154,15 @@ p3d = subparsers.add_parser(
 p3d.add_argument('gridFile', help='Name of input CGNS file')
 p3d.add_argument('plot3dFile', help='Name of output plot3d file')
 
+# ------------ Options for 'randomize' mode --------------------
+p_ran = subparsers.add_parser(
+    'randomize', help='Randomize the block orientation and order. Useful for testing.')
+p_ran.add_argument('gridFile', help='Name of input CGNS file')
+p_ran.add_argument('seed', type=int, default=0, help='Seed for random generator. \
+Specifying a seed will make process deterministic.')
+p_ran.add_argument('outFile', nargs='?', default=None,
+                     help='Optional output file')
+
 # Finally get the arguments we need!
 args = parser.parse_args()
 
@@ -539,6 +548,24 @@ class Grid(object):
             blk.B2Bs = []
             blk.BCs = []
         self.connect()
+
+    def randomize(self, seed):
+        """Perform random reording of grid orientation and block numbers. This
+        method destroys *ALL* boundary condition information. Grid
+        connectivity is recomputed on the reorginized grid. Actual
+        nodal locations remain precisely unchanged; only the grid
+        ordering changes. Block handendness is not necessairly
+        preserved.
+        """
+        numpy.random.seed(seed)
+        for blk in self.blocks:
+            blk.bocos = []
+            blk.B2Bs = []
+            blk.randomize()
+
+        # Finally reconnect
+        self.connect()
+        
         
 class Block(object):
     """Class for storing information related to a single block
@@ -852,6 +879,65 @@ class Block(object):
                 newNodes[i, j, :, :] = c(newS)
 
         self.coords = newNodes
+
+    def randomize(self):
+        """Randomly reorder the indices in the block. No attempt is made to
+        change BCs or B2Bs since these should be deleted already
+        """
+
+        if numpy.random.random() > 0.5:
+            # We will flip the i-index
+            for k in range(self.dims[2]):
+                for j in range(self.dims[1]):
+                    for idim in range(3):
+                        self.coords[:, j, k, idim] = self.coords[::-1, j, k, idim]
+
+        if numpy.random.random() > 0.5:
+            # We will flip the j-index
+            for k in range(self.dims[2]):
+                for i in range(self.dims[0]):
+                    for idim in range(3):
+                        self.coords[i, :, k, idim] = self.coords[i, ::-1, k, idim]
+
+        if numpy.random.random() > 0.5:
+            # We will flip the k-index
+            for j in range(self.dims[1]):
+                for i in range(self.dims[0]):
+                    for idim in range(3):
+                        self.coords[i, j, :, idim] = self.coords[i, j, ::-1, idim]
+        
+        # So that filps the order of the axis. We can also perform
+        # axis swapping. 
+        if numpy.random.random() > 0.5:
+            # Swap X and Y axis
+            newCoords = numpy.zeros((self.dims[1], self.dims[0], self.dims[2], 3))
+            for k in range(self.dims[2]):
+                for idim in range(3):
+                    newCoords[:, :, k, idim] = numpy.rot90(self.coords[:, :, k, idim].copy())
+
+            self.dims = list(newCoords.shape[0:3])
+            self.coords = newCoords.copy()
+
+        if numpy.random.random() > 0.5:
+            # Swap Z and X axis
+            newCoords = numpy.zeros((self.dims[2], self.dims[1], self.dims[0], 3))
+            for j in range(self.dims[1]):
+                for idim in range(3):
+                    newCoords[:, j, :, idim] = numpy.rot90(self.coords[:, j, :, idim])
+
+            self.dims = list(newCoords.shape[0:3])
+            self.coords = newCoords.copy()
+            
+        if numpy.random.random() > 0.5:
+            # Swap Y and Z axis
+            newCoords = numpy.zeros((self.dims[0], self.dims[2], self.dims[1], 3))
+            for i in range(self.dims[0]):
+                for idim in range(3):
+                    newCoords[i, :, :, idim] = numpy.rot90(self.coords[i, :, :, idim])
+                
+            self.dims = list(newCoords.shape[0:3])
+            self.coords = newCoords.copy()
+
 
 class Boco(object):
     """Class for storing information related to a boundary condition"""
@@ -1199,7 +1285,8 @@ elif args.mode == 'overwritebc':
 elif args.mode == 'rebunch':
     curGrid.rebunch(args.spacing, args.extraCells, args.nodes)
 
-    
+elif args.mode == 'randomize':
+    curGrid.randomize(args.seed)
 # Write out the grid. 
 curGrid.writeToCGNS(outFileName)
 
