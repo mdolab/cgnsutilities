@@ -163,6 +163,16 @@ Specifying a seed will make process deterministic.')
 p_ran.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
+# ------------ Options for 'symmzero' mode --------------------
+p_sym = subparsers.add_parser(
+    'symmzero', help='Hard-zero any nodes within a given tolerance. Used for ensuring planar symmetry planes.')
+p_sym.add_argument('gridFile', help='Name of input CGNS file')
+p_sym.add_argument('sym', help='Normal for possible symmetry plane.',
+                  choices=['x', 'y', 'z'])
+p_sym.add_argument('tol', help='Tolerance for zeroing', type=float)
+p_sym.add_argument('outFile', nargs='?', default=None,
+                     help='Optional output file')
+
 # Finally get the arguments we need!
 args = parser.parse_args()
 
@@ -566,7 +576,17 @@ class Grid(object):
         # Finally reconnect
         self.connect()
         
-        
+    def symmZero(self, sym, tol):
+        """Zero nodes along axis 'sym', within tolerance tol"""
+        if sym == 'x':
+            idir = 0
+        elif sym == 'y':
+            idir = 1
+        elif sym == 'z':
+            idir = 2
+        for blk in self.blocks:
+            blk.symmZero(idir, tol)
+            
 class Block(object):
     """Class for storing information related to a single block
     structured zone"""
@@ -938,6 +958,8 @@ class Block(object):
             self.dims = list(newCoords.shape[0:3])
             self.coords = newCoords.copy()
 
+    def symmZero(self, idir, tol):
+        self.coords[abs(self.coords[:, :, :, idir] < tol), idir] = 0.0
 
 class Boco(object):
     """Class for storing information related to a boundary condition"""
@@ -1287,6 +1309,10 @@ elif args.mode == 'rebunch':
 
 elif args.mode == 'randomize':
     curGrid.randomize(args.seed)
+
+elif args.mode == 'symmzero':
+    curGrid.symmZero(args.sym, args.tol)
+
 # Write out the grid. 
 curGrid.writeToCGNS(outFileName)
 
