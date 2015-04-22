@@ -527,3 +527,433 @@ subroutine interpFace(Xcoarse, Xfine, il, jl)
      end do
   end do
 end subroutine interpFace
+
+module zone_vars
+
+  ! This module stores data associated with a single zone and with n_time instances
+  implicit none
+  save 
+
+  type zoneData
+
+     integer :: nx,ny,nz
+     integer :: il,jl,kl
+     integer :: n_time, n_vars
+
+     ! Grid has shape: nx by ny by nz ny 3 by n_time
+  end type zoneData
+end module zone_vars
+
+subroutine time_combine(fileNames, nFiles, outputFile)
+
+  use zone_vars
+  implicit none
+  include 'cgnslib_f.h'
+
+  ! Input parameters
+  integer :: nFiles, lengthMax
+  character*256, dimension(nFiles) :: fileNames
+  character*256 :: outputFile
+
+  ! Working variables
+  integer, dimension(3*3) :: isize
+  integer, dimension(6) :: rinde
+
+  ! File handles for cgns files: cg_current is the current step,
+  ! cg_unsteady is the new unsteady file
+  integer :: cg_current, cg_unsteady
+
+  ! CGNS counters for base
+  integer current_base,unsteady_base
+
+  ! CGNS Names for base, zone and iterative data
+  character*32 basename,  baseitername
+  character*32 fieldname
+  character*36 zonename
+  ! CGNS Data type
+  integer datatype
+
+  ! CGNS Name for unsteady grid
+  character*32 gridName,solName
+  character*32, dimension(:),allocatable :: motionNames,solNames
+  character*32, dimension(:),allocatable :: gridNames
+  character*32, dimension(:),allocatable :: zoneNames
+  character*32, dimension(:),allocatable :: fieldNames
+  character*32, dimension(:),allocatable :: var_names
+
+  ! CGNS cell dimension and physical dimension
+  integer  CellDim, PhysDim
+
+  ! CGNS number of bases and zones in current file
+  integer nbases, nzones
+
+  ! CGNS error flag
+  integer ier
+
+  ! Integer Counters etc
+  integer :: N,i_start,i_end,n_steps,n_time,i,j,nn
+  integer :: ii,jj,kk,ind(3)
+  integer :: counter,nsols,sol,nfields,field,izone
+  logical, dimension(5) :: EV_Exist
+  integer :: temp_shape(6),rmax(3),farStart
+
+  ! Time step
+  real(kind=8) :: dt
+
+  ! Character arrays for names and I/O
+  character*100 :: char_temp
+  character*128 base_name,unsteady_filename
+  character*256 current_filename
+  character*32, dimension(3) :: coordNames
+  ! Array of all zone data
+  type(zoneData), dimension(:), allocatable :: zone
+
+  ! Misc Data Arrays
+  real(kind=4), allocatable,dimension(:,:,:  ) :: data3d
+  real(kind=8), allocatable,dimension(:,:,:,:) :: gridTemp
+  real(kind=8), allocatable,dimension(:,:,:  ) :: fieldData
+
+  integer         , allocatable,dimension(:)       :: int1d
+  integer :: dummy_int
+
+  ! Tecplot Data Stuff
+  ! Working 
+  ! These Never Change
+  integer VIsDouble                /1/
+  integer debug                    /0/
+  integer FileType                 /0/ 
+  INTEGER ZoneType                 /0/
+  INTEGER TECINI112,tecdat112,teczne112,tecend112
+
+  INTEGER ICellMax                 / 0/
+  INTEGER JCellMax                 / 0/
+  INTEGER KCellMax                 / 0/
+  INTEGER DIsDouble                / 1/
+  INTEGER StrandID                 / 0/      !/* StaticZone */
+  INTEGER ParentZn                 / 0/
+  INTEGER IsBlock                  / 1/      !/* Block */
+  INTEGER NFConns                  / 0/
+  INTEGER FNMode                   / 0/
+  INTEGER TotalNumFaceNodes        / 0/
+  INTEGER TotalNumBndryFaces       / 0/
+  INTEGER TotalNumBndryConnections / 0/
+  INTEGER ShrConn                  / 0/
+  INTEGER,dimension(:),allocatable :: ValueLocation,passiveVarList,ShareVarFromZone
+
+  ! Start of Code
+  coordNames(1) = "CoordinateX"
+  coordNames(2) = "CoordinateY"
+  coordNames(3) = "CoordinateZ"
+
+  call cg_open_f(trim(fileNames(1)), MODE_READ, cg_current, ier)
+  if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+  call cg_nbases_f(cg_current, nbases, ier)
+  if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+  if (nbases .lt. 1) then
+     print *, 'Error: No bases found in first CGNS file'
+     stop
+  end if
+
+  ! We will only deal with 1 base in each zone so ALWAYS only use 1 base
+  current_base = 1
+  unsteady_base = 1
+
+  ! Get the cell and phys dim 
+  call cg_base_read_f(cg_current, current_base, basename, &
+       CellDim, PhysDim, ier)
+  if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+  call cg_nzones_f(cg_current, current_base, nzones, ier)
+  if (ier .eq. CG_ERROR) call cg_error_exit_f
+  allocate(zoneNames(nzones))
+  ! ------------------------------------------------------------------
+  ! Allocate the master data array:
+
+  allocate(zone(nzones))
+  ! ------------------------------------------------------------------
+  ! Loop over the zones to get the required size info:
+  do i=1,nzones
+     call cg_zone_read_f(cg_current, current_base, i,&
+          zoneNames(i), isize,ier)
+     if (ier .eq. CG_ERROR) call cg_error_exit_f
+     call cg_nsols_f(cg_current, current_base, i, nsols , ier )
+     if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+     if (nsols >= 1) then
+        call cg_nfields_f(cg_current, current_base, i, 1, nfields, ier)
+        if (ier .eq. CG_ERROR) call cg_error_exit_f
+     else
+        nfields = 0
+     end if
+     
+     if (cellDim == 2) then
+        zone(i)%nx = isize(1)
+        zone(i)%ny = isize(2)
+        zone(i)%nz = 1
+        zone(i)%il = isize(3)
+        zone(i)%jl = isize(4)
+        zone(i)%kl = 1
+     else
+        zone(i)%nx = isize(1)
+        zone(i)%ny = isize(2)
+        zone(i)%nz = isize(3)
+        zone(i)%il = isize(4)
+        zone(i)%jl = isize(5)
+        zone(i)%kl = isize(6)
+     end if
+  end do
+
+  ! Allocate some names
+  allocate(fieldNames(nfields))
+  allocate(var_names(nFields+4))
+  allocate(valueLocation(nFields+physDim),&
+       passiveVarList(nFields+physDim),&
+       ShareVarFromZone(nFields+physDim))
+
+  ! Loop over to get field names
+  do j=1,nFields
+     call cg_field_info_f(cg_current,current_base,1,1,j,&
+          datatype , fieldname , ier )
+
+     fieldNames(j) = fieldName
+  end do
+
+  call cg_close_f(cg_current,ier)
+  if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+  ! ------------------------------------------------------------------
+  ! Load in all the data:
+  print *,'Reading Data from File: '
+
+  ! No Passive Var List or Share from Zone
+  passiveVarList(:) = 0
+  ShareVarFromZone(:) = 0
+
+  ! All Data is at Nodes
+  valueLocation(:) = 1
+
+  ! Accumulate Names
+  do j=1,physDim
+     var_names(j) = coordNames(j)
+  end do
+
+  do j=1,nFields
+    var_names(j+physDim) = fieldNames(j)
+  end do
+  var_names(nFields+3+1) = char(0)
+
+  ! Open Ouput Tecplot File
+  ier = TECINI112("Unsteady Data"//char(0),var_names,trim(outputFile)//char(0),"."//char(0),&
+       FileType,Debug,VIsDouble)
+
+  nn = 0
+  dt = 1.0
+  do n=1,nFiles
+     print *,'Processing file:', n
+     ! Open Current File
+     call cg_open_f(trim(fileNames(n)) ,MODE_READ, cg_current, ier)
+     if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+     ! Goto Base Node in Current File
+     call cg_goto_f(cg_current, current_base, ier, 'end')
+     if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+     ! Loop over the zones
+     do i=1,nzones
+
+        ! Write Tecplot Zone Data
+        ier = TECZNE112(trim(zoneNames(i))//char(0),ZoneType,zone(i)%nx,zone(i)%ny,zone(i)%nz,&
+             ICellMax,JCellMax,KCellMax, &
+             dt*dble(n-1),i,ParentZn,IsBlock,NFConns,FNMode,&
+             TotalNumFaceNodes,TotalNumBndryFaces,TotalNumBndryConnections,&
+             PassiveVarList, valueLocation, ShareVarFromZone,ShrConn)
+        
+        !-------------------------------------------------------------
+        !                         Grid Coodinates 
+        !-------------------------------------------------------------
+           
+        ! Load the grid coordinates
+        call cg_zone_read_f(cg_current,current_base,i,zoneNames(i),isize,ier)
+           
+        rmax(1) = zone(i)%nx
+        rmax(2) = zone(i)%ny
+        rmax(3) = zone(i)%nz
+
+        allocate(gridTemp(rmax(1),rmax(2),rmax(3),physDim))
+
+        do j=1,physDim
+           call cg_coord_read_f(cg_current,current_base,i,&
+                coordNames(j),RealDouble,(/1,1,1/),&
+                rmax,gridTemp(:,:,:,j),ier)
+           if (ier .eq. CG_ERROR) call cg_error_exit_f
+        end do
+
+        ! Write Grid Coordinates
+        do j=1,physDim
+           ier = TECDAT112(zone(i)%nx*zone(i)%ny*zone(i)%nz,gridTemp(:,:,:,j),&
+                DIsDouble)
+        end do
+
+        deallocate(gridTemp)
+
+        !-------------------------------------------------------------
+        !                     Field Values
+        !-------------------------------------------------------------
+
+        if (nfields > 0) then
+           ! Read the Rind Data
+           call cg_goto_f(cg_current,current_base,ier,'Zone_t',i, &
+                'FlowSolution_t',1,'end')
+           rinde(:) = 0
+           call cg_rind_read_f(rinde , ier )
+           if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+
+           ! Load the Variables
+           do j=1,nFields
+
+              ! Allocate node based field data
+              allocate(fieldData(zone(i)%nx,zone(i)%ny,zone(i)%nz))
+
+              call cg_field_info_f(cg_current,current_base,i,1,j,&
+                   datatype , fieldname , ier )
+
+              if (ier .eq. CG_ERROR) call cg_error_exit_f
+              temp_shape(:) = 0
+              temp_shape = (/1 - rinde(1), zone(i)%il + rinde(2), &
+                   1 - rinde(3), zone(i)%jl + rinde(4), &
+                   1 - rinde(5), zone(i)%kl + rinde(6)/)
+
+              ! Allocate Temporary Array for Cell Data, possibly with rind cells
+              allocate(data3d(temp_shape(1):temp_shape(2),&
+                   temp_shape(3):temp_shape(4),&
+                   temp_shape(5):temp_shape(6)))
+
+              rmax(1) = zone(i)%il+rinde(1)+rinde(2)
+              rmax(2) = zone(i)%jl+rinde(3)+rinde(4)
+              rmax(3) = zone(i)%kl+rinde(5)+rinde(6)
+
+              call cg_field_read_f(cg_current,current_base,i,1, &
+                   fieldName, datatype, (/1,1,1/),&
+                   rmax,data3d,ier)
+              if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+              ! Call the interpolate function to reconstruct node data
+              call interpolate(data3d,temp_shape,&
+                   fieldData,zone(i)%nx,zone(i)%ny,zone(i)%nz)
+              
+              ! Deallocate Temporary Data Array
+              deallocate(data3d)
+              
+              ! Write out Field Values
+              ier   = TECDAT112(zone(i)%nx*zone(i)%ny*zone(i)%nz,&
+                   fieldData, DIsDouble)
+              deallocate(fieldData)
+           end do ! Field Loop
+        end if ! If we have fields
+     end do ! Zone Loop
+     ! Close the current CGNS file
+     call cg_close_f(cg_current,ier)
+     if (ier .eq. CG_ERROR) call cg_error_exit_f
+  end do
+
+  ! Close Tecplot File
+  ier = TECEND112()
+  ! Deallocate data and quit
+  deallocate(zone)  
+  deallocate(fieldNames,var_Names,valueLocation)
+  deallocate(passiveVarList,ShareVarFromZone)
+  deallocate(zoneNames)
+end subroutine time_combine
+
+subroutine interpolate(cell_data,cell_shape,node_data,inode,jnode,knode)
+
+  ! Take cell centered data which possibly contain rind cells and
+  ! perform a linear reconstruction back to the nodes. cell_shape
+  ! contains the start and end values for each index in
+  ! cell_data. Retruned data comes back in node_data. It may not be
+  ! the most efficient possible, but it works.
+
+  implicit none
+
+  integer, intent(in) :: cell_shape(6),inode,jnode,knode
+
+  real(kind=4), intent(in ), dimension(&
+       cell_shape(1):cell_shape(2),&
+       cell_shape(3):cell_shape(4),&
+       cell_shape(5):cell_shape(6)) :: cell_data
+  real(kind=8), intent(out), dimension(inode,jnode,knode) :: node_data
+  integer :: ic_s,ic_e,jc_s,jc_e,kc_s,kc_e
+  integer, dimension(inode,jnode,knode) :: node_cnts
+  integer :: i,j,k
+
+  ic_s = cell_shape(1)
+  ic_e = cell_shape(2)
+  jc_s = cell_shape(3)
+  jc_e = cell_shape(4)
+  kc_s = cell_shape(5)
+  kc_e = cell_shape(6)
+
+  node_data(:,:,:) = 0.0
+  node_cnts(:,:,:) = 0
+
+  do k=kc_s,kc_e
+     do j=jc_s,jc_e
+        do i=ic_s,ic_e
+
+           if (i >= 1 .and. i <= inode .and. j >= 1 .and. j <= jnode .and. k >=1 .and. k <= knode) then
+              node_data(i  ,j  ,k  ) = node_data(i  ,j  ,k  ) + cell_data(i,j,k)
+              node_cnts(i  ,j  ,k  ) = node_cnts(i  ,j  ,k  ) + 1
+           end if
+
+           if (i+1 >= 1 .and. i+1 <= inode .and. j >= 1 .and. j <= jnode .and. k >=1 .and. k <= knode) then
+              node_data(i+1,j  ,k  ) = node_data(i+1,j  ,k  ) + cell_data(i,j,k)
+              node_cnts(i+1,j  ,k  ) = node_cnts(i+1,j  ,k  ) + 1
+           end if
+
+           if (i >= 1 .and. i <= inode .and. j+1 >= 1 .and. j+1 <= jnode .and. k >=1 .and. k <= knode) then
+              node_data(i  ,j+1,k  ) = node_data(i  ,j+1,k  ) + cell_data(i,j,k)
+              node_cnts(i  ,j+1,k  ) = node_cnts(i  ,j+1,k  ) + 1
+           end if
+
+           if (i+1 >= 1 .and. i+1 <= inode .and. j+1 >= 1 .and. j+1 <= jnode .and. k >=1 .and. k <= knode) then
+              node_data(i+1,j+1,k  ) = node_data(i+1,j+1,k  ) + cell_data(i,j,k)
+              node_cnts(i+1,j+1,k  ) = node_cnts(i+1,j+1,k  ) + 1
+           end if
+
+           if (i >= 1 .and. i <= inode .and. j >= 1 .and. j <= jnode .and. k+1 >=1 .and. k+1 <= knode) then
+              node_data(i  ,j  ,k+1) = node_data(i  ,j  ,k+1) + cell_data(i,j,k)
+              node_cnts(i  ,j  ,k+1) = node_cnts(i  ,j  ,k+1) + 1
+           end if
+
+           if (i+1 >= 1 .and. i+1 <= inode .and. j >= 1 .and. j <= jnode .and. k+1>=1 .and. k+1 <= knode) then
+              node_data(i+1,j  ,k+1) = node_data(i+1,j  ,k+1) + cell_data(i,j,k)
+              node_cnts(i+1,j  ,k+1) = node_cnts(i+1,j  ,k+1) + 1
+           end if
+
+           if (i >= 1 .and. i <= inode .and. j+1 >= 1 .and. j+1 <= jnode .and. k+1>=1 .and. k+1<= knode) then
+              node_data(i  ,j+1,k+1) = node_data(i  ,j+1,k+1) + cell_data(i,j,k)
+              node_cnts(i  ,j+1,k+1) = node_cnts(i  ,j+1,k+1) + 1
+           end if
+
+           if (i+1 >= 1 .and. i+1 <= inode .and. j+1 >= 1 .and. j+1 <= jnode .and. k+1 >=1 .and. k+1 <= knode) then
+              node_data(i+1,j+1,k+1) = node_data(i+1,j+1,k+1) + cell_data(i,j,k)
+              node_cnts(i+1,j+1,k+1) = node_cnts(i+1,j+1,k+1) + 1
+           end if
+        end do
+     end do
+  end do
+
+  ! Divide through by the number of times a value was added to a node
+
+  do k=1,knode
+     do j=1,jnode
+        do i=1,inode
+           node_data(i,j,k) = node_data(i,j,k) / dble(node_cnts(i,j,k))
+        end do
+     end do
+  end do
+
+end subroutine interpolate

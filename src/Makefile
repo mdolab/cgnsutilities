@@ -27,7 +27,7 @@ default:
 	@echo "#------------------------------------------------------#"
 
 # Generate pyf file automatically
-	f2py -m  --overwrite-signature libcgns_utils -h cgns_utils.pyf cgns_utilities.F90
+#       f2py -m  --overwrite-signature libcgns_utils -h cgns_utils.pyf cgns_utilities.F90
 
 # Generate wrapper file:
 	f2py cgns_utils.pyf
@@ -41,6 +41,6 @@ default:
 	-c $(F2PY_ROOT)/src/fortranobject.c -o fortranobject.o
 
 # Final Link:
-	$(FC) -shared $(PYTHON_OBJECTS) cgns_utilities.o $(CGNS_LINKER_FLAGS) -o libcgns_utils.so
+	$(FC) -shared $(PYTHON_OBJECTS) cgns_utilities.o tecio.a $(CGNS_LINKER_FLAGS) -lstdc++ -o libcgns_utils.so
 	python importTest.py
 	mv libcgns_utils.so ../bin
