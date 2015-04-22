@@ -1,0 +1,126 @@
+!    -*- f90 -*-
+! Note: the context of this file is case sensitive.
+
+python module libcgns_utils ! in 
+    interface  ! in :libcgns_utils
+        subroutine openfile(filename,mode,cg) ! in :libcgns_utils:cgns_utilities.F90
+            character*(*) intent(in) :: filename
+            integer intent(in) :: mode
+            integer intent(out) :: cg
+        end subroutine openfile
+        subroutine closefile(cg) ! in :libcgns_utils:cgns_utilities.F90
+            integer intent(in) :: cg
+        end subroutine closefile
+        subroutine getnblocks(cg,n) ! in :libcgns_utils:cgns_utilities.F90
+            integer intent(in) :: cg
+            integer intent(out) :: n
+        end subroutine getnblocks
+        subroutine getgriddimension(cg,celldim) ! in :libcgns_utils:cgns_utilities.F90
+            integer intent(in) :: cg
+            integer intent(out) :: celldim
+        end subroutine getgriddimension
+        subroutine getblockinfo(cg,iblock,zonename,dims,nboco,nb2b) ! in :libcgns_utils:cgns_utilities.F90
+            integer intent(in) :: cg
+            integer intent(in) :: iblock
+            character*512 intent(out) :: zonename
+            integer dimension(3),intent(out) :: dims
+            integer intent(out) :: nboco
+            integer intent(out) :: nb2b
+        end subroutine getblockinfo
+        subroutine getbcinfo(cg,iblock,ibc,boconame,bocotype,ptrange,family) ! in :libcgns_utils:cgns_utilities.F90
+            integer intent(in) :: cg
+            integer intent(in) :: iblock
+            integer intent(in) :: ibc
+            character*256 intent(out) :: boconame
+            integer intent(out) :: bocotype
+            integer dimension(3,2),intent(out) :: ptrange
+            character*256 intent(out) :: family
+        end subroutine getbcinfo
+        subroutine getb2binfo(cg,iblock,ib2b,connectname,donorname,ptrange,donorrange,transform) ! in :libcgns_utils:cgns_utilities.F90
+            integer intent(in) :: cg
+            integer intent(in) :: iblock
+            integer intent(in) :: ib2b
+            character*256 intent(out) :: connectname
+            character*256 intent(out) :: donorname
+            integer dimension(3,2),intent(out) :: ptrange
+            integer dimension(3,2),intent(out) :: donorrange
+            integer dimension(3),intent(out) :: transform
+        end subroutine getb2binfo
+        subroutine getcoordinates(cg,iblock,il,jl,kl,x) ! in :libcgns_utils:cgns_utilities.F90
+            integer intent(in) :: cg
+            integer intent(in) :: iblock
+            integer intent(in) :: il
+            integer intent(in) :: jl
+            integer intent(in) :: kl
+            real(kind=8) dimension(il,jl,kl,3),intent(out),depend(il,jl,kl) :: x
+        end subroutine getcoordinates
+        subroutine writezone(cg,zonename,dims,zoneid) ! in :libcgns_utils:cgns_utilities.F90
+            integer intent(in) :: cg
+            character*(*) intent(in) :: zonename
+            integer dimension(3),intent(in) :: dims
+            integer intent(out) :: zoneid
+        end subroutine writezone
+        subroutine writecoordinates(cg,iblock,il,jl,kl,x) ! in :libcgns_utils:cgns_utilities.F90
+            integer intent(in) :: cg
+            integer intent(in) :: iblock
+            integer, optional,intent(in),check(shape(x,0)==il),depend(x) :: il=shape(x,0)
+            integer, optional,intent(in),check(shape(x,1)==jl),depend(x) :: jl=shape(x,1)
+            integer, optional,intent(in),check(shape(x,2)==kl),depend(x) :: kl=shape(x,2)
+            real(kind=8) dimension(il,jl,kl,3),intent(in) :: x
+        end subroutine writecoordinates
+        subroutine writebc(cg,iblock,bcname,bcfam,ptrange,bctype,bcout) ! in :libcgns_utils:cgns_utilities.F90
+            integer intent(in) :: cg
+            integer intent(in) :: iblock
+            character*(*) intent(in) :: bcname
+            character*(*) intent(in) :: bcfam
+            integer dimension(3,2),intent(in) :: ptrange
+            integer intent(in) :: bctype
+            integer intent(out) :: bcout
+        end subroutine writebc
+        subroutine writebcdata(cg,iblock,bctype,bcin,dataname,datavalue,writeheader) ! in :libcgns_utils:cgns_utilities.F90
+            integer intent(in) :: cg
+            integer intent(in) :: iblock
+            integer intent(in) :: bctype
+            integer intent(in) :: bcin
+            character*(*) intent(in) :: dataname
+            real(kind=8) intent(in) :: datavalue
+            logical :: writeheader
+        end subroutine writebcdata
+        subroutine writeb2b(cg,iblock,connectname,donorname,pts,ptsdonor,transform) ! in :libcgns_utils:cgns_utilities.F90
+            integer intent(in) :: cg
+            integer intent(in) :: iblock
+            character*(*) intent(in) :: connectname
+            character*(*) intent(in) :: donorname
+            integer dimension(3,2),intent(in) :: pts
+            integer dimension(3,2),intent(in) :: ptsdonor
+            integer dimension(3),intent(in) :: transform
+        end subroutine writeb2b
+        subroutine refine(xin,xout,il,jl,kl) ! in :libcgns_utils:cgns_utilities.F90
+            real(kind=8) dimension(il,jl,kl,3),intent(in) :: xin
+            real(kind=8) dimension(2 * il - 1,2 * jl - 1,2 * kl - 1,3),intent(out),depend(il,jl,kl) :: xout
+            integer, optional,intent(in),check(shape(xin,0)==il),depend(xin) :: il=shape(xin,0)
+            integer, optional,intent(in),check(shape(xin,1)==jl),depend(xin) :: jl=shape(xin,1)
+            integer, optional,intent(in),check(shape(xin,2)==kl),depend(xin) :: kl=shape(xin,2)
+        end subroutine refine
+        subroutine interpedge(xcoarse,xfine,il) ! in :libcgns_utils:cgns_utilities.F90
+            real(kind=8) dimension(il,3),intent(in) :: xcoarse
+            real(kind=8) dimension(2 * il - 1,3),intent(inout),depend(il) :: xfine
+            integer, optional,intent(in),check(shape(xcoarse,0)==il),depend(xcoarse) :: il=shape(xcoarse,0)
+        end subroutine interpedge
+        subroutine interpface(xcoarse,xfine,il,jl) ! in :libcgns_utils:cgns_utilities.F90
+            real(kind=8) dimension(il,jl,3),intent(in) :: xcoarse
+            real(kind=8) dimension(2 * il - 1,2 * jl - 1,3),intent(inout),depend(il,jl) :: xfine
+            integer, optional,intent(in),check(shape(xcoarse,0)==il),depend(xcoarse) :: il=shape(xcoarse,0)
+            integer, optional,intent(in),check(shape(xcoarse,1)==jl),depend(xcoarse) :: jl=shape(xcoarse,1)
+        end subroutine interpface
+        subroutine time_combine(filenames,nfiles,outputfile) ! in :test:cgns_utilities.F90
+            use zone_vars
+            character dimension(nfiles,256),intent(c) :: filenames
+            integer, optional,check(shape(filenames,0)==nfiles),depend(filenames) :: nfiles=shape(filenames,0)
+	    character*256 :: outputfile
+        end subroutine time_combine
+    end interface 
+end python module libcgns_utils
+
+! This file was auto-generated with f2py (version:2).
+! See http://cens.ioc.ee/projects/f2py2e/

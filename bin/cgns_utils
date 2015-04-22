@@ -169,9 +169,15 @@ p_sym = subparsers.add_parser(
 p_sym.add_argument('gridFile', help='Name of input CGNS file')
 p_sym.add_argument('sym', help='Normal for possible symmetry plane.',
                   choices=['x', 'y', 'z'])
-p_sym.add_argument('tol', help='Tolerance for zeroing', type=float)
 p_sym.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
+
+# ------------ Options for 'timecombine' mode  --------------------
+p_tc = subparsers.add_parser(
+    'timecombine', help='Combine cgns files from time accurate simulation into unsteady tecplot file.')
+p_tc.add_argument('baseName', help="baseName of the files. Use %%d to denote the counter.")
+p_tc.add_argument('outFile', nargs='?', default=None,
+                     help='Output file name. If not given, unsteady.plt is used')
 
 # Finally get the arguments we need!
 args = parser.parse_args()
@@ -576,8 +582,8 @@ class Grid(object):
         # Finally reconnect
         self.connect()
         
-    def symmZero(self, sym, tol):
-        """Zero nodes along axis 'sym', within tolerance tol"""
+    def symmZero(self, sym):
+        """Zero nodes along axis 'sym'"""
         if sym == 'x':
             idir = 0
         elif sym == 'y':
@@ -585,7 +591,7 @@ class Grid(object):
         elif sym == 'z':
             idir = 2
         for blk in self.blocks:
-            blk.symmZero(idir, tol)
+            blk.symmZero(idir)
             
 class Block(object):
     """Class for storing information related to a single block
@@ -958,8 +964,15 @@ class Block(object):
             self.dims = list(newCoords.shape[0:3])
             self.coords = newCoords.copy()
 
-    def symmZero(self, idir, tol):
-        self.coords[abs(self.coords[:, :, :, idir] < tol), idir] = 0.0
+    def symmZero(self, idir):
+        for bc in self.bocos:
+            if bc.type == BC['bcsymmetryplane']:
+                # 'r' is the range. We need to subtract off -1 from
+                # the low end since it was in fortran 1-based ordering
+                r = bc.ptRange.copy()
+                self.coords[r[0,0]-1:r[0,1], 
+                            r[1,0]-1:r[1,1], 
+                            r[2,0]-1:r[2,1], idir] = 0.0
 
 class Boco(object):
     """Class for storing information related to a boundary condition"""
@@ -1247,10 +1260,49 @@ def splitGrid(grid, splitFile):
 
     return newGrid
 
+# -------------------------------------------
+#         Selection of the task
+# -------------------------------------------
+
+# The time combine is special. First we generate the list of files we
+# need to deal with. 
+if args.mode == 'timecombine':
+    # Get the directory name where the baseName is:
+    path = os.path.dirname(os.path.abspath(args.baseName))
+
+    # Get the full list of files in this directory:
+    allFiles = [ f for f in os.listdir(path) if os.path.isfile(os.path.join(path,f)) ]
+    files = []
+
+    parts = args.baseName.split("%d")
+    maxLength = 0
+    for f in allFiles:
+        if ((parts[0] == '' or parts[0] in f) and
+            (parts[1] == '' or parts[1] in f)):
+            # Make sure there is a .cgns in there somwhere
+            if '.cgns' in f:
+                files.append(f)
+                maxLength = max(maxLength,len(f))
+                files = sorted(files)
+
+    if args.outFile is None:
+        outFile = 'unsteady.plt'
+    else:
+        outFile = args.outFile
+
+    # Now we make a character array of the file names, and hand if off to
+    # fortran for all the actual reading/writing. 
+    fileNames = numpy.zeros((len(files), 256), 'c')
+    for i in range(len(files)):
+        fileNames[i, 0:len(files[i])] = files[i]
+
+    libcgns_utils.time_combine(fileNames, outFile)
+    sys.exit(0)
+
 # Get the current working grid 'curGrid' by reading the input
 curGrid = readGrid(args.gridFile)
 
-# The extract/cgns2plot3d are special and done first:
+# The following are "special" and done first:
 if args.mode == 'extract':
     curGrid.extractSurface(args.surfFile)
     sys.exit(0)
@@ -1311,7 +1363,7 @@ elif args.mode == 'randomize':
     curGrid.randomize(args.seed)
 
 elif args.mode == 'symmzero':
-    curGrid.symmZero(args.sym, args.tol)
+    curGrid.symmZero(args.sym)
 
 # Write out the grid. 
 curGrid.writeToCGNS(outFileName)
