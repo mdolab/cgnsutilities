@@ -629,7 +629,7 @@ subroutine time_combine(fileNames, nFiles, outputFile)
   INTEGER JCellMax                 / 0/
   INTEGER KCellMax                 / 0/
   INTEGER DIsDouble                / 1/
-  INTEGER StrandID                 / 0/      !/* StaticZone */
+  INTEGER StrandID                 / 1/      !/* StaticZone */
   INTEGER ParentZn                 / 0/
   INTEGER IsBlock                  / 1/      !/* Block */
   INTEGER NFConns                  / 0/
@@ -766,7 +766,7 @@ subroutine time_combine(fileNames, nFiles, outputFile)
         ! Write Tecplot Zone Data
         ier = TECZNE112(trim(zoneNames(i))//char(0),ZoneType,zone(i)%nx,zone(i)%ny,zone(i)%nz,&
              ICellMax,JCellMax,KCellMax, &
-             dt*dble(n-1),i,ParentZn,IsBlock,NFConns,FNMode,&
+             dt*(n-1),i,ParentZn,IsBlock,NFConns,FNMode,&
              TotalNumFaceNodes,TotalNumBndryFaces,TotalNumBndryConnections,&
              PassiveVarList, valueLocation, ShareVarFromZone,ShrConn)
         
