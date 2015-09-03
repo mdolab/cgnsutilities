@@ -20,9 +20,10 @@ import argparse
 import numpy
 import libcgns_utils
 import helper_file
-    
+
 # List out all of the possible options here. 
 parser = argparse.ArgumentParser(prog='cgns_utils')
+
 
 subparsers = parser.add_subparsers(
     help='Choose one of the listed operations to perform', dest='mode')
@@ -129,11 +130,29 @@ p_fam.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
 # ------------ Options for 'overwritebc' mode --------------------
-p_fam = subparsers.add_parser(
-    'overwritebc', help='Overwrite boundary condition information')
-p_fam.add_argument('gridFile', help='Name of input CGNS file')
-p_fam.add_argument('bcFile', help='File containing additional bc info')
-p_fam.add_argument('outFile', nargs='?', default=None,
+p_sub = subparsers.add_parser(
+    'overwritebc', help='Overwrite boundary condition information', formatter_class=argparse.RawTextHelpFormatter)
+p_sub.add_argument('gridFile', help='Name of input CGNS file')
+p_sub.add_argument('bcFile', help="File containing additional bc info. The\
+File must consist of one or more lines contaning the following data: \n\
+<block number> <faceID> <BCType> <family> [key value, ....] \n \
+\n\
+where: \n\
+block number is the block index *IN 1 BASED NUMBERING* \n\
+faceID is one of iLow, iHigh jLow, jHigh, kLow or kHigh \n\
+BCType is one of the supported CGNS boundary conditions. The supported \n\
+BCs are : bcfarfield, bcsymmetryplane bcwall, bcwallinviscid, bcwallviscous \n\
+   bcwallviscousheatflux, bcwallviscousisothermal, bcoutflow, bcoutflowsubsonic \n\
+   bcinflowsubsonic \n\
+family is the family name. \n\
+Optionally, additional data may be specified using (key value) pairs. These \n\
+can be used to set additional boundary condition data. \n\
+\n\
+Example lines are as follows: \n\
+\n\
+7 kLow bcwallviscous wing \n\
+4 jHigh bcsymmetryplane sym\n\n")
+p_sub.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
 # ------------ Options for 'rebunch' mode --------------------
@@ -319,11 +338,12 @@ class Grid(object):
             block = int(aux[0])-1
             face = aux[1]
             bctype = aux[2]
+            family = aux[3]
             data = {}
-            for i in range(3, len(aux), 2):
+            for i in range(4, len(aux), 2):
                 data[aux[i]] = float(aux[i+1])
                 
-            self.blocks[block].overwriteBCs(face, bctype, data)
+            self.blocks[block].overwriteBCs(face, bctype, family, data)
         f.close()
 
     def double2D(self):
@@ -625,7 +645,7 @@ class Block(object):
         self.splits = [[1, dims[0]], 
                        [1, dims[1]], 
                        [1, dims[2]]]
-        
+        self.bocoCounter = 0
     def addBoco(self, boco):
         """ A add a boundary condition to this block"""
         self.bocos.append(boco)
@@ -902,8 +922,12 @@ class Block(object):
             if match:
                 boco.family = family
 
-    def overwriteBCs(self, faceStr, bcType, data):
-        """Possibly overwrite the bc data """
+    def overwriteBCs(self, faceStr, bcType, family, data):
+        """Find any BCs on this face and toast them. Note that we *ONLY ALLOW
+        ONE BC per face*
+        """
+        
+        # Check for existing boco and pop if necessary
         for boco in self.bocos:
             r = boco.ptRange
             match = (
@@ -915,8 +939,27 @@ class Block(object):
                 (r[2][0] == r[2][1] == self.dims[2] and faceStr == 'khigh'))
 
             if match:
-                boco.data = data
-                boco.type = BC[bcType.lower()]
+                self.boco.pop(boco)
+
+        d = self.dims
+        faceStr = faceStr.lower()
+        if faceStr == 'ilow':
+            ptRange = [[1, 1, 1], [1, d[1], d[2]]]
+        elif faceStr == 'ihigh':
+            ptRange = [[d[0], 1, 1], [d[0], d[1], d[2]]]
+        elif faceStr == 'jlow':
+            ptRange = [[1, 1, 1], [d[0], 1, d[2]]]
+        elif faceStr == 'jhigh':
+            ptRange = [[1, d[1], 1], [d[0], d[1], d[2]]]
+        elif faceStr == 'klow':
+            ptRange = [[1, 1, 1], [d[0], d[1], 1]]
+        elif faceStr == 'khigh':
+            ptRange = [[1, 1, d[2]], [d[0], d[1], d[2]]]
+        ptRange = numpy.array(ptRange).T
+        newBoco = Boco("boco_%d"%self.bocoCounter, BC[bcType.lower()], 
+                       ptRange, family, data)
+        self.bocoCounter += 1
+        self.bocos.append(newBoco)
 
     def rebunch(self, spacing, extraCells, nStar):
         """Perform rebunching for this block"""
