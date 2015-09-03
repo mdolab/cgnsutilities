@@ -186,7 +186,11 @@ p_dd.add_argument('gridFile', help='Name of input CGNS file')
 p_dd.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
-
+# ------------ Options for 'combine' mode  --------------------
+p_dd = subparsers.add_parser(
+    'combine', help='Take 2 or more cgns files and combine them into a single file.')
+p_dd.add_argument('gridFiles', metavar='files', type=str, nargs='+', help='Name of CGNS files to combine')
+p_dd.add_argument('outFile', type=str, help='Output CGNS file name')
 
 # Finally get the arguments we need!
 args = parser.parse_args()
@@ -1300,6 +1304,41 @@ def splitGrid(grid, splitFile):
 
     return newGrid
 
+def combineGrids(grids):
+    """Method that takes in a list of grids and returns a new grid object
+    containing all zones from each grid. The blocks are renamed as
+    there could (almost most certainly) be conflicts between the zone
+    names in the different grids. This also means that the block to
+    block connectivities need to be updated based on the new zone names
+    """
+
+    # First determine the total number of blocks
+    nBlock = 0
+    newGrid = Grid()
+
+    for grid in grids:
+
+        # Mapping of the old names to the new names
+        zoneMap = {}
+
+        for blk in grid.blocks:
+            nBlock += 1
+            newName = 'domain.%5.5d'% nBlock
+            zoneMap[blk.name] = newName
+            blk.name = newName
+
+        # Now loop back over the blocks, replacing the donorName using
+        # the map we defined above
+        for blk in grid.blocks:
+            for b2b in blk.B2Bs:
+                b2b.donorName = zoneMap[b2b.donorName]
+                
+        # Now add the new processed blocks to our newgrid
+        newGrid.blocks.extend(grid.blocks)
+
+    return newGrid
+
+
 # -------------------------------------------
 #         Selection of the task
 # -------------------------------------------
@@ -1339,6 +1378,21 @@ if args.mode == 'timecombine':
     libcgns_utils.time_combine(fileNames, outFile)
     sys.exit(0)
 
+
+# The 'combine' function is done first sicne it is the only function
+# that reads multiple cgns files. 
+if args.mode == 'combine':
+    grids = []
+    for fName in args.gridFiles:
+        grid = readGrid(fName)
+        grids.append(grid)
+        
+    combinedGrid = combineGrids(grids)
+    combinedGrid.writeToCGNS(args.outFile)
+
+    # This task is now finished
+    sys.exit(0)
+
 # Get the current working grid 'curGrid' by reading the input
 curGrid = readGrid(args.gridFile)
 
@@ -1350,7 +1404,7 @@ if args.mode == 'extract':
 if args.mode == 'cgns2plot3d':
     curGrid.writePlot3d(args.plot3dFile)
     sys.exit(0)
-    
+
 # Determine if we have an output file:
 if args.outFile is None:
     # Determine where to put a file:
