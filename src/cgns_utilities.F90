@@ -309,6 +309,10 @@ subroutine writeBC(cg, iBlock, bcName, bcFam, ptRange, bcType, bcOut)
   call cg_famname_write_f(bcFam, ier)
   if (ier .eq. CG_ERROR) call cg_error_exit_f
 
+  !Add an user-defined data node for the overset BC case
+  if (bcType == 1) call cg_user_data_write_f('BCOverset', ier)
+  if (ier .eq. CG_ERROR) call cg_error_exit_f
+
 end subroutine writeBC
 
 subroutine writeBCData(cg, iBlock, bcType, bcIn, dataName, dataValue, writeHeader)

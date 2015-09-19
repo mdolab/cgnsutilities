@@ -214,7 +214,7 @@ p_dd.add_argument('outFile', type=str, help='Output CGNS file name')
 # Finally get the arguments we need!
 args = parser.parse_args()
 
-# These are taken from the CNGS include file
+# These are taken from the CNGS include file (cgnslib_f.h in your cgns library folder)
 BC = {'bcfarfield':7,
       'bcsymmetryplane':16,
       'bcwall':20,
@@ -225,7 +225,8 @@ BC = {'bcfarfield':7,
       'bcoutflow':13,
       'bcoutflowsubsonic':14,
       'bcoutflowsupersonic':15,
-      'bcinflowsubsonic':10}
+      'bcinflowsubsonic':10,
+      'bcoverset':1} #The Overset BC will be considered as a CG_USERDEFINED option ()
 
 CG_MODE_READ = 0
 CG_MODE_WRITE = 1
