@@ -129,6 +129,14 @@ information. Format is (one per line, 1-based blockID): blockID, \
 p_fam.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
+# ------------ Options for 'familycopy' mode --------------------
+p_fam = subparsers.add_parser(
+    'familycopy', help='Copy family information from two otherwise identical grids')
+p_fam.add_argument('gridFile', help='Name of CGNS file to which family information is to be copied')
+p_fam.add_argument('sourceFile', help='Name of output CGNS file which contains family information')
+p_fam.add_argument('outFile', nargs='?', default=None,
+                    help='Optional output file')
+
 # ------------ Options for 'overwritebc' mode --------------------
 p_sub = subparsers.add_parser(
     'overwritebc', help='Overwrite boundary condition information', formatter_class=argparse.RawTextHelpFormatter)
@@ -329,6 +337,12 @@ class Grid(object):
 
         for fam in fams:
             self.blocks[fam[0]-1].overwriteFamily(fam[1], fam[2])
+
+    def copyFamilyInfo(self, otherGrid):
+        """Copy family information out of another grid"""
+        for i in range(len(self.blocks)):
+            for j in range(len(self.blocks[i].bocos)):
+                self.blocks[i].bocos[j].family = otherGrid.blocks[i].bocos[j].family
 
     def overwriteBCs(self, bcFile):
         """Overwrite BCs with information given in the file"""
@@ -1490,6 +1504,10 @@ elif args.mode == 'autobc':
 
 elif args.mode == 'family':
     curGrid.overwriteFamilies(args.familyFile)
+
+elif args.mode == 'familycopy':
+    sourceGrid = readGrid(args.sourceFile)
+    curGrid.copyFamilyInfo(sourceGrid)
 
 elif args.mode == 'overwritebc':
     curGrid.overwriteBCs(args.bcFile)
