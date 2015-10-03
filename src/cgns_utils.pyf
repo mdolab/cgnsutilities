@@ -119,6 +119,28 @@ python module libcgns_utils ! in
             integer, optional,check(shape(filenames,0)==nfiles),depend(filenames) :: nfiles=shape(filenames,0)
 	    character*256 :: outputfile
         end subroutine time_combine
+        subroutine computeconnectivity(coords,ncoords,sizes,nblock) ! in :test:cgns_utilities.F90
+            real(kind=8), target,dimension(3 * ncoords),intent(in) :: coords
+            integer, optional,intent(in),check((len(coords))/(3)>=ncoords),depend(coords) :: ncoords=(len(coords))/(3)
+            integer dimension(3,nblock),intent(in) :: sizes
+            integer, optional,intent(in),check(shape(sizes,1)==nblock),depend(sizes) :: nblock=shape(sizes,1)
+        end subroutine computeconnectivity
+        subroutine getnpatches(n)
+          integer, intent(out) :: n
+        end subroutine getnpatches
+        subroutine getpatchinfo(n,types,pointranges,myids,pointrangedonors,transforms,donorids,faceavgs,facenormals) ! in :test:cgns_utilities.F90
+            integer intent(in) :: n
+            integer dimension(n),intent(out),depend(n) :: types
+            integer dimension(3,2,n),intent(out),depend(n) :: pointranges
+            integer dimension(n),intent(out),depend(n) :: myids
+            integer dimension(3,2,n),intent(out),depend(n) :: pointrangedonors
+            integer dimension(3,n),intent(out),depend(n) :: transforms
+            integer dimension(n),intent(out),depend(n) :: donorids
+            real(kind=8) dimension(3,n),intent(out),depend(n) :: faceavgs
+            real(kind=8) dimension(3,n),intent(out),depend(n) :: facenormals
+        end subroutine getpatchinfo
+        subroutine deallocpatches()
+        end subroutine deallocpatches
     end interface 
 end python module libcgns_utils
 
