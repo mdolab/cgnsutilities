@@ -1006,6 +1006,109 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock)
 
   ! This routine will compute all bock to block connections as well as
   ! identify the subfaces with boundary conditions. 
+  ! 
+  ! The basic outline of the routine is as follows: We are given a
+  ! flattened list of coordinates containing all coordinates in all
+  ! blocks along with the sizes of each blocks. Using the size
+  ! information (and the total number of blocks) we can go through
+  ! inCoords and temporarily reconstruct the coordinates of each block
+  ! to be a 3d array (actually 4D due to the face there are three
+  ! x-y-z coordinates). 
+  !
+  ! The key observation is that it is easier to deal with connection
+  ! *faces* instead of nodes. The reason is that every face (a side of
+  ! a hexahedreal element) must be connected to precisely one other
+  ! element (a block to block connection) or not connected to any
+  ! other element (a boundary condition).  To that end, for each block
+  ! we've reconstructed, we compute the center of each face on each of
+  ! the 6 sides of a block (iMin, iMax, jMin, jMax, kMin, kMax). Given
+  ! the block sizes, we can easily determine the total number of these
+  ! faces. These spatial coordinates are gathered into an (flatted)
+  ! 2-array (3xN) called 'coords'. While we are gathering the
+  ! coordinates we also record the block index, the faceID and the
+  ! index of the face into the 'info' array (size 5xN).  Once we have
+  ! these two arrays, we create a KD-tree using the spatial
+  ! coordinates.  This enables fast spatial searchs. 
+
+  ! The main part of the algorithm begins at the lowest face index of
+  ! a given block (iBlock (1->nBlocks)) and face (iFace (i->6)). We
+  ! know the spatial coordinate of the face center, and can then
+  ! search the tree for the two closest other points. We will
+  ! obviously will always find the point we searched for since it is
+  ! already in the tree. However, if both distances are zero, that
+  ! means we found another face on aother block (or potentially the
+  ! same block) that is attached the face I searched for. Using the
+  ! index returned from the KD-tree we can index into the gobal info
+  ! array to determine the blockID, faceID and i, j, k values of the
+  ! connection. After checking the (1,1) index on my block we proceed
+  ! to the (2, 1). If the other blockID and other faceID remain the
+  ! same and one index on the other block only changed by 1, we are on
+  ! the same connection (or boundary condition). We keep incrementing
+  ! the I index until we hit either the end of the block or we have a
+  ! change in blockID/faceID. That determines the I-extent of the
+  ! sub-patch on my block. We then run the same algorithm in the
+  ! Y-direction....tracing along the j-direction to find the extent of
+  ! the sub-patch. Again, once we hit the end of the block or a change
+  ! in blockID/faceID, we stop. That now has determined the range of
+  ! my subface. Also, when we are tracing out the I and J-directions
+  ! we determine which index has changed in the other block. This is
+  ! necessary to form the cgns "transform" array. 
+
+  ! Once we have identified the sub-patch on my block, and determined
+  ! two of the three values of hte transform array, the third value
+  ! can be determine by considering the faceID's of the two connected
+  ! blocks. 
+
+  ! The information for a B2B or boundary is then saved in a singely
+  ! linked list of patch information. An auxilary array called
+  ! faceConsumed keeps track of how much of the face we have already
+  ! used. Once a patch is found with range (iStart:iEnd, jStart:jEnd)
+  ! we flag the values in the faceConsumed array. Then we loop through
+  ! the faceConsumed array to find the lowest (i,j) index that has not
+  ! already been consumed. The entire operation then restarts at the
+  ! (i,j) faceID that has not already been "consumed". An aribtrary
+  ! number of subpatches can exist. Once all of faceConsumed is
+  ! .True. this block's face is complete and we move to the next face.
+
+  ! A little ascii art may help explain how subfaces work:
+
+
+  ! +------------------------+--------------------+------------------------+
+  ! |                        |                    |                        |
+  ! |                        |                    |                        |
+  ! |                        |                    |                        |
+  ! |                        |                    |                        |
+  ! |                        |    subPatch 4      |      subPatch 5        |
+  ! |                        |                    |                        |
+  ! |      subPatch 3        |                    |                        |
+  ! |                        |                    |                        |
+  ! |                        |                    |                        |
+  ! |                        |                    |                        |
+  ! |                        +--------------------+------------------------+
+  ! |                        |                                             |
+  ! |                        |                                             |
+  ! |                        |                                             |
+  ! |                        |                                             |
+  ! +------------------------+                                             |
+  ! |           (iEnd, jEnd) |                                             |
+  ! |                      ^ |                subPatch 2                   |
+  ! |                      | |                                         ^   |
+  ! |                      | |                                         |   |
+  ! |      subPatch 1      | |                                         |   |
+  ! |                      ^ |                                         ^   |
+  ! |                      | |                                         |   |
+  ! |                      | |                                         |   |
+  ! | (1,1)---->  (iEnd, j)| | (iStart, jStart)------------->------>   |   |
+  ! +------------------------+---------------------------------------------+
+
+  ! Starting at (1,) we trace along until the bottom until we hit
+  ! subpatch 2 (becuase the blockID or faceID changed) and then move
+  ! in the J direction until again we hit a change in
+  ! blockID/faceID. SubPatch 2 is then found next becuase (iStart,
+  ! iEnd) is the lowest index that has not been consumed. Likewise,
+  ! the remaining patches are found in the order labelled. 
+
+
   use kdtree2_module
   use dataTypes
   implicit none
@@ -1323,6 +1426,15 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock)
               curPatch%type = B2B
               curPatch%donorID = curOtherBlock
               
+              ! The first two if blocks here are for the special case
+              ! when there is only once face in teh i, j, or i and j
+              ! directions. Becuase of these we couldn't determine the
+              ! {i,j}DirIndex. If there is only 1 missing, there is
+              ! only one choise that is left and we arbitrarily make
+              ! it positive. When both are missing, it is simplier, we
+              ! just assume the positve indices based on the faceID of
+              ! the other face. 
+
               if (iDirIndex == 0 .and. jDirIndex /= 0) then 
                  select case(oFace)
                  case (iMin, iMax)
