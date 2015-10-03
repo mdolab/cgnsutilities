@@ -1,3 +1,4 @@
+
 ! This file contains all the Fortran-back-end functions for working
 ! with CGNS files. The intent is all high-level functions are actually
 ! written in python. This interface just facilities actually reading
@@ -40,7 +41,7 @@ subroutine closeFile(cg)
   ! Close the file-handle cg
   implicit none
   include 'cgnslib_f.h'
-  
+
   ! Input/Output
   integer, intent(in) :: cg
 
@@ -108,7 +109,7 @@ subroutine getBlockInfo(cg, iBlock, zoneName, dims, nBoco, nB2B)
   integer, intent(out) :: nBoco, nB2B
   ! Working
   integer :: ier, base, tmp(9)
-  
+
   base = 1
   call cg_goto_f(cg, base, ier, 'end')
   if (ier .eq. CG_ERROR) call cg_error_exit_f
@@ -145,7 +146,7 @@ subroutine getBCInfo(cg, iBlock, iBC, bocoName, bocoType, ptRange, family)
   integer :: ier, base
   integer NormalIndex(3), NormalListSize, NormalDataType, nDataSet
   integer ptset_type, npnts, pnts(3,2),pnts_donor(3,2),ncon
-  
+
   base = 1
   call cg_goto_f(cg, base, ier, 'end')
   if (ier .eq. CG_ERROR) call cg_error_exit_f
@@ -178,7 +179,7 @@ subroutine getB2BInfo(cg, iBlock, iB2B, connectName, donorName, ptRange, donorRa
 
   ! Working
   integer :: ier, base
-   
+
   base = 1
   call cg_goto_f(cg, base, ier, 'end')
   if (ier .eq. CG_ERROR) call cg_error_exit_f
@@ -198,10 +199,10 @@ subroutine getCoordinates(cg, iBlock, il, jl, kl, X)
   ! Input/Output
   integer, intent(in) :: cg, iBlock, il, jl, kl
   real(kind=8), intent(out) :: X(il, jl, kl, 3)
-  
+
   ! Working
   integer :: ier, base, tmp(9), blockStart(3), blockEnd(3)
-  
+
   base = 1
   blockStart = (/1,1,1/)
   blockEnd = (/il, jl, kl/)
@@ -233,7 +234,7 @@ subroutine writeZone(cg, zoneName, dims, zoneID)
   integer, intent(out) :: zoneID
   ! Working
   integer :: ier, base, sizes(9)
- 
+
   base = 1
   sizes(:) = 0
   sizes(1) = dims(1)
@@ -257,12 +258,12 @@ subroutine writeCoordinates(cg, iBlock, il, jl, kl, X)
   ! Input/Output
   integer, intent(in) :: cg, iBlock, il, jl, kl
   real(kind=8), intent(in) :: X(il, jl, kl, 3)
-  
+
   ! Working
   integer :: ier, base, cordID
-  
+
   base = 1
-  
+
   call cg_coord_write_f(cg, base, iBlock, realDouble, 'CoordinateX', X(:, :, :, 1), &
        cordID, ier)
   if (ier .eq. CG_ERROR) call cg_error_exit_f
@@ -294,7 +295,7 @@ subroutine writeBC(cg, iBlock, bcName, bcFam, ptRange, bcType, bcOut)
   integer, intent(out) :: bcOut
   ! Working
   integer :: ier, base
-  
+
   base = 1
 
   call cg_boco_write_f(cg, base, iBlock, trim(bcName), bcType, PointRange, &
@@ -307,6 +308,10 @@ subroutine writeBC(cg, iBlock, bcName, bcFam, ptRange, bcType, bcOut)
   if (ier .eq. CG_ERROR) call cg_error_exit_f
 
   call cg_famname_write_f(bcFam, ier)
+  if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+  !Add an user-defined data node for the overset BC case
+  if (bcType == 1) call cg_user_data_write_f('BCOverset', ier)
   if (ier .eq. CG_ERROR) call cg_error_exit_f
 
 end subroutine writeBC
@@ -325,18 +330,18 @@ subroutine writeBCData(cg, iBlock, bcType, bcIn, dataName, dataValue, writeHeade
   logical :: writeHeader
   ! Working
   integer :: ier, base, i, iDataSet
-  
+
   base = 1
   iDataSet = 1
 
   if (writeHeader) then 
      call cg_dataset_write_f(cg, base, iBlock, bcIn, "data", BCType, idataset, ier )
      if (ier .eq. CG_ERROR) call cg_error_exit_f
-     
+
      call cg_bcdata_write_f(cg, base, iBlock, bcIn, iDataSet, Dirichlet, ier)
      if (ier .eq. CG_ERROR) call cg_error_exit_f
   end if
-  
+
   call cg_goto_f(cg, base, ier, 'Zone_t', iBlock, "ZoneBC_t", 1, &
        "BC_t", BCIn, "BCDataSet_t", idataSet, "BCData_t", Dirichlet, &
        "end")
@@ -357,16 +362,16 @@ subroutine writeB2B(cg, iBlock, connectName, donorName, pts, ptsDonor, transform
   integer, intent(in) :: cg, iBlock, pts(3, 2), ptsDonor(3, 2)
   integer, intent(in) :: transform(3)
   character*(*), intent(in) :: connectName, donorName
-  
+
   ! Working
   integer :: ier, base, nCon
-  
+
   base = 1
 
   call cg_1to1_write_f(cg, base, iBlock, connectName, donorName, pts, &
        ptsDonor, transform, nCon, ier)
   if (ier .eq. CG_ERROR) call cg_error_exit_f
-  
+
 end subroutine writeB2B
 
 subroutine refine(Xin, Xout, il, jl, kl)
@@ -439,7 +444,7 @@ subroutine refine(Xin, Xout, il, jl, kl)
   do k=2, kll, 2
      do j=2, jll, 2
         do i=2, ill, 2
-           
+
            pt = 0.0_8
            ! Get 18 of them from these loops
            do kk=-1,1,2
@@ -528,11 +533,20 @@ subroutine interpFace(Xcoarse, Xfine, il, jl)
   end do
 end subroutine interpFace
 
-module zone_vars
+module dataTypes
 
   ! This module stores data associated with a single zone and with n_time instances
   implicit none
   save 
+
+  integer, parameter :: iMin=1
+  integer, parameter :: iMax=2
+  integer, parameter :: jMin=3
+  integer, parameter :: jMax=4
+  integer, parameter :: kMin=5
+  integer, parameter :: kMax=6
+  integer, parameter :: BC=0
+  integer, parameter :: B2B=1
 
   type zoneData
 
@@ -542,11 +556,41 @@ module zone_vars
 
      ! Grid has shape: nx by ny by nz ny 3 by n_time
   end type zoneData
-end module zone_vars
+
+  type patch
+     ! This derivied data type is used to store either boundary
+     ! condition or block to block information for a given mesh. Since
+     ! we don't know how many patches will be on a given multiblock
+     ! mesh before we start, we use a (singly) linked list to
+     ! incrementally add patches as we progress through the grid blocks. 
+
+     ! One of BC or B2B
+     integer :: type
+
+     ! Data common to BC and B2B
+     integer :: pointRange(3,2)
+     integer :: myID
+     real(kind=8), dimension(3) :: faceAvg
+     real(kind=8), dimension(3) :: faceNormal
+
+     ! Data for B2B
+     integer :: pointRangeDonor(3, 2)
+     integer :: transform(3)
+     integer :: donorID
+
+     ! Pointer for next BC
+     type(patch), pointer :: next
+
+  end type patch
+
+  type(patch), pointer :: patches
+  integer :: nPatches
+
+end module dataTypes
 
 subroutine time_combine(fileNames, nFiles, outputFile)
 
-  use zone_vars
+  use dataTypes
   implicit none
   include 'cgnslib_f.h'
 
@@ -687,7 +731,7 @@ subroutine time_combine(fileNames, nFiles, outputFile)
      else
         nfields = 0
      end if
-     
+
      if (cellDim == 2) then
         zone(i)%nx = isize(1)
         zone(i)%ny = isize(2)
@@ -740,7 +784,7 @@ subroutine time_combine(fileNames, nFiles, outputFile)
   end do
 
   do j=1,nFields
-    var_names(j+physDim) = fieldNames(j)
+     var_names(j+physDim) = fieldNames(j)
   end do
   var_names(nFields+3+1) = char(0)
 
@@ -769,14 +813,14 @@ subroutine time_combine(fileNames, nFiles, outputFile)
              dt*(n-1),i,ParentZn,IsBlock,NFConns,FNMode,&
              TotalNumFaceNodes,TotalNumBndryFaces,TotalNumBndryConnections,&
              PassiveVarList, valueLocation, ShareVarFromZone,ShrConn)
-        
+
         !-------------------------------------------------------------
         !                         Grid Coodinates 
         !-------------------------------------------------------------
-           
+
         ! Load the grid coordinates
         call cg_zone_read_f(cg_current,current_base,i,zoneNames(i),isize,ier)
-           
+
         rmax(1) = zone(i)%nx
         rmax(2) = zone(i)%ny
         rmax(3) = zone(i)%nz
@@ -843,10 +887,10 @@ subroutine time_combine(fileNames, nFiles, outputFile)
               ! Call the interpolate function to reconstruct node data
               call interpolate(data3d,temp_shape,&
                    fieldData,zone(i)%nx,zone(i)%ny,zone(i)%nz)
-              
+
               ! Deallocate Temporary Data Array
               deallocate(data3d)
-              
+
               ! Write out Field Values
               ier   = TECDAT112(zone(i)%nx*zone(i)%ny*zone(i)%nz,&
                    fieldData, DIsDouble)
@@ -957,3 +1001,710 @@ subroutine interpolate(cell_data,cell_shape,node_data,inode,jnode,knode)
   end do
 
 end subroutine interpolate
+
+subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock)
+
+  ! This routine will compute all bock to block connections as well as
+  ! identify the subfaces with boundary conditions. 
+  use kdtree2_module
+  use dataTypes
+  implicit none
+
+  ! Input/Output
+  real(kind=8), dimension(3*nCoords), intent(in):: inCoords
+  integer, intent(in) :: nCoords, nBlock
+  integer, dimension(3, nBlock), intent(in) :: sizes
+
+  ! Working
+  integer :: i, j, k, ii, jj, iDim, iBlock, faceCount, iFace, oFace, faceIndex
+  integer :: masterCount
+  type(kdtree2), pointer :: tree
+  real(kind=8), dimension(:, :), allocatable :: coords
+  real(kind=8), dimension(:, :, :, :), allocatable :: X
+  integer, dimension(:, :), allocatable :: info
+  logical, dimension(:, :), allocatable :: faceConsumed
+  type(patch), pointer :: curPatch
+  integer :: il, jl ,kl
+  integer :: curOtherBlock, curOtherFace, curOtherI, curOtherJ, curOtherK
+  integer :: nextOtherBlock, nextOtherFace, nextOtherI, nextOtherJ, nextOtherK
+  integer :: delI, delJ, delK, iStart, iEnd, jStart, jEnd
+  integer :: IDirIndex, jDirIndex, transform(3), T(3,3), a, b, c
+  integer, dimension(3) :: index1, index2, begin1, begin2
+  logical :: complete, redo
+  real(kind=8), dimension(3) :: n1, n2, n3, n4, v1, v2, ss
+  ! Setup the linked list for the patches
+  nullify(patches)
+  nPatches = 0
+
+  ! Figure out the total number of block faces
+  ii = 0
+  do iBlock=1, nBlock
+     il = sizes(1, iBlock)
+     jl = sizes(2, iBlock)
+     kl = sizes(3, iBlock)
+
+     ii = ii + 2*(  (il-1)*(jl-1) + (il-1)*(kl-1) + (jl-1)*(kl-1))
+  end do
+
+  ! Allocate the space for the nodes on all faces
+  allocate(coords(3, ii), info(5, ii))
+
+  ii = 0
+  jj = 0
+  do iBlock=1, nBlock
+     ! Extract block sizes to make things easier to read
+     il = sizes(1, iBlock)
+     jl = sizes(2, iBlock)
+     kl = sizes(3, iBlock)
+
+     ! Reconstruct the blockd ata
+     allocate(X(3, il, jl, kl))
+
+     ! Copy out the data...note the order...the data was in python (C)
+     ! ordering so we transform it while we copy it out.
+     do i=1, il
+        do j=1, jl
+           do k=1, kl
+              do iDim=1,3
+                 jj = jj + 1
+                 X(iDim, i, j, k) = inCoords(jj)
+              end do
+           end do
+        end do
+     end do
+
+     ! iMin Face
+     do k=1, kl-1
+        do j=1, jl-1
+           ii = ii + 1
+           coords(:, ii) = X(:, 1, j, k) + X(:, 1, j, k+1) + X(:, 1, j+1, k) + X(:, 1, j+1, k+1)
+           info(:, ii) = (/iBlock, iMin, 1, j, k/)
+        end do
+     end do
+
+     ! iMax Face
+     do k=1, kl-1
+        do j=1, jl-1
+           ii = ii + 1
+           coords(:, ii) = X(:, il, j, k) + X(:, il, j, k+1) + &
+                X(:, il, j+1, k) + X(:, il, j+1, k+1)
+           info(:, ii) = (/iBlock, iMax,  il, j, k/)
+        end do
+     end do
+
+     ! jMin Face
+     do k=1, kl-1
+        do i=1, il-1
+           ii = ii + 1
+           coords(:, ii) = X(:, i, 1, k) + X(:, i, 1, k+1) + &
+                X(:, i+1, 1, k) + X(:, i+1, 1, k+1)
+           info(:, ii) = (/iBlock, jMin, i, 1, k/)
+        end do
+     end do
+
+     ! jMax Face
+     do k=1, kl-1
+        do i=1, il-1
+           ii = ii + 1
+           coords(:, ii) = X(:, i, jl, k) + X(:, i, jl, k+1) + &
+                X(:, i+1, jl, k) + X(:, i+1, jl, k+1)
+           info(:, ii) = (/iBlock, jMax, i, jl, k/)
+        end do
+     end do
+
+     ! kMin Face
+     do j=1, jl-1
+        do i=1, il-1
+           ii = ii + 1
+           coords(:, ii) = X(:, i, j, 1) + X(:, i, j+1, 1) + &
+                X(:, i+1, j, 1) + X(:, i+1, j+1, 1)
+           info(:, ii) = (/iBlock, kMin, i, j, 1/)
+        end do
+     end do
+
+     ! kMax Face
+     do j=1, jl-1
+        do i=1, il-1
+           ii = ii + 1
+           coords(:, ii) = X(:, i, j, kl) + X(:, i, j+1, kl) + &
+                X(:, i+1, j, kl) + X(:, i+1, j+1, kl)
+           info(:, ii) = (/iBlock, kMax, i, j, kl/)
+        end do
+     end do
+     deallocate(X)
+  end do
+
+  ! Divide everything by 4 since we didn't above
+  coords = 0.25*coords
+
+  ! Next thing we do is build the KD-tree
+  tree => kdtree2_create(coords)
+
+  ! Next we loop over each of the blocks:
+  faceCount = 0
+  blockLoop: do iBlock=1, nBlock
+     faceLoop: do iFace=1,6
+
+        select case(iFace)
+        case (iMin, iMax)
+           il = sizes(2, iBlock)-1
+           jl = sizes(3, iBlock)-1
+        case (jMin, jMax)
+           il = sizes(1, iBlock)-1
+           jl = sizes(3, iBlock)-1
+        case (kMin, kMax)
+           il = sizes(1, iBlock)-1
+           jl = sizes(2, iBlock)-1
+        end select
+
+        ! Allocate space for the information for my face, and the
+        ! faces we are potentially connected to. 
+        allocate(faceConsumed(il, jl))
+        faceConsumed = .False. 
+        masterCount = 0
+
+        ! Initialize the ranges
+        iStart = 1
+        jStart = 1
+        iEnd = iStart
+        jEnd = jStart
+        complete = .False.
+        do while (.not. complete) 
+
+           call otherInfo(iStart, jStart, curOtherBlock, curOtherFace, &
+                curOtherI, curOtherJ, curOtherk)
+
+           begin2 = (/curOtherI, curOtherJ, curOtherk/)
+           iDirIndex = 0
+           jDirIndex = 0
+
+           ! Find out how far we can go in the I-direction
+           iLoop: do while (iEnd < il)
+              iEnd = iEnd + 1
+
+              call otherInfo(iEnd, jStart, nextOtherBlock, nextOtherFace, &
+                   nextOtherI, nextOtherJ, nextOtherk)
+
+              delI = abs(nextOtherI - curOtherI)
+              delJ = abs(nextOtherJ - curOtherJ)
+              delK = abs(nextOtherK - curOtherK)
+              
+              if (  (nextOtherBlock == curOtherBlock  .and. &
+                   nextOtherBlock == -1)  .or.  & ! BC
+                   
+                   (nextOtherBlock == curOtherBlock .and. & 
+                    nextOtherFace  == curOtherFace .and. &
+                   (delI == 1 .or. delJ == 1 .or. delK == 1))) then  ! B2B
+                 
+                 ! Determine iDirIndex if not done so already
+
+                 if (iDirIndex == 0 .and. nextOtherBlock /= -1) then 
+                    if (delI == 1) then 
+                       iDirIndex = sign(1, nextOtherI - curOtherI)
+                    else if (delJ == 1) then 
+                       iDirIndex = sign(2, nextOtherJ - curOtherJ)
+                    else if (delK == 1) then 
+                       iDirIndex = sign(3, nextOtherK - curOtherk)
+                    else
+                       print *,'Something is screwed up 1...'
+                       stop
+                    end if
+                 end if
+                 curOtherBlock = nextOtherBlock
+                 curOtherFace = nextOtherFace
+                 curOtherI = nextOtherI
+                 curOtherJ = nextOtherJ
+                 curOtherK = nextOtherK
+                
+              else
+                 ! we've stepped to far so back off one.
+                 iEnd = iEnd - 1
+                 exit 
+              end if
+           end do iLoop
+           
+           call otherInfo(iEnd, jStart, curOtherBlock, curOtherFace, &
+                curOtherI, curOtherJ, curOtherk)
+
+           ! Find out how far we can go in the J-direction
+           jDirIndex = 0
+           
+           jLoop: do while (jEnd < jl)
+              jEnd = jEnd + 1
+              
+              call otherInfo(iEnd, jend, nextOtherBlock, nextOtherFace, &
+                   nextOtherI, nextOtherJ, nextOtherk)
+
+              delI = abs(nextOtherI - curOtherI)
+              delJ = abs(nextOtherJ - curOtherJ)
+              delK = abs(nextOtherK - curOtherK)
+
+              if (  (nextOtherBlock == curOtherBlock  .and. &
+                   nextOtherBlock == -1)  .or.  & ! BC
+                   
+                   (nextOtherBlock == curOtherBlock .and. & 
+                    nextOtherFace == curOtherFace .and. &
+                   (delI == 1 .or. delJ == 1 .or. delK == 1))) then  ! B2B
+                 
+                 ! Determine jDirIndex if not done so already
+                 if (jDirIndex == 0 .and. nextOtherBlock /= -1) then
+                    if (delI == 1) then 
+                       jDirIndex = sign(1, nextOtherI - curOtherI)
+                    else if (delJ == 1) then 
+                       jDirIndex = sign(2, nextOtherJ - curOtherJ)
+                    else if (delK == 1) then 
+                       jDirIndex = sign(3, nextOtherK - curOtherK)
+                    else
+                       print *,'Something is screwed up 2...'
+                       stop
+                    end if
+                 end if
+
+                 curOtherBlock = nextOtherBlock
+                 curOtherFace = nextOtherFace
+                 curOtherI = nextOtherI
+                 curOtherJ = nextOtherJ
+                 curOtherK = nextOtherK
+              else
+                 ! We've stepped too far so back off 1
+                 jEnd = jEnd - 1
+                 exit 
+              end if
+           end do jLoop
+           
+           ! Now the range of the patch we just found is simply
+           ! iStart->iEnd, jStart->jEnd. We need to check the faceID to
+           ! determine the other index
+           
+           ! First allocation
+           if (.not. associated(patches)) then 
+              allocate(patches)
+              patches%next => patches
+              curPatch => patches
+           else
+              ! Add the next patch
+              allocate(curPatch%next)
+              curPatch%next%next => patches
+              curPatch => curPatch%next
+           end if
+           nPatches = nPatches + 1
+
+           select case (iFace)
+              
+           case (iMin)
+              curPatch%pointRange = reshape(&
+                   (/1, iStart, jStart, 1, iEnd+1, jEnd+1/), (/3,2/))
+           case (iMax)
+              curPatch%pointRange = reshape(&
+                   (/sizes(1, iBlock), iStart, jStart, sizes(1, iBLock), iEnd+1, jEnd+1/), (/3,2/))
+           case (jMin)
+              curPatch%pointRange = reshape(&
+                   (/iStart, 1, jStart, iEnd+1, 1, jEnd+1/), (/3,2/))
+           case (jMax)
+              curPatch%pointRange = reshape(&
+                   (/iStart, sizes(2, iBlock), jStart, iEnd+1, sizes(2, iBlock), jEnd+1/), (/3,2/))
+           case (kMin)
+              curPatch%pointRange = reshape(&
+                   (/iStart, jStart, 1, iEnd+1, jEnd+1, 1/), (/3,2/))
+           case (kMax)
+              curPatch%pointRange = reshape(&
+                   (/iStart, jStart, sizes(3, iBlock), iEnd+1, jEnd+1, sizes(3, iBlock)/), (/3,2/))
+           end select
+           
+           ! Default type to BC
+           curPatch%type = BC
+           curPatch%myID = iBlock
+
+           if (curOtherBlock /= -1) then 
+
+              oFace = curOtherFace
+              
+              ! This is a B2B patch so we need a bit more info
+              curPatch%type = B2B
+              curPatch%donorID = curOtherBlock
+              
+              if (iDirIndex == 0 .and. jDirIndex /= 0) then 
+                 select case(oFace)
+                 case (iMin, iMax)
+                    if (abs(jDirIndex) == 2) then 
+                       iDirIndex = 3
+                    else
+                       iDirIndex = 2
+                    end if
+                 case (jMin, jMax)
+                    if (abs(jDirIndex) == 1) then
+                       iDirIndex = 3
+                    else
+                       iDirIndex = 1
+                    end if
+                    
+                 case (kMin, kMax)
+                    if (abs(jDirIndex) == 1) then 
+                       iDirIndex = 2
+                    else
+                       iDirIndex = 1
+                    end if
+                 end select
+                 
+              else if (iDirIndex /=0 .and. jDirIndex == 0) then 
+                 select case(oFace)
+                 case (iMin, iMax)
+                    if (abs(iDirIndex) == 2) then 
+                       jDirIndex = 3
+                    else
+                       jDirIndex = 2
+                    end if
+                 case (jMin, jMax)
+                    if (abs(iDirIndex) == 1) then
+                       jDirIndex = 3
+                    else
+                       jDirIndex = 1
+                    end if
+
+                 case (kMin, kMax)
+                    if (abs(iDirIndex) == 1) then 
+                       jDirIndex = 2
+                    else
+                       jDirIndex = 1
+                    end if
+                 end select
+              else if (iDirIndex == 0 .or. jDirIndex == 0) then 
+
+                 ! The ordering of iDirIndex and jDirIndex doesn't matter
+                 select case(oFace)
+                 case (iMin, iMax)
+                    iDirIndex = 2
+                    jDirIndex = 3
+                 case (jMin, jMax)
+                    iDirIndex = 1
+                    jDirIndex = 3
+                 case (kMin, kMax)
+                    iDirIndex = 1
+                    jDirIndex = 2
+                 end select
+              end if
+              
+              ! We need to compute the stupid transform array. Once we
+              ! know the transform array, we can use that to correctly
+              ! determine the donorPointRange.
+
+              select case(iFace)
+              case (iMin, iMax)
+                 transform(2) = iDirIndex
+                 transform(3) = jDirIndex
+              case(jMin, jMax)
+                 transform(1) = iDirIndex
+                 transform(3) = jDirIndex
+              case (kMin, kMax)
+                 transform(1) = iDirIndex
+                 transform(2) = jDirIndex
+              end select
+              
+              ! Do the final normal face transformation
+              call setNormalTransform(transform, iFace, oFace)
+              
+              curPatch%transform = transform
+
+              ! According to the cgns documentation once T is known,
+              ! the following holds: 
+
+              ! index2 = T.(index1 - beging1) + begin2
+
+              a = transform(1)
+              b = transform(2)
+              c = transform(3)
+
+              T(1, 1) = sgn(a)*del(a, 1)
+              T(1, 2) = sgn(b)*del(b, 1)
+              T(1, 3) = sgn(c)*del(c, 1)
+
+              T(2, 1) = sgn(a)*del(a, 2)
+              T(2, 2) = sgn(b)*del(b, 2)
+              T(2, 3) = sgn(c)*del(c, 2)
+
+              T(3, 1) = sgn(a)*del(a, 3)
+              T(3, 2) = sgn(b)*del(b, 3)
+              T(3, 3) = sgn(c)*del(c, 3)
+
+              index1 = curPatch%pointRange(:, 2)
+              begin1 = curPatch%pointRange(:, 1)
+              index2 = matmul(T, (index1 - begin1)) + begin2
+
+              ! We may have to do a correction here: Since begin2 was
+              ! based on a face value, if the index2(1..3) is *lower*
+              ! than begin2(1..3) we have to correct the upper index
+              ! by adding 1 and then redoing the transformation
+              ! again. This is a bit of a hack, but I don't think there
+              ! is a way around it since you don't know at the
+              ! beginnign if begin2 will be a lower bound or an upper
+              ! bound.
+              
+              redo = .False.
+              do idim=1,3
+                 if (index2(idim) < begin2(idim)) then 
+                    begin2(idim) = begin2(idim) + 1
+                    redo = .True.
+                 end if
+              end do
+              
+              ! Update the upper range (index2) for the donor
+              if (redo) then 
+                 index2 = matmul(T, (index1 - begin1)) + begin2
+              end if
+
+              curPatch%pointRangeDonor(:, 1) = begin2
+              curPatch%pointRangeDonor(:, 2) = index2
+           end if
+       
+           ! Before we're completely done with this patch, extract the
+           ! coordinates of the faces at the start and end:
+
+           faceIndex = faceCount + (jStart-1)*il + iStart
+           n1 = coords(:, faceIndex)
+
+           faceIndex = faceCount + (jStart-1)*il + iEnd
+           n2 = coords(:, faceIndex)
+
+           faceIndex = faceCount + (jEnd-1)*il + iStart
+           n3 = coords(:, faceIndex)
+
+           faceIndex = faceCount + (jEnd-1)*il + iEnd
+           n4 = coords(:, faceIndex)
+
+           ! Average of these 4 nodes
+           curPatch%faceAvg = (n1 + n2 + n3 + n4)/4
+
+           ! And now the (normalized) normal
+           v1 = n4 - n1
+           v2 = n3 - n2
+
+           ss(1) = (v1(2)*v2(3) - v1(3)*v2(2))
+           ss(2) = (v1(3)*v2(1) - v1(1)*v2(3))
+           ss(3) = (v1(1)*v2(2) - v1(2)*v2(1))
+
+           ! Set the faceNormal
+           curPatch%faceNormal = ss / sqrt(ss(1)**2 + ss(2)**2 + ss(3)**2 + 1e-14)
+
+           ! Indiscrimentaly flag everything in the range as consumed
+           faceConsumed(iStart:iEnd, jStart:jEnd) = .True.
+
+           ! Determine the next availble starting index. If we used
+           ! everything up, we set complete to .True. to exit the
+           ! while loop
+
+           do while (masterCount < il*jl)
+
+              masterCount = masterCount + 1
+
+              i = mod(masterCount-1, il) + 1
+              j = (masterCount-1)/il + 1
+
+              if (.not. faceConsumed(i, j) ) then 
+
+                 ! Set the ranges for the next face. 
+                 iStart = i
+                 jStart = j
+                 iEnd = iStart
+                 jEnd = jStart
+                 exit
+              end if
+           end do
+
+           if (masterCount == il*jl) then 
+              ! We're done with the face
+              complete = .True.
+           end if
+
+        end do ! While loop for sub-faces
+
+        deallocate(faceConsumed)
+
+        ! Increment the face counter by the total number of faces gone
+        ! through
+        faceCount = faceCount + il*jl
+     end do faceLoop
+  end do blockLoop
+
+contains 
+
+  subroutine setNormalTransform(transform, iFace, oFace)
+    implicit none
+    integer, intent(inout) :: transform(3)
+    integer, intent(in) :: iFace, oFace
+    integer ::  normalIndexSign
+
+    ! To get the sign of the third face you sum the two face
+    ! ids. If that is even, then index is negative, other wise
+    ! it is positive. Why does this work? {i,j,k}Min faces are
+    ! odd (1,3,5) while {i,j,k}Max faces are even. A min-min
+    ! connection or a max-max connection has as the normal
+    ! index increase away from the face on each side, so the
+    ! index must be negative (opposite direction). Summing and
+    ! min+min ID or max+max ID must be position. Thefore for a
+    ! min attached to a max has an odd sum and the sign of the
+    ! transform is positive. 
+
+    normalIndexSign = 1
+    if (mod( iFace + oFace, 2) == 0) then 
+       normalIndexSign = -1
+    end if
+
+    select case(iFace)
+    case (iMin, iMax)
+       select case(oFace)
+       case (iMin, iMax)
+          transform(1) = 1*normalIndexSign
+       case(jMin, jMax)
+          transform(1) = 2*normalIndexSign
+       case (kMin, kMax) 
+          transform(1) = 3*normalIndexSign
+       end select
+
+    case (jMin, jMax)
+       select case(oFace)
+       case (iMin, iMax)
+          transform(2) = 1*normalIndexSign
+       case(jMin, jMax)
+          transform(2) = 2*normalIndexSign
+       case (kMin, kMax) 
+          transform(2) = 3*normalIndexSign
+       end select
+
+    case (kMin, kMax)
+       select case(oFace)
+       case (iMin, iMax)
+          transform(3) = 1*normalIndexSign
+       case(jMin, jMax)
+          transform(3) = 2*normalIndexSign
+       case (kMin, kMax) 
+          transform(3) = 3*normalIndexSign
+       end select
+    end select
+  end subroutine setNormalTransform
+  
+  function sgn(x)
+    implicit none
+    integer :: sgn, x
+    if (x >= 0) then 
+       sgn = 1
+    else
+       sgn = -1
+    end if
+  end function sgn
+
+  function del(x, y)
+    implicit none
+    integer :: del, x,y
+    if (abs(x) == abs(y)) then 
+       del = 1
+    else
+       del = 0
+    end if
+  end function del
+  
+  subroutine otherInfo(i, j, otherBlock, otherFace, otherI, otherJ, otherK)
+    implicit none
+    
+    integer, intent(in) :: i, j
+    integer, intent(out) :: otherBlock, otherFace, otherI, otherJ, otherK
+    integer :: faceIndex
+    real(kind=8) :: qv(3)
+    type(kdtree2_result) :: results(2)
+    real(kind=8), parameter :: tol=1e-12
+
+    ! Reconstruct the index
+    faceIndex = faceCount + (j-1)*il + i
+    
+    ! Now search for a neighbour:
+    qv = coords(:, faceIndex)
+    call kdtree2_n_nearest(tree, qv, 2, results)
+    
+    ! Check the distances
+    if (abs(results(1)%dis) < tol .and. abs(results(2)%dis) < tol) then
+       ! We found a match: Now determine if it was the first
+       ! or second one that isn't myself:
+       
+       if (results(1)%idx == faceIndex) then  ! Must be the second one
+          otherBlock = info(1, results(2)%idx)
+          otherFace  = info(2, results(2)%idx)
+          otherI     = info(3, results(2)%idx)
+          otherJ     = info(4, results(2)%idx)
+          otherK     = info(5, results(2)%idx)
+       else
+          otherBlock = info(1, results(1)%idx)
+          otherFace  = info(2, results(1)%idx)
+          otherI     = info(3, results(1)%idx)
+          otherJ     = info(4, results(1)%idx)
+          otherK     = info(5, results(1)%idx)
+       end if
+    else
+       ! We have a BC so flag 'otherInfo' so we know not to
+       ! deal with it later.
+       otherBlock = -1
+       otherFace  = -1
+       otherI     = -1
+       otherJ     = -1
+       otherK     = -1
+    end if
+  end subroutine otherInfo
+end subroutine computeConnectivity
+
+subroutine getPatchInfo(n, types, pointRanges, myIDs, pointRangeDonors, &
+     transforms, donorIDs, faceAvgs, faceNormals)
+
+  use dataTypes
+  implicit none
+
+  ! Input variables
+  integer, intent(in) :: n
+
+  ! Output variables
+  integer, dimension(n), intent(out) :: myIDs, donorIDs, types
+  integer, dimension(3, 2, n), intent(out) :: pointRanges, pointRangeDonors
+  integer, dimension(3, n), intent(out) :: transforms
+  real(kind=8), dimension(3, n), intent(out) :: faceAvgs, faceNormals
+  ! Working variables
+  type(patch), pointer :: curPatch
+  integer :: i
+
+  i = 0 
+  curPatch => patches
+  do while (i < n)
+     i = i + 1
+     myIDs(i) = curPatch%myID
+     types(i) = curPatch%type
+     pointRanges(:, :, i) = curPatch%pointRange
+     pointRangeDonors(:, :, i) = curPatch%pointRangeDonor
+     transforms(:, i) = curPatch%transform
+     donorIDs(i) = curPatch%donorID
+     faceAvgs(:, i) = curPatch%faceAvg
+     faceNormals(:, i) = curPatch%faceNormal
+     curPatch => curPatch%next
+  end do
+end subroutine getPatchInfo
+
+subroutine getnPatches(n)
+  use dataTypes
+  implicit none
+  integer , intent(out) :: N
+  n = nPatches
+end subroutine getnPatches
+
+subroutine deallocpatches()
+  use dataTypes
+  implicit none
+  integer :: i
+  type(patch), pointer :: curPatch, tmp
+  
+  ! Deallocate all the memory associated with the list of patches
+
+  curPatch => patches
+  i = 0
+  do while (i < nPatches)
+     i = i + 1
+     tmp => curPatch%next
+     deallocate(curPatch)
+     curPatch => tmp
+  end  do
+  nPatches= 0
+end subroutine deallocpatches

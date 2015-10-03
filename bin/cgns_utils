@@ -6,7 +6,7 @@ Run cgns_utils -help to get a list of all available options. The basic
 idea is as follows:
 
                                               | write new file
-read cngs file -> Do some operations on it -> |     .or. 
+read cngs file -> Do some operations on it -> |     .or.
                                               | write modified file
 Developed by Dr. Gaetan K. W. Kenway
 """
@@ -19,10 +19,11 @@ import tempfile
 import argparse
 import numpy
 import libcgns_utils
-import helper_file
-    
-# List out all of the possible options here. 
+import time
+
+# List out all of the possible options here.
 parser = argparse.ArgumentParser(prog='cgns_utils')
+
 
 subparsers = parser.add_subparsers(
     help='Choose one of the listed operations to perform', dest='mode')
@@ -88,7 +89,7 @@ p_split.add_argument('--splitFile', nargs='?', default=None,
 # ------------- Options for 'connect' mode --------------------
 p_connect = subparsers.add_parser(
     'connect', help='Determine the block-to-block connectivity information \
-    for a face-matched grid')
+    for a point-matched grid')
 p_connect.add_argument('gridFile', help='Name of input CGNS file')
 p_connect.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
@@ -128,12 +129,38 @@ information. Format is (one per line, 1-based blockID): blockID, \
 p_fam.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
-# ------------ Options for 'overwritebc' mode --------------------
+# ------------ Options for 'familycopy' mode --------------------
 p_fam = subparsers.add_parser(
-    'overwritebc', help='Overwrite boundary condition information')
-p_fam.add_argument('gridFile', help='Name of input CGNS file')
-p_fam.add_argument('bcFile', help='File containing additional bc info')
+    'familycopy', help='Copy family information from two otherwise identical grids')
+p_fam.add_argument('gridFile', help='Name of CGNS file to which family information is to be copied')
+p_fam.add_argument('sourceFile', help='Name of output CGNS file which contains family information')
 p_fam.add_argument('outFile', nargs='?', default=None,
+                    help='Optional output file')
+
+# ------------ Options for 'overwritebc' mode --------------------
+p_sub = subparsers.add_parser(
+    'overwritebc', help='Overwrite boundary condition information', formatter_class=argparse.RawTextHelpFormatter)
+p_sub.add_argument('gridFile', help='Name of input CGNS file')
+p_sub.add_argument('bcFile', help="File containing additional bc info. The\
+File must consist of one or more lines contaning the following data: \n\
+<block number> <faceID> <BCType> <family> [key value, ....] \n \
+\n\
+where: \n\
+block number is the block index *IN 1 BASED NUMBERING* \n\
+faceID is one of iLow, iHigh jLow, jHigh, kLow or kHigh \n\
+BCType is one of the supported CGNS boundary conditions. The supported \n\
+BCs are : bcfarfield, bcsymmetryplane bcwall, bcwallinviscid, bcwallviscous \n\
+   bcwallviscousheatflux, bcwallviscousisothermal, bcoutflow, bcoutflowsubsonic \n\
+   bcinflowsubsonic \n\
+family is the family name. \n\
+Optionally, additional data may be specified using (key value) pairs. These \n\
+can be used to set additional boundary condition data. \n\
+\n\
+Example lines are as follows: \n\
+\n\
+7 kLow bcwallviscous wing \n\
+4 jHigh bcsymmetryplane sym\n\n")
+p_sub.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
 # ------------ Options for 'rebunch' mode --------------------
@@ -179,21 +206,35 @@ p_tc.add_argument('baseName', help="baseName of the files. Use %%d to denote the
 p_tc.add_argument('outFile', nargs='?', default=None,
                      help='Output file name. If not given, unsteady.plt is used')
 
+# ------------ Options for 'double2d' mode  --------------------
+p_dd = subparsers.add_parser(
+    'double2d', help='Take a 2d mesh one cell wide and make it two cells wide.')
+p_dd.add_argument('gridFile', help='Name of input CGNS file')
+p_dd.add_argument('outFile', nargs='?', default=None,
+                     help='Optional output file')
+
+# ------------ Options for 'combine' mode  --------------------
+p_dd = subparsers.add_parser(
+    'combine', help='Take 2 or more cgns files and combine them into a single file.')
+p_dd.add_argument('gridFiles', metavar='files', type=str, nargs='+', help='Name of CGNS files to combine')
+p_dd.add_argument('outFile', type=str, help='Output CGNS file name')
+
 # Finally get the arguments we need!
 args = parser.parse_args()
 
-# These are taken from the CNGS include file
+# These are taken from the CNGS include file (cgnslib_f.h in your cgns library folder)
 BC = {'bcfarfield':7,
       'bcsymmetryplane':16,
       'bcwall':20,
-      'bcwallinvisicd':21,
+      'bcwallinviscid':21,
       'bcwallviscous':22,
       'bcwallviscousheatflux':23,
       'bcwallviscousisothermal':24,
       'bcoutflow':13,
       'bcoutflowsubsonic':14,
       'bcoutflowsupersonic':15,
-      'bcinflowsubsonic':10}
+      'bcinflowsubsonic':10,
+      'bcoverset':1} #The Overset BC will be considered as a CG_USERDEFINED option ()
 
 CG_MODE_READ = 0
 CG_MODE_WRITE = 1
@@ -297,6 +338,12 @@ class Grid(object):
         for fam in fams:
             self.blocks[fam[0]-1].overwriteFamily(fam[1], fam[2])
 
+    def copyFamilyInfo(self, otherGrid):
+        """Copy family information out of another grid"""
+        for i in range(len(self.blocks)):
+            for j in range(len(self.blocks[i].bocos)):
+                self.blocks[i].bocos[j].family = otherGrid.blocks[i].bocos[j].family
+
     def overwriteBCs(self, bcFile):
         """Overwrite BCs with information given in the file"""
 
@@ -306,17 +353,30 @@ class Grid(object):
             block = int(aux[0])-1
             face = aux[1]
             bctype = aux[2]
+            family = aux[3]
             data = {}
-            for i in range(3, len(aux), 2):
+            for i in range(4, len(aux), 2):
                 data[aux[i]] = float(aux[i+1])
                 
-            self.blocks[block].overwriteBCs(face, bctype, data)
+            self.blocks[block].overwriteBCs(face, bctype, family, data)
         f.close()
 
+    def double2D(self):
+        """Doubles a mesh in the "2d" direction. Ie the direction with one
+        cell"""
+        for blk in self.blocks:
+            blk.double2D()
 
     def split(self, extraSplits):
+
         """Recursively propagate splits due to boundary conditions or
         B2B information"""
+
+        # First generate a mapping between block name and its index:
+        mapping = {}
+        for iBlock in range(len(self.blocks)):
+            mapping[self.blocks[iBlock].name] = iBlock
+
         for iBlock in range(len(self.blocks)):
             splits = []
             for boco in self.blocks[iBlock].bocos:
@@ -333,13 +393,13 @@ class Grid(object):
             splits = newSplits
 
             for split in splits:
-                self._addSplit(iBlock, split[0]+1, split[1])
+                self._addSplit(iBlock, split[0]+1, split[1], mapping)
                 
         # And Add the extra splits:
         for split in extraSplits:
-            self._addSplit(split[0]-1, split[1], split[2])
+            self._addSplit(split[0]-1, split[1], split[2], mapping)
 
-    def _addSplit(self, iBlock, iDim, index):
+    def _addSplit(self, iBlock, iDim, index, mapping):
         """Recursive routine to add a split to block 'iBlock', on
         dimension 'iDim' at index 'index'. NOTE IDIM is 1 based!"""
         if index in self.blocks[iBlock].splits[iDim-1]:
@@ -355,7 +415,7 @@ class Grid(object):
 
                 # Index must be fully contained:
                 if index > low and index < high:
-                    newBlock = self._findZone(b2b.donorName)
+                    newBlock = mapping[b2b.donorName]
                     iDim_new = b2b.transform[iDim-1]
                     offset = index - low
                     abs_idim = abs(iDim_new)
@@ -371,105 +431,54 @@ class Grid(object):
                     # block, dimension and index
                     self._addSplit(newBlock, abs_idim, index_new)
                             
-    def _findZone(self, zoneName):
-        """Return the index of the zone with the given name"""
-        for iBlock in range(len(self.blocks)):
-            if self.blocks[iBlock].name == zoneName:
-                return iBlock
-        print ("Error in splitting procedure...Looking for zone name '%s', "
-               " but could not find it."% zoneName)
-        sys.exit(0)
-
-    def _preprocess(self):
-        """Preprocess some common info for connect and autoBC"""
-        coords = numpy.zeros((len(self.blocks), 8, 3))
-        blkDims = []
-        for i in range(len(self.blocks)):
-            coords[i] = self.blocks[i].getCorners()
-            blkDims.append(self.blocks[i].dims)
-
-        self.topo = helper_file.BlockTopology(coords)
-        face_ptr = [ [] for i in range(self.topo.nFace)]
-
-        for iVol in range(len(self.blocks)):
-            for iFace in xrange(6):
-                iUniqueFace = self.topo.face_link[iVol, iFace]
-                face_ptr[iUniqueFace].append([iVol, iFace])
-        return coords, blkDims, face_ptr
-    
     def connect(self):
-        """Generate block-to-block connectivity information for a grid
-        that is already face matched"""
-        __, blkDims, face_ptr = self._preprocess()
+        """Generate block-to-block connectivity information for a grid. It
+        does not need to be face matched, only point matched"""
+        isize = 0
+        for i in range(len(self.blocks)):
+            blk = self.blocks[i]
+            isize += blk.dims[0]*blk.dims[1]*blk.dims[2]
+
+        # Allocate space for all coordinates
+        coords = numpy.zeros(isize*3)
+        sizes = []
+        istart = 0
+        for i in range(len(self.blocks)):
+            blk = self.blocks[i]
+            iend = istart + blk.dims[0]*blk.dims[1]*blk.dims[2]
+            coords[istart*3:3*iend] = blk.coords.flatten()
+            sizes.append(blk.dims)
+            istart = iend
         
-        for iUFace in range(self.topo.nFace):
-            if len(face_ptr[iUFace]) == 2: # Block-to-block
-                # The are the faces:
-                iVol1  = face_ptr[iUFace][0][0]
-                iFace1 = face_ptr[iUFace][0][1]
+        # Get our list of sizes
+        sizes  = numpy.vstack(sizes)
 
-                iVol2  = face_ptr[iUFace][1][0]
-                iFace2 = face_ptr[iUFace][1][1]
+        # Run the fortran code to generate all the connectivities
+        libcgns_utils.computeconnectivity(coords, sizes.T)
+        nPatches = libcgns_utils.getnpatches()
+        types, pointRanges, myIDs, pointRangeDonors, \
+            transforms, donorIDs, faceAvgs, faceNormals = \
+            libcgns_utils.getpatchinfo(nPatches)
+        libcgns_utils.deallocpatches()
 
-                # Get the pt ranges:
-                ptRange = getPointRange(iFace1, blkDims[iVol1])
-                ptRangeDonor = getPointRange(iFace2, blkDims[iVol2])
+        # Remove all existing B2B info
+        for blk in self.blocks:
+            blk.B2Bs = []
 
-                # Now for the fun part...the transformation matrix:
-                transform1 = [0, 0, 0]
+        for i in range(nPatches):
+            blockID = myIDs[i] - 1
+            
+            if types[i] == 1: # B2B
+                connectName = 'SF%d'%i
+                donorName = self.blocks[donorIDs[i]-1].name
+                
+                self.blocks[blockID].B2Bs.append(B2B(
+                    connectName, donorName, pointRanges[:, :, i], 
+                    pointRangeDonors[:, :, i], transforms[:, i]))
 
-                g_dir_1 = generalizedCoordDir(iFace1)
-                g_dir_2 = generalizedCoordDir(iFace2)
-
-                fl = self.topo.face_dir[iVol2, iFace2]
-
-                # Do the generalized coordinate direction 1
-                if fl in [0, 2]:
-                    transform1[g_dir_1[0]] =  (g_dir_2[0] + 1)
-                if fl in [1, 3]:
-                    transform1[g_dir_1[0]] = -(g_dir_2[0] + 1)
-                if fl in [4, 6]:
-                    transform1[g_dir_1[0]] =  (g_dir_2[1] + 1)
-                if fl in [5, 7]:
-                    transform1[g_dir_1[0]] = -(g_dir_2[1] + 1)
-
-                # Do the generalized coordinate direction 2
-                if fl in [0, 1]:
-                    transform1[g_dir_1[1]] =  (g_dir_2[1] + 1)
-                if fl in [2, 3]:
-                    transform1[g_dir_1[1]] = -(g_dir_2[1] + 1)
-                if fl in [4, 5]:
-                    transform1[g_dir_1[1]] =  (g_dir_2[0] + 1)
-                if fl in [6, 7]:
-                    transform1[g_dir_1[1]] = -(g_dir_2[0] + 1)
-
-                # Do the generalized coordinate direction 3 (or normal)
-                transform1[g_dir_1[2]] = (
-                    normal_direction(iFace1,iFace2)*(g_dir_2[2]+1))
-        
-                # Now that we have transform1 we can fairly easily get
-                # transform2:
-                transform2 = [0, 0, 0]
-                for ii in xrange(3):
-                    ind = abs(transform1[ii])-1
-                    transform2[ind] = numpy.sign(transform1[ii])*(ii+1)
-
-                # One last thing to do: if the transform is -ve swap the
-                # ranges on the donor
-                for ii in xrange(3):
-                    if transform2[ii] < 0:
-                        (ptRangeDonor[ii][0], ptRangeDonor[ii][1]) = \
-                            (ptRangeDonor[ii][1], ptRangeDonor[ii][0])
-                connectName = 'subFace%d'% iUFace
-
-                # Add the block-to-block info for the two blocks
-                self.blocks[iVol1].addB2B(B2B(
-                    connectName, self.blocks[iVol2].name, ptRange,
-                    ptRangeDonor, transform1))
-
-                self.blocks[iVol2].addB2B(B2B(
-                    connectName, self.blocks[iVol1].name, ptRangeDonor,
-                    ptRange, transform2))
+        # Return most of the information we computed since other
+        # routines (autobc for example) may need this.
+        return types, pointRanges, myIDs, faceAvgs, faceNormals
 
     def autoBC(self, radius, sym, offset):
         """This function will try to generate boundary condition
@@ -484,12 +493,6 @@ class Grid(object):
             blk.bocos = []
             blk.B2Bs = []
 
-        # Do the b2b by running connect:
-        self.connect()
-        coords, blkDims, face_ptr = self._preprocess()
-
-        for i in range(len(self.blocks)):
-            blkDims.append(self.blocks[i].dims)
         if sym == 'x':
             symAxis = 0
         elif sym == 'y':
@@ -499,55 +502,36 @@ class Grid(object):
 
         symNormal = [0.0, 0.0, 0.0]
         symNormal[symAxis] = 1.0
-        # Now do the rest of the faces with only 1 connection:
-        for iUFace in xrange(self.topo.nFace):
-            if len(face_ptr[iUFace]) == 1:
-    
-                # The is only one face here
-                iVol = face_ptr[iUFace][0][0]
-                iFace = face_ptr[iUFace][0][1]
 
-                # First check for a symmetry condition:
-
-                # -> Get the coordinates for this face:
-                nodes = helper_file.nodesFromFace(iFace)
-
-                # -> Extract the coordinates for this face from coords:
-                face_coords = numpy.take(coords[iVol], nodes, axis=0)
-
-                # -> Take the cross-product to get the normal:
-                v1 = face_coords[3]-face_coords[0]
-                v2 = face_coords[2]-face_coords[1]
-                normal = numpy.cross(v1, v2)
-
-                # -> Normalize with a zero-length check:
-                normal /= max(numpy.linalg.norm(normal), 1e-14)
-
-                coor_check = abs(numpy.average(face_coords[:, symAxis])) < 1e-3
-                dp_check = (numpy.dot(normal, symNormal) > 0.98 or 
-                            numpy.dot(normal, symNormal) < -0.98)
-
-                ptRange = getPointRange(iFace, blkDims[iVol])
+        # Do the b2b by running connect:
+        types, pointRanges, myIDs, faceAvg, faceNormal = self.connect()
+        
+        # Loop over all subfaces and deal with the BCs
+        for i in range(len(types)):
+            blockID = myIDs[i] - 1
+            
+            if types[i] == 0: # Boco
+                coor_check = abs(faceAvg[symAxis, i]) < 1e-3
+                dp_check = abs(numpy.dot(faceNormal[:, i], symNormal)) > 0.98
                 if dp_check and coor_check:
-                    # Definitely a sym plane
-                    self.blocks[iVol].addBoco(Boco(
-                        'dummy', BC['bcsymmetryplane'], ptRange, 'sym'))
+                    bocoType = BC['bcsymmetryplane']
+                    famName = 'sym'
                 else:
-                    # Next check for a wall-type boundary condition:
-                    insideSphere = True
-                    for i in range(4):
-                        if not numpy.linalg.norm(
-                            face_coords[i]-offset) < radius:
-                            insideSphere = False
-                    if insideSphere:
-                        # Definitely a wall condition:
-                        self.blocks[iVol].addBoco(Boco(
-                            'dummy', BC['bcwallviscous'], ptRange, 'wall'))
-                    else:
-                        # Definitely a farfield condition
-                        self.blocks[iVol].addBoco(Boco(
-                            'dummy', BC['bcfarfield'], ptRange, 'far'))
+                    # Next check for a wall-type boundary condition if
+                    # the face avg is inside the sphere:
 
+                    if numpy.linalg.norm(faceAvg[:, i] - offset) < radius:
+                        bocoType = BC['bcwallviscous']
+                        famName = 'wall'
+                    else:
+                        # Must be a farfield
+                        bocoType = BC['bcfarfield']
+                        famName = 'far'
+                
+                # Now simply add the boco
+                self.blocks[blockID].addBoco(Boco(
+                    'dummy', bocoType, pointRanges[:, :, i], famName))
+ 
         # Lastly rename the BCs to be consistent
         self.renameBCs()
 
@@ -606,7 +590,8 @@ class Block(object):
         self.splits = [[1, dims[0]], 
                        [1, dims[1]], 
                        [1, dims[2]]]
-        
+        self.bocoCounter = 0
+
     def addBoco(self, boco):
         """ A add a boundary condition to this block"""
         self.bocos.append(boco)
@@ -700,6 +685,31 @@ class Block(object):
             boco.refine()
         for b2b in self.B2Bs:
             b2b.refine()
+
+    def double2D(self):
+        """Double in just the 2D direction"""
+        # First find the 2D direction
+        if self.dims[2] == 2:
+            newCoords = numpy.zeros((self.dims[0], self.dims[1], self.dims[2]+1, 3))
+            for i in range(self.dims[0]):
+                for j in range(self.dims[1]):
+                    newCoords[i, j, 0, :] = self.coords[i, j, 0, :]
+                    newCoords[i, j, 2, :] = self.coords[i, j, 1, :]
+                    newCoords[i, j, 1, :] = 0.5*(newCoords[i, j, 0, :] + 
+                                                 newCoords[i, j, 2, :])
+            for boco in self.bocos:
+                for j in range(2):
+                    if boco.ptRange[2, j] == 2:
+                        boco.ptRange[2, j] = 3
+            for b2b in self.B2Bs:
+                for j in range(2):
+                    if b2b.ptRange[2, j] == 2:
+                        b2b.ptRange[2, j] = 3
+                    if b2b.donorRange[2, j] == 2:
+                        b2b.donorRange[2, j] = 3
+
+            self.coords = newCoords
+            self.dims = [self.dims[0], self.dims[1], 3]
 
     def getSplitBlocks(self):
         """Return a list of blocks that have been split according to
@@ -806,14 +816,6 @@ class Block(object):
             
         return self.getSplitBlocks()
     
-    def getCorners(self):
-        """Return coordinates of the corners"""
-        
-        return  [self.coords[0,  0,  0], self.coords[-1,  0,  0],
-                 self.coords[0, -1,  0], self.coords[-1, -1,  0],
-                 self.coords[0,  0, -1], self.coords[-1,  0, -1],
-                 self.coords[0, -1, -1], self.coords[-1, -1, -1]]
-    
     def removeSymBCs(self):
         """Remove any sym BC's there may be"""
         self.bocos = [boco for boco in self.bocos 
@@ -858,8 +860,12 @@ class Block(object):
             if match:
                 boco.family = family
 
-    def overwriteBCs(self, faceStr, bcType, data):
-        """Possibly overwrite the bc data """
+    def overwriteBCs(self, faceStr, bcType, family, data):
+        """Find any BCs on this face and toast them. Note that we *ONLY ALLOW
+        ONE BC per face*
+        """
+        
+        # Check for existing boco and pop if necessary
         for boco in self.bocos:
             r = boco.ptRange
             match = (
@@ -871,8 +877,27 @@ class Block(object):
                 (r[2][0] == r[2][1] == self.dims[2] and faceStr == 'khigh'))
 
             if match:
-                boco.data = data
-                boco.type = BC[bcType.lower()]
+                self.boco.pop(boco)
+
+        d = self.dims
+        faceStr = faceStr.lower()
+        if faceStr == 'ilow':
+            ptRange = [[1, 1, 1], [1, d[1], d[2]]]
+        elif faceStr == 'ihigh':
+            ptRange = [[d[0], 1, 1], [d[0], d[1], d[2]]]
+        elif faceStr == 'jlow':
+            ptRange = [[1, 1, 1], [d[0], 1, d[2]]]
+        elif faceStr == 'jhigh':
+            ptRange = [[1, d[1], 1], [d[0], d[1], d[2]]]
+        elif faceStr == 'klow':
+            ptRange = [[1, 1, 1], [d[0], d[1], 1]]
+        elif faceStr == 'khigh':
+            ptRange = [[1, 1, d[2]], [d[0], d[1], d[2]]]
+        ptRange = numpy.array(ptRange).T
+        newBoco = Boco("boco_%d"%self.bocoCounter, BC[bcType.lower()], 
+                       ptRange, family, data)
+        self.bocoCounter += 1
+        self.bocos.append(newBoco)
 
     def rebunch(self, spacing, extraCells, nStar):
         """Perform rebunching for this block"""
@@ -974,7 +999,18 @@ class Block(object):
                             r[1,0]-1:r[1,1], 
                             r[2,0]-1:r[2,1], idir] = 0.0
 
+    def getFaceCoords(self, blockID):
+        """Return the list of coordinates on the face as well as its index info"""
+
+        il = self.dims[0]
+        jl = self.dims[1]
+        kl = self.dims[2]
+        nFace = 2*(  (il-1)*(jl-1) + (il-1)*(kl-1) + (jl-1)*(kl-1))
+
+        return libcgns_utils.computefacecoords(self.coords, nFace, blockID)
+      
 class Boco(object):
+
     """Class for storing information related to a boundary condition"""
     def __init__(self, bocoName, bocoType, ptRange, family, bcData=None):
         self.name = bocoName.strip()
@@ -1141,19 +1177,19 @@ def inRange(ptRange, chkRange):
 
     return val
              
-def normal_direction(iFace1, iFace2):
-    """Normal direction is positive if iFace1 and iFace two are of
-    opposite oddity, even if they are the same oddity"""
-    isOdd1 = isodd(iFace1)
-    isOdd2 = isodd(iFace2)
+# def normal_direction(iFace1, iFace2):
+#     """Normal direction is positive if iFace1 and iFace two are of
+#     opposite oddity, even if they are the same oddity"""
+#     isOdd1 = isodd(iFace1)
+#     isOdd2 = isodd(iFace2)
 
-    if isOdd1 is True and isOdd2 is True:
-        return -1
-    if isOdd1 is False and isOdd2 is False:
-        return -1
+#     if isOdd1 is True and isOdd2 is True:
+#         return -1
+#     if isOdd1 is False and isOdd2 is False:
+#         return -1
 
-    # otherwise:
-    return 1
+#     # otherwise:
+#     return 1
 
 # -----------------------------------------------------------------
 # These functions perform operations that return new 'Grid' objects
@@ -1260,6 +1296,41 @@ def splitGrid(grid, splitFile):
 
     return newGrid
 
+def combineGrids(grids):
+    """Method that takes in a list of grids and returns a new grid object
+    containing all zones from each grid. The blocks are renamed as
+    there could (almost most certainly) be conflicts between the zone
+    names in the different grids. This also means that the block to
+    block connectivities need to be updated based on the new zone names
+    """
+
+    # First determine the total number of blocks
+    nBlock = 0
+    newGrid = Grid()
+
+    for grid in grids:
+
+        # Mapping of the old names to the new names
+        zoneMap = {}
+
+        for blk in grid.blocks:
+            nBlock += 1
+            newName = 'domain.%5.5d'% nBlock
+            zoneMap[blk.name] = newName
+            blk.name = newName
+
+        # Now loop back over the blocks, replacing the donorName using
+        # the map we defined above
+        for blk in grid.blocks:
+            for b2b in blk.B2Bs:
+                b2b.donorName = zoneMap[b2b.donorName]
+                
+        # Now add the new processed blocks to our newgrid
+        newGrid.blocks.extend(grid.blocks)
+
+    return newGrid
+
+
 # -------------------------------------------
 #         Selection of the task
 # -------------------------------------------
@@ -1299,10 +1370,27 @@ if args.mode == 'timecombine':
     libcgns_utils.time_combine(fileNames, outFile)
     sys.exit(0)
 
+
+# The 'combine' function is done first sicne it is the only function
+# that reads multiple cgns files. 
+if args.mode == 'combine':
+    grids = []
+    for fName in args.gridFiles:
+        grid = readGrid(fName)
+        grids.append(grid)
+        
+    combinedGrid = combineGrids(grids)
+    combinedGrid.writeToCGNS(args.outFile)
+
+    # This task is now finished
+    sys.exit(0)
+
 # Get the current working grid 'curGrid' by reading the input
 curGrid = readGrid(args.gridFile)
 
-# The following are "special" and done first:
+# The following are "special" and done first since they do not
+# have a CGNS output.
+
 if args.mode == 'extract':
     curGrid.extractSurface(args.surfFile)
     sys.exit(0)
@@ -1310,7 +1398,7 @@ if args.mode == 'extract':
 if args.mode == 'cgns2plot3d':
     curGrid.writePlot3d(args.plot3dFile)
     sys.exit(0)
-    
+
 # Determine if we have an output file:
 if args.outFile is None:
     # Determine where to put a file:
@@ -1353,6 +1441,10 @@ elif args.mode == 'autobc':
 elif args.mode == 'family':
     curGrid.overwriteFamilies(args.familyFile)
 
+elif args.mode == 'familycopy':
+    sourceGrid = readGrid(args.sourceFile)
+    curGrid.copyFamilyInfo(sourceGrid)
+
 elif args.mode == 'overwritebc':
     curGrid.overwriteBCs(args.bcFile)
 
@@ -1365,11 +1457,12 @@ elif args.mode == 'randomize':
 elif args.mode == 'symmzero':
     curGrid.symmZero(args.sym)
 
-# Write out the grid. 
+elif args.mode == 'double2d':
+    curGrid.double2D()
+
+# Write out the grid.
 curGrid.writeToCGNS(outFileName)
 
 # Possibly copy back to the original:
 if args.outFile is None:
-    print('Copying temporary file to input...')
     shutil.copyfile(outFileName, args.gridFile)
-    shutil.rmtree(dirpath)

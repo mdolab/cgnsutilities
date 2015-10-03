@@ -1,12 +1,15 @@
 include ../config.mk
 
 PYTHON_OBJECTS = fortranobject.o \
-		 libcgns_utilsmodule.o
+		 kd_tree.o \
+		 libcgns_utilsmodule.o \
+
 
 default:
 
 # Compile the source files:
-	$(FC) -c $(FFLAGS) $(CGNS_INCLUDE_FLAGS) cgns_utilities.F90
+	$(FC) -c $(FFLAGS) $(CGNS_INCLUDE_FLAGS) kd_tree.f90
+	$(FC) -c $(FFLAGS) $(CGNS_INCLUDE_FLAGS) -I./ cgns_utilities.F90
 
 # Generate Python include directory
 	 $(eval PYTHON_INCLUDES = $(shell $(PYTHON-CONFIG) --includes))
