@@ -1820,3 +1820,603 @@ subroutine deallocpatches()
   end  do
   nPatches= 0
 end subroutine deallocpatches
+
+!=============================================!
+!                                             !
+!         CARTESIAN MESH SUBROUTINES          !
+!                                             !
+!=============================================!
+! Ney Secco, 2015
+! neysecco@umich.edu
+
+subroutine findBounds(x, xBounds, il, jl, kl)
+
+  ! xBounds has 6 elements that represents the maximum and minumim values of
+  ! coordinates in this block:
+  ! xBounds = ((xmin, ymin, zmin),
+  !            (xmax, ymax, zmax))
+  
+  implicit none
+  
+  ! Subroutine inputs
+  real, dimension(il,jl,kl,3), intent(in) :: x
+  integer, intent(in) :: il, jl, kl
+
+  ! Subroutine inputs/outputs.
+  real, dimension(2,3), intent(inout) :: xBounds
+
+  !
+  ! BEGIN EXECUTION
+  !
+
+  ! Find the maximum bounds in each face of the block. xBounds will
+  ! be updated within each call
+  
+  ! Face imin
+  call checkBounds(1,1,1,jl,1,kl,x,xBounds)
+  ! Face imax
+  call checkBounds(il,il,1,jl,1,kl,x,xBounds)
+  ! Face jmin
+  call checkBounds(1,il,1,1,1,kl,x,xBounds)
+  ! Face jmax
+  call checkBounds(1,il,jl,jl,1,kl,x,xBounds)
+  ! Face kmin
+  call checkBounds(1,il,1,jl,1,1,x,xBounds)
+  ! Face kmax
+  call checkBounds(1,il,1,jl,kl,kl,x,xBounds)
+  
+  ! xBounds was updated and will be returned by this subroutine
+  
+contains
+  
+  !        ================================================================
+  
+  subroutine checkBounds(imin,imax,jmin,jmax,kmin,kmax,x,xBounds)
+    
+    ! This function will compute the maximum values within the bounds
+    ! specified by imin, imax, jmin, jmax, kmin, kmax.
+    ! This is useful when we want to loop over each surface.
+    ! xBounds will be updated
+    
+    implicit none
+    
+    ! Subroutine Inputs
+    integer, intent(in) :: imin, imax, jmin, jmax, kmin, kmax
+    real, dimension(:,:,:,:), intent(in) :: x
+    
+    ! Subroutine Outputs
+    real, dimension(2,3), intent(inout) :: xBounds
+    
+    ! Working variables
+    integer :: i, j, k
+    
+    !
+    ! BEGIN EXECUTION
+    !
+    
+    do k=kmin, kmax
+       do j=jmin, jmax
+          do i=imin, imax
+             
+             ! Check the coordinates bounds
+             if (x(i,j,k,1) < xBounds(1,1)) xBounds(1,1) = x(i,j,k,1)
+             if (x(i,j,k,2) < xBounds(1,2)) xBounds(1,2) = x(i,j,k,2)
+             if (x(i,j,k,3) < xBounds(1,3)) xBounds(1,3) = x(i,j,k,3)
+             if (x(i,j,k,1) > xBounds(2,1)) xBounds(2,1) = x(i,j,k,1)
+             if (x(i,j,k,2) > xBounds(2,2)) xBounds(2,2) = x(i,j,k,2)
+             if (x(i,j,k,3) > xBounds(2,3)) xBounds(2,3) = x(i,j,k,3)
+             
+          end do
+       end do
+    end do
+    
+  end subroutine checkBounds
+
+end subroutine findBounds
+
+!        ================================================================
+!        ================================================================
+!        ================================================================
+!        ================================================================
+
+subroutine computeVolumes(x, xBounds, maxVol, il, jl, kl, nBinX, nBinY, nBinZ)
+
+  ! This subroutine will loop over all the faces of the block, compute their
+  ! volumes, and if this volume is greater than the reference volume stored
+  ! in maxVol for the corresponding bin, then the reference value will be
+  ! updated.
+  ! xBounds has 6 elements that represents the maximum and minumim values of
+  ! coordinates in this block:
+  ! xBounds = ((xmin, ymin, zmin),
+  !            (xmax, ymax, zmax))
+  ! maxVol = maximum volume in each bin (will be updated then returned)
+
+  implicit none
+
+  ! Subroutine inputs
+  real, dimension(il,jl,kl,3), intent(in) :: x
+  real, dimension(2,3), intent(in) :: xBounds
+  integer, intent(in) :: il, jl, kl, nBinX, nBinY, nBinZ
+
+  ! Subroutine inputs/outputs.
+  real, dimension(nBinX,nBinY,nBinZ), intent(inout) :: maxVol
+
+  !
+  ! BEGIN EXECUTION
+  !
+
+  ! Now that we have information about the total bounds, we can
+  ! compute the volumes of the cells and assign them to their
+  ! respective bins. maxVol will be updated after each call
+  
+  ! Face imin
+  call checkVol(2,2,2,jl,2,kl,x,xBounds,maxVol)
+  ! Face imax
+  call checkVol(il,il,2,jl,2,kl,x,xBounds,maxVol)
+  ! Face jmin
+  call checkVol(2,il,2,2,2,kl,x,xBounds,maxVol)
+  ! Face jmax
+  call checkVol(2,il,jl,jl,2,kl,x,xBounds,maxVol)
+  ! Face kmin
+  call checkVol(2,il,2,jl,2,2,x,xBounds,maxVol)
+  ! Face kmax
+  call checkVol(2,il,2,jl,kl,kl,x,xBounds,maxVol)
+
+contains
+  
+  !        ================================================================
+
+  subroutine checkVol(imin,imax,jmin,jmax,kmin,kmax,x,xBounds,maxVol)
+
+    ! This function will compute the maximum volumes within the bounds
+    ! specified by imin, imax, jmin, jmax, kmin, kmax and assign to the correct bin.
+    ! This is useful when we want to loop over each surface.
+    ! maxVol will be updated
+    
+    implicit none
+
+    ! Subroutine Inputs
+    integer, intent(in) :: imin, imax, jmin, jmax, kmin, kmax
+    real, dimension(:,:,:,:), intent(in) :: x
+    real, dimension(2,3), intent(in) :: xBounds
+
+    ! Subroutine  Outputs
+    real, dimension(:,:,:), intent(inout) :: maxVol
+
+    ! Working variables
+    real :: vol, xp, yp, zp, eighth
+    real :: vp1, vp2, vp3, vp4, vp5, vp6
+    integer :: i, j, k, l, m, n, iBin, jBin, kBin
+    integer, dimension(3) :: numBins
+
+    ! Compute the volumes. The hexahedron is split into 6 pyramids
+    ! whose volumes are computed. The volume is positive for a
+    ! right handed block.
+    ! Initialize the volumes to zero. The reasons is that the second
+    ! level halo's must be initialized to zero and for convenience
+    ! all the volumes are set to zero.
+
+    do k=kmin, kmax
+       n = k -1
+       
+       do j=jmin, jmax
+          m = j -1
+          
+          do i=imin, imax
+             l = i -1
+
+             ! Compute the coordinates of the center of gravity.
+             
+             eighth = 1.0/8.0
+
+             xp = eighth*(x(i,j,k,1) + x(i,m,k,1) &
+                  +         x(i,m,n,1) + x(i,j,n,1) &
+                  +         x(l,j,k,1) + x(l,m,k,1) &
+                  +         x(l,m,n,1) + x(l,j,n,1))
+             yp = eighth*(x(i,j,k,2) + x(i,m,k,2) &
+                  +         x(i,m,n,2) + x(i,j,n,2) &
+                  +         x(l,j,k,2) + x(l,m,k,2) &
+                  +         x(l,m,n,2) + x(l,j,n,2))
+             zp = eighth*(x(i,j,k,3) + x(i,m,k,3) &
+                  +         x(i,m,n,3) + x(i,j,n,3) &
+                  +         x(l,j,k,3) + x(l,m,k,3) &
+                  +         x(l,m,n,3) + x(l,j,n,3))
+             
+             ! Compute the volumes of the 6 sub pyramids. The
+             ! arguments of volpym must be such that for a (regular)
+             ! right handed hexahedron all volumes are positive.
+             
+             vp1 = volpym(x(i,j,k,1), x(i,j,k,2), x(i,j,k,3), &
+                  x(i,j,n,1), x(i,j,n,2), x(i,j,n,3), &
+                  x(i,m,n,1), x(i,m,n,2), x(i,m,n,3), &
+                  x(i,m,k,1), x(i,m,k,2), x(i,m,k,3),xp,yp,zp)
+             
+             vp2 = volpym(x(l,j,k,1), x(l,j,k,2), x(l,j,k,3), &
+                  x(l,m,k,1), x(l,m,k,2), x(l,m,k,3), &
+                  x(l,m,n,1), x(l,m,n,2), x(l,m,n,3), &
+                  x(l,j,n,1), x(l,j,n,2), x(l,j,n,3),xp,yp,zp)
+               
+             vp3 = volpym(x(i,j,k,1), x(i,j,k,2), x(i,j,k,3), &
+                  x(l,j,k,1), x(l,j,k,2), x(l,j,k,3), &
+                  x(l,j,n,1), x(l,j,n,2), x(l,j,n,3), &
+                  x(i,j,n,1), x(i,j,n,2), x(i,j,n,3),xp,yp,zp)
+               
+             vp4 = volpym(x(i,m,k,1), x(i,m,k,2), x(i,m,k,3), &
+                  x(i,m,n,1), x(i,m,n,2), x(i,m,n,3), &
+                  x(l,m,n,1), x(l,m,n,2), x(l,m,n,3), &
+                  x(l,m,k,1), x(l,m,k,2), x(l,m,k,3),xp,yp,zp)
+             
+             vp5 = volpym(x(i,j,k,1), x(i,j,k,2), x(i,j,k,3), &
+                  x(i,m,k,1), x(i,m,k,2), x(i,m,k,3), &
+                  x(l,m,k,1), x(l,m,k,2), x(l,m,k,3), &
+                  x(l,j,k,1), x(l,j,k,2), x(l,j,k,3),xp,yp,zp)
+             
+             vp6 = volpym(x(i,j,n,1), x(i,j,n,2), x(i,j,n,3), &
+                  x(l,j,n,1), x(l,j,n,2), x(l,j,n,3), &
+                  x(l,m,n,1), x(l,m,n,2), x(l,m,n,3), &
+                  x(i,m,n,1), x(i,m,n,2), x(i,m,n,3),xp,yp,zp)
+             
+             ! Set the volume to 1/6 of the sum of the volumes of the
+             ! pyramid. Remember that volpym computes 6 times the
+             ! volume.
+             
+             vol = (vp1 + vp2 + vp3 + vp4 + vp5 + vp6)/6.0
+             
+             ! Store the number of bins
+             numBins = shape(maxVol)
+
+             ! Now we need to find the bin which the current element belongs
+             ! x coordinate
+             iBin = findBin(xBounds(1,1), xBounds(2,1), numBins(1), xp)
+             ! y coordinate
+             jBin = findBin(xBounds(1,2), xBounds(2,2), numBins(2), yp)
+             ! z coordinate
+             kBin = findBin(xBounds(1,3), xBounds(2,3), numBins(3), zp)
+             
+             ! Compare the value with the maximum volume known so far for the
+             ! same bin
+             
+             if (abs(vol) > maxVol(iBin,jBin,kBin)) &
+                  maxVol(iBin,jBin,kBin)=abs(vol)
+             
+          end do
+       end do
+    end do
+    
+  end subroutine checkVol
+             
+  !        ================================================================
+  
+  !        ================================================================
+  
+  function volpym(xa,ya,za,xb,yb,zb,xc,yc,zc,xd,yd,zd,xp,yp,zp)
+    !
+    !        ****************************************************************
+    !        *                                                              *
+    !        * volpym computes 6 times the volume of a pyramid. Node p,     *
+    !        * whose coordinates are set in the subroutine metric itself,   *
+    !        * is the top node and a-b-c-d is the quadrilateral surface.    *
+    !        * It is assumed that the cross product vCa * vDb points in     *
+    !        * the direction of the top node. Here vCa is the diagonal      *
+    !        * running from node c to node a and vDb the diagonal from      *
+    !        * node d to node b.                                            *
+    !        *                                                              *
+    !        ****************************************************************
+    !
+
+    implicit none
+    !
+    !        Function type.
+    !
+    real :: volpym
+    !
+    !        Function arguments.
+    !
+    real, intent(in) :: xa, ya, za, xb, yb, zb
+    real, intent(in) :: xc, yc, zc, xd, yd, zd
+    real, intent(in) :: xp, yp, zp
+    !
+    !        Working
+    !
+    real :: fourth
+
+    !
+    !        ****************************************************************
+    !        *                                                              *
+    !        * Begin execution                                              *
+    !        *                                                              *
+    !        ****************************************************************
+    !
+    
+    fourth = 1.0/4.0
+
+    volpym = (xp - fourth*(xa + xb  + xc + xd))              &
+         * ((ya - yc)*(zb - zd) - (za - zc)*(yb - yd))   + &
+         (yp - fourth*(ya + yb  + yc + yd))              &
+         * ((za - zc)*(xb - xd) - (xa - xc)*(zb - zd))   + &
+         (zp - fourth*(za + zb  + zc + zd))              &
+         * ((xa - xc)*(yb - yd) - (ya - yc)*(xb - xd))
+
+  end function volpym
+
+  !        ================================================================
+  
+  !        ================================================================
+
+  function findBin(xmin,xmax,numBins,x)
+    
+    ! This function returns the bin index where the coordinate x
+    ! belongs when the interval [xmin,xmax] is split in numBins bins
+    
+    implicit none
+    
+    ! Function type
+    integer :: findBin
+    
+    ! Function inputs
+    real, intent(in) :: xmin, xmax, x
+    integer, intent(in) :: numBins
+    
+    ! Working variables
+    real :: dx
+    
+    !
+    ! BEGIN EXECUTION
+    !
+    
+    ! Find the bin size
+    dx = (xmax - xmin)/numBins
+    
+    ! Find the bin index
+    findBin = floor((x-xmin)/dx) + 1
+    
+  end function findBin
+  
+end subroutine computeVolumes
+
+!        ================================================================
+!        ================================================================
+!        ================================================================
+
+subroutine genCartesianMesh(maxVol,xBounds,extensions,ratios,cgnsFile, &
+     nBinX,nBinY,nBinZ)
+
+  ! This subroutine will generate the background cartesian mesh coordinates
+
+  ! extension: This is the ratio between the farfield distance from the bounding box length
+  !            for each coordinate and side
+  ! ratios: Ratio in which cells will increase from the bounding box to the farfield
+  
+  implicit none
+  
+  ! Subroutine inputs
+  real, dimension(nBinX,nBinY,nBinZ), intent(in) :: maxVol
+  real, dimension(2,3), intent(in) :: xBounds, extensions, ratios
+  character*(*), intent(in) :: cgnsFile
+  integer, intent(in) :: nBinX, nBinY, nBinZ
+  
+  ! Working variables
+  real, allocatable, dimension(:,:,:,:) :: x
+  real, dimension(:), allocatable :: xArray, yArray, zArray
+  integer :: xSize, ySize, zSize, i, j, k
+  
+  !
+  ! BEGIN EXECUTION
+  !
+
+  ! Generate coordinates array for each direction
+  call generateArray(maxVol, 1, xBounds(1,1), xBounds(2,1), &
+       extensions(1,1), extensions(2,1), ratios(1,1), ratios(2,1), xArray)
+  call generateArray(maxVol, 2, xBounds(1,2), xBounds(2,2), extensions(1,2), &
+       extensions(2,2), ratios(1,2), ratios(2,2), yArray)
+  call generateArray(maxVol, 3, xBounds(1,3), xBounds(2,3), extensions(1,3), &
+       extensions(2,3), ratios(1,3), ratios(2,3), zArray)
+  
+  ! Get array sizes
+  xSize = size(xArray)
+  ySize = size(yArray)
+  zSize = size(zArray)
+
+  ! Allocate the mesh coordinates array
+  allocate(x(xSize, ySize, zSize, 3))
+
+  ! Assing coordinates
+  do k = 1, zSize
+     do j = 1, ySize
+        do i = 1, xSize
+           x(i,j,k,1) = xArray(i)
+           x(i,j,k,2) = yArray(j)
+           x(i,j,k,3) = zArray(k)
+        end do
+     end do
+  end do
+  
+  ! Write CGNS file
+  call writeCartGrid(cgnsFile,x)
+
+  !        ================================================================
+  
+contains
+  
+  subroutine generateArray(maxVol, coordIndex, xmin, xmax, extension1, extension2, &
+       ratio1, ratio2, xArray)
+    
+    ! This generates the mesh coordinates array in a single dimension. This
+    ! subroutine need to be called three times (one for x, one for y and one
+    ! for z).
+    ! extension1, ratio1 apply between farfield and bounding block, while
+    ! extension2, ratio2 apply between bounding block and farfield
+    ! coordIndex: coordinate index. use 1 if you are creating an array in the
+    ! direction defined by the first index of maxVol, 2 for the second, ...
+    
+    implicit none
+    
+    ! Subroutine inputs
+    real, dimension(:,:,:), intent(in) :: maxVol
+    integer, intent(in) :: coordIndex
+    real, intent(in) :: xmin, xmax
+    real, intent(in) :: extension1, ratio1, extension2, ratio2
+    
+    ! Subroutine outputs
+    real, dimension(:), allocatable, intent(out) :: xArray
+    
+    ! Working variables
+    real :: edge, dxBin, vol
+    integer :: n_ff1_cells, n_ff2_cells, binIndex
+    integer :: index, indexMax, offset, numBins, position
+    integer, dimension(3) :: maxIndices
+    integer, dimension(:), allocatable :: numBin_cells
+    real, dimension(:), allocatable :: dx_cells
+    
+    
+    !
+    ! Begin execution
+    !
+    
+    ! Get the number of bins in the specified direction
+    maxIndices = shape(maxVol)
+    numBins = maxIndices(coordIndex)
+
+    ! Compute the bin size
+    dxBin = (xmax-xmin)/numBins
+    
+    ! Allocate vectors to store bin information
+    allocate(numBin_cells(numBins))
+    allocate(dx_cells(numBins))
+    
+    ! We will try to find the number of cells inside each bin
+    do binIndex = 1,numBins
+       
+       ! Find the maximal bin volume within this slice
+       if (coordIndex .eq. 1) then
+          vol = maxval(maxVol(binIndex,:,:))
+       else if (coordIndex .eq. 2) then
+          vol = maxval(maxVol(:,binIndex,:))
+       else if (coordIndex .eq. 3) then
+          vol = maxval(maxVol(:,:,binIndex))
+       end if
+       
+       ! Compute the length of the cell edge for each bin, assuming that the
+       ! cells inside the bin are perfect cubes
+       edge = vol**(1./3.)
+       
+       ! See how many cells we can fit inside the bounding box
+       numBin_cells(binIndex) = max(floor(dxBin/edge),1)
+       
+       ! Correct the cell size for the computed number of cells
+       dx_cells(binIndex) = dxBin/numBin_cells(binIndex)
+       
+    end do
+
+    ! See how many cells we need to create a geometric progression until the
+    ! fairfield. I used Geometric Progression sum to derive this equation
+    n_ff1_cells = ceiling(log(extension1*(xmax-xmin)*(ratio1-1.)/dx_cells(1)+1.)/ &
+         log(ratio1))
+    n_ff2_cells = ceiling(log(extension2*(xmax-xmin)*(ratio2-1.)/dx_cells(numBins)+1.)/ &
+         log(ratio2))
+
+    ! Allocate the coordinates array
+    allocate(xArray(n_ff1_cells + n_ff2_cells + sum(numBin_cells) + 1))
+    
+    ! Populate the bounding block coordinates
+    xArray(n_ff1_cells+1) = xmin ! First coordinate of bounding box
+    position = n_ff1_cells + 1 ! Initialize position index
+    do binIndex = 1, numBins
+       do index = 1, numBin_cells(binIndex)
+          position = position + 1 ! Increment position index
+          xArray(position) = xArray(position-1) + dx_cells(binIndex)
+       end do
+    end do
+    
+    ! Populate coordinates from the bounding box to the farfield
+    if (n_ff2_cells > 0) then
+       offset = n_ff1_cells + sum(numBin_cells) + 1
+       do index = 1, n_ff2_cells
+          xArray(offset+index) = xArray(offset+index-1) + edge*ratio2**(index-1)
+       end do
+    end if
+    
+    ! Populate coordinates from farfield until bounding block in the reverse direction
+    if (n_ff1_cells > 0) then
+       offset = n_ff1_cells + 1
+       do index = 1, n_ff1_cells
+          xArray(offset-index) = xArray(offset-index+1) - edge*ratio1**(index-1)
+       end do
+    end if
+
+  end subroutine generateArray
+  
+  !        ================================================================
+  
+  subroutine writeCartGrid(cgnsFile,x)
+
+    ! This subroutine writes a CGNS file containing all the block specified
+    ! in zoneInfo. Only coordinates are writen. There will be no boundary conditions
+
+    implicit none
+    include 'cgnslib_f.h'
+
+    ! Input Arguments
+    character*(*),intent(in) :: cgnsFile
+    real, allocatable, dimension(:,:,:,:), intent(in) :: x
+    
+    ! Working Variables
+    integer :: cg, iBase, cell_dim, phys_dim
+    character*32 :: zoneName, baseName
+    integer :: iZone, zoneIndex, ierr, coordID
+    integer, dimension(4) :: dims
+    integer, dimension(9) :: zoneSize
+    
+    ! Open a new CGNS file:
+    call cg_open_f(trim(cgnsFile), CG_MODE_WRITE, cg, ierr)
+    if (ierr .eq. CG_ERROR) call cg_error_exit_f
+    
+    ! Create a single base
+    cell_dim = 3
+    phys_dim = 3
+    call cg_base_write_f(cg, 'BASE#1', cell_dim, phys_dim, iBase, ierr)
+    if (ierr .eq. CG_ERROR) call cg_error_exit_f
+       
+    ! Get the number of points in each direction
+    dims = shape(x)
+       
+    ! Generate zone name
+    write(zoneName,'(a7,i0.5)') 'domain.',1
+       
+    ! Assemble zone size array according to CGNS documentation for structured grids
+    zoneSize(1:3) = dims(1:3)
+    zoneSize(4) = dims(1)-1
+    zoneSize(5) = dims(2)-1
+    zoneSize(6) = dims(3)-1
+    zoneSize(7:9) = 0
+       
+    ! Create zone
+    call cg_zone_write_f(cg, iBase, zoneName, zoneSize, Structured, iZone, ierr)
+    if (ierr .eq. CG_ERROR) call cg_error_exit_f
+       
+    ! Write the grid coordinates
+    call cg_coord_write_f(cg, iBase, iZone, realDouble, 'CoordinateX', &
+         x(:,:,:,1), coordID, ierr)
+    if (ierr .eq. CG_ERROR) call cg_error_exit_f
+       
+    call cg_coord_write_f(cg, iBase, iZone, realDouble, 'CoordinateY', &
+         x(:,:,:,2), coordID, ierr)
+    if (ierr .eq. CG_ERROR) call cg_error_exit_f
+       
+    call cg_coord_write_f(cg, iBase, iZone, realDouble, 'CoordinateZ', &
+         x(:,:,:,3), coordID, ierr)
+    if (ierr .eq. CG_ERROR) call cg_error_exit_f
+       
+    ! Close file
+    call cg_close_f(cg, ierr)
+    if (ierr .eq. CG_ERROR) call cg_error_exit_f
+    
+  end subroutine writeCartGrid
+
+end subroutine genCartesianMesh
+
+!=============================================!
+!                                             !
+!     END OF CARTESIAN MESH SUBROUTINES       !
+!                                             !
+!=============================================!

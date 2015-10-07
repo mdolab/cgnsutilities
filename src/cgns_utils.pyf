@@ -141,6 +141,35 @@ python module libcgns_utils ! in
         end subroutine getpatchinfo
         subroutine deallocpatches()
         end subroutine deallocpatches
+        subroutine findbounds(x, xBounds, il, jl, kl) ! in :libcgns_utils:cgns_utilities.F90
+            real(kind=8) dimension(il,jl,kl,3),intent(in) :: x
+            real(kind=8) dimension(2,3), intent(inout) :: xBounds
+            integer, optional,intent(in),check(shape(x,0)==il),depend(x) :: il=shape(x,0)
+            integer, optional,intent(in),check(shape(x,1)==jl),depend(x) :: jl=shape(x,1)
+            integer, optional,intent(in),check(shape(x,2)==kl),depend(x) :: kl=shape(x,2)
+        end subroutine findbounds
+        subroutine computevolumes(x, xBounds, maxVol, il, jl, kl, nBinX, nBinY, nBinZ) ! in :libcgns_utils:cgns_utilities.F90
+            real(kind=8) dimension(il,jl,kl,3),intent(in) :: x
+            real(kind=8) dimension(2,3), intent(in) :: xBounds
+            real(kind=8) dimension(nBinX,nBinY,nBinZ), intent(inout) :: maxVol
+            integer, optional,intent(in),check(shape(x,0)==il),depend(x) :: il=shape(x,0)
+            integer, optional,intent(in),check(shape(x,1)==jl),depend(x) :: jl=shape(x,1)
+            integer, optional,intent(in),check(shape(x,2)==kl),depend(x) :: kl=shape(x,2)
+            integer, optional,intent(in),check(shape(maxVol,0)==nBinX),depend(maxVol) :: nBinX=shape(maxVol,0)
+            integer, optional,intent(in),check(shape(maxVol,1)==nBinY),depend(maxVol) :: nBinY=shape(maxVol,1)
+            integer, optional,intent(in),check(shape(maxVol,2)==nBinZ),depend(maxVol) :: nBinZ=shape(maxVol,2)
+        end subroutine computevolumes
+        subroutine gencartesianmesh(maxVol, xBounds, extensions, ratios, cgnsfile, nBinX, nBinY, nBinZ) ! in :libcgns_utils:cgns_utilities.F90
+            real(kind=8) dimension(nBinX,nBinY,nBinZ), intent(in) :: maxVol
+            real(kind=8) dimension(2,3), intent(in) :: xBounds
+            real(kind=8) dimension(2,3), intent(in) :: extensions
+            real(kind=8) dimension(2,3), intent(in) :: ratios
+            character*(*) intent(in) :: cgnsfile
+            integer, optional,intent(in),check(shape(maxVol,0)==nBinX),depend(maxVol) :: nBinX=shape(maxVol,0)
+            integer, optional,intent(in),check(shape(maxVol,1)==nBinY),depend(maxVol) :: nBinY=shape(maxVol,1)
+            integer, optional,intent(in),check(shape(maxVol,2)==nBinZ),depend(maxVol) :: nBinZ=shape(maxVol,2)
+        end subroutine gencartesianmesh
+
     end interface 
 end python module libcgns_utils
 
