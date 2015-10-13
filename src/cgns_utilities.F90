@@ -1919,7 +1919,8 @@ end subroutine findBounds
 !        ================================================================
 !        ================================================================
 
-subroutine computeVolumes(x, xBounds, maxVol, il, jl, kl, nBinX, nBinY, nBinZ)
+subroutine computeVolumes(x, xBounds, binVolX, binVolY, binVolZ, &
+     binCellsX, binCellsY, binCellsZ, il, jl, kl, nBinX, nBinY, nBinZ)
 
   ! This subroutine will loop over all the faces of the block, compute their
   ! volumes, and if this volume is greater than the reference volume stored
@@ -1939,7 +1940,12 @@ subroutine computeVolumes(x, xBounds, maxVol, il, jl, kl, nBinX, nBinY, nBinZ)
   integer, intent(in) :: il, jl, kl, nBinX, nBinY, nBinZ
 
   ! Subroutine inputs/outputs.
-  real, dimension(nBinX,nBinY,nBinZ), intent(inout) :: maxVol
+  real, dimension(nBinX), intent(inout) :: binVolX
+  real, dimension(nBinY), intent(inout) :: binVolY
+  real, dimension(nBinZ), intent(inout) :: binVolZ
+  integer, dimension(nBinX), intent(inout) :: binCellsX
+  integer, dimension(nBinY), intent(inout) :: binCellsY
+  integer, dimension(nBinZ), intent(inout) :: binCellsZ
 
   !
   ! BEGIN EXECUTION
@@ -1949,29 +1955,37 @@ subroutine computeVolumes(x, xBounds, maxVol, il, jl, kl, nBinX, nBinY, nBinZ)
   ! compute the volumes of the cells and assign them to their
   ! respective bins. maxVol will be updated after each call
   
+  ! DOING PER FACE
   ! Face imin
-  call checkVol(2,2,2,jl,2,kl,x,xBounds,maxVol)
+  !call checkVol(2,2,2,jl,2,kl,x,xBounds,maxVol)
   ! Face imax
-  call checkVol(il,il,2,jl,2,kl,x,xBounds,maxVol)
+  !call checkVol(il,il,2,jl,2,kl,x,xBounds,maxVol)
   ! Face jmin
-  call checkVol(2,il,2,2,2,kl,x,xBounds,maxVol)
+  !call checkVol(2,il,2,2,2,kl,x,xBounds,maxVol)
   ! Face jmax
-  call checkVol(2,il,jl,jl,2,kl,x,xBounds,maxVol)
+  !call checkVol(2,il,jl,jl,2,kl,x,xBounds,maxVol)
   ! Face kmin
-  call checkVol(2,il,2,jl,2,2,x,xBounds,maxVol)
+  !call checkVol(2,il,2,jl,2,2,x,xBounds,maxVol)
   ! Face kmax
-  call checkVol(2,il,2,jl,kl,kl,x,xBounds,maxVol)
+  !call checkVol(2,il,2,jl,kl,kl,x,xBounds,maxVol)
+
+  ! Doing full block
+  call checkVol(2, il, 2, jl, 2, kl, x, xBounds, &
+       binVolX, binVolY, binVolZ, binCellsX, binCellsY, binCellsZ, &
+       nBinX, nBinY, nBinZ)
 
 contains
   
   !        ================================================================
 
-  subroutine checkVol(imin,imax,jmin,jmax,kmin,kmax,x,xBounds,maxVol)
+  subroutine checkVol(imin, imax, jmin, jmax, kmin, kmax, x, xBounds, &
+       binVolX, binVolY, binVolZ, binCellsX, binCellsY, binCellsZ, &
+       nBinX, nBinY, nBinZ)
 
     ! This function will compute the maximum volumes within the bounds
     ! specified by imin, imax, jmin, jmax, kmin, kmax and assign to the correct bin.
     ! This is useful when we want to loop over each surface.
-    ! maxVol will be updated
+    ! binVol and binCells will be updated
     
     implicit none
 
@@ -1979,15 +1993,20 @@ contains
     integer, intent(in) :: imin, imax, jmin, jmax, kmin, kmax
     real, dimension(:,:,:,:), intent(in) :: x
     real, dimension(2,3), intent(in) :: xBounds
+    integer, intent(in) :: nBinX, nBinY, nBinZ
 
     ! Subroutine  Outputs
-    real, dimension(:,:,:), intent(inout) :: maxVol
+    real, dimension(:), intent(inout) :: binVolX
+    real, dimension(:), intent(inout) :: binVolY
+    real, dimension(:), intent(inout) :: binVolZ
+    integer, dimension(:), intent(inout) :: binCellsX
+    integer, dimension(:), intent(inout) :: binCellsY
+    integer, dimension(:), intent(inout) :: binCellsZ
 
     ! Working variables
     real :: vol, xp, yp, zp, eighth
     real :: vp1, vp2, vp3, vp4, vp5, vp6
     integer :: i, j, k, l, m, n, iBin, jBin, kBin
-    integer, dimension(3) :: numBins
 
     ! Compute the volumes. The hexahedron is split into 6 pyramids
     ! whose volumes are computed. The volume is positive for a
@@ -2061,23 +2080,24 @@ contains
              ! volume.
              
              vol = (vp1 + vp2 + vp3 + vp4 + vp5 + vp6)/6.0
-             
-             ! Store the number of bins
-             numBins = shape(maxVol)
 
              ! Now we need to find the bin which the current element belongs
              ! x coordinate
-             iBin = findBin(xBounds(1,1), xBounds(2,1), numBins(1), xp)
+             iBin = findBin(xBounds(1,1), xBounds(2,1), nBinX, xp)
              ! y coordinate
-             jBin = findBin(xBounds(1,2), xBounds(2,2), numBins(2), yp)
+             jBin = findBin(xBounds(1,2), xBounds(2,2), nBinY, yp)
              ! z coordinate
-             kBin = findBin(xBounds(1,3), xBounds(2,3), numBins(3), zp)
+             kBin = findBin(xBounds(1,3), xBounds(2,3), nBinZ, zp)
              
-             ! Compare the value with the maximum volume known so far for the
-             ! same bin
-             
-             if (abs(vol) > maxVol(iBin,jBin,kBin)) &
-                  maxVol(iBin,jBin,kBin)=abs(vol)
+             ! Increment the cells counter of the bins
+             binCellsX(iBin) = binCellsX(iBin) + 1
+             binCellsY(jBin) = binCellsY(jBin) + 1
+             binCellsZ(kBin) = binCellsZ(kBin) + 1
+
+             ! Update the average volumes of the bins
+             binVolX(iBin) = ((binCellsX(iBin)-1)*binVolX(iBin) + vol)/binCellsX(iBin)
+             binVolY(jBin) = ((binCellsY(jBin)-1)*binVolY(jBin) + vol)/binCellsY(jBin)
+             binVolZ(kBin) = ((binCellsZ(kBin)-1)*binVolZ(kBin) + vol)/binCellsZ(kBin)
              
           end do
        end do
@@ -2178,20 +2198,22 @@ end subroutine computeVolumes
 !        ================================================================
 !        ================================================================
 
-subroutine genCartesianMesh(maxVol,xBounds,extensions,ratios,cgnsFile, &
-     nBinX,nBinY,nBinZ)
+subroutine genCartesianMesh(xBounds, binVolX, binVolY, binVolZ, &
+     extensions, nCells, cgnsFile, nBinX, nBinY, nBinZ)
 
   ! This subroutine will generate the background cartesian mesh coordinates
 
   ! extension: This is the ratio between the farfield distance from the bounding box length
   !            for each coordinate and side
-  ! ratios: Ratio in which cells will increase from the bounding box to the farfield
   
   implicit none
   
   ! Subroutine inputs
-  real, dimension(nBinX,nBinY,nBinZ), intent(in) :: maxVol
-  real, dimension(2,3), intent(in) :: xBounds, extensions, ratios
+  real, dimension(2,3), intent(in) :: xBounds, extensions
+  real, dimension(nBinX), intent(in) :: binVolX
+  real, dimension(nBinY), intent(in) :: binVolY
+  real, dimension(nBinZ), intent(in) :: binVolZ
+  integer, dimension(3), intent(in) :: nCells
   character*(*), intent(in) :: cgnsFile
   integer, intent(in) :: nBinX, nBinY, nBinZ
   
@@ -2205,13 +2227,20 @@ subroutine genCartesianMesh(maxVol,xBounds,extensions,ratios,cgnsFile, &
   !
 
   ! Generate coordinates array for each direction
-  call generateArray(maxVol, 1, xBounds(1,1), xBounds(2,1), &
-       extensions(1,1), extensions(2,1), ratios(1,1), ratios(2,1), xArray)
-  call generateArray(maxVol, 2, xBounds(1,2), xBounds(2,2), extensions(1,2), &
-       extensions(2,2), ratios(1,2), ratios(2,2), yArray)
-  call generateArray(maxVol, 3, xBounds(1,3), xBounds(2,3), extensions(1,3), &
-       extensions(2,3), ratios(1,3), ratios(2,3), zArray)
-  
+  print *,''
+  print *,'Please check if the geometric growth ratios of the edge lengths'
+  print *,'are within acceptable bounds.'
+  print *,'X array'
+  call generateArray(binVolX, nBinX, xBounds(1,1), xBounds(2,1), &
+       extensions(1,1), extensions(2,1), nCells(1), xArray)
+  print *,'Y array'
+  call generateArray(binVolY, nBinY, xBounds(1,2), xBounds(2,2), &
+       extensions(1,2), extensions(2,2), nCells(2), yArray)
+  print *,'Z array'
+  call generateArray(binVolZ, nBinZ, xBounds(1,3), xBounds(2,3), &
+       extensions(1,3), extensions(2,3), nCells(3), zArray)
+  print *,''
+
   ! Get array sizes
   xSize = size(xArray)
   ySize = size(yArray)
@@ -2238,8 +2267,8 @@ subroutine genCartesianMesh(maxVol,xBounds,extensions,ratios,cgnsFile, &
   
 contains
   
-  subroutine generateArray(maxVol, coordIndex, xmin, xmax, extension1, extension2, &
-       ratio1, ratio2, xArray)
+  subroutine generateArray(binVol, nBin, xmin, xmax, extension1, extension2, &
+       nCells, xArray)
     
     ! This generates the mesh coordinates array in a single dimension. This
     ! subroutine need to be called three times (one for x, one for y and one
@@ -2252,87 +2281,167 @@ contains
     implicit none
     
     ! Subroutine inputs
-    real, dimension(:,:,:), intent(in) :: maxVol
-    integer, intent(in) :: coordIndex
+    real, dimension(:), intent(in) :: binVol
+    integer, intent(in) :: nBin
     real, intent(in) :: xmin, xmax
-    real, intent(in) :: extension1, ratio1, extension2, ratio2
+    real, intent(in) :: extension1, extension2
+    integer, intent(in) :: nCells
     
     ! Subroutine outputs
     real, dimension(:), allocatable, intent(out) :: xArray
     
     ! Working variables
-    real :: edge, dxBin, vol
+    real :: curr_edge, prev_edge, next_edge, final_edge, dxBin
+    real :: sum_edges, avg_edge, correction, K, ratio1, ratio2
     integer :: n_ff1_cells, n_ff2_cells, binIndex
     integer :: index, indexMax, offset, numBins, position
     integer, dimension(3) :: maxIndices
-    integer, dimension(:), allocatable :: numBin_cells
-    real, dimension(:), allocatable :: dx_cells
+    integer, dimension(nBin) :: binCells
+    real, dimension(nBin) :: growth, start_edge
     
     
     !
     ! Begin execution
     !
     
-    ! Get the number of bins in the specified direction
-    maxIndices = shape(maxVol)
-    numBins = maxIndices(coordIndex)
-
     ! Compute the bin size
-    dxBin = (xmax-xmin)/numBins
+    dxBin = (xmax-xmin)/nBin
     
-    ! Allocate vectors to store bin information
-    allocate(numBin_cells(numBins))
-    allocate(dx_cells(numBins))
-    
-    ! We will try to find the number of cells inside each bin
-    do binIndex = 1,numBins
-       
-       ! Find the maximal bin volume within this slice
-       if (coordIndex .eq. 1) then
-          vol = maxval(maxVol(binIndex,:,:))
-       else if (coordIndex .eq. 2) then
-          vol = maxval(maxVol(:,binIndex,:))
-       else if (coordIndex .eq. 3) then
-          vol = maxval(maxVol(:,:,binIndex))
-       end if
-       
-       ! Compute the length of the cell edge for each bin, assuming that the
-       ! cells inside the bin are perfect cubes
-       edge = vol**(1./3.)
-       
-       ! See how many cells we can fit inside the bounding box
-       numBin_cells(binIndex) = max(floor(dxBin/edge),1)
-       
-       ! Correct the cell size for the computed number of cells
-       dx_cells(binIndex) = dxBin/numBin_cells(binIndex)
-       
-    end do
+    ! We will try to find the number of cells inside each bin.
+    ! But we only need to do that if we have farfield extensions.
+    ! If we have no farfield extension (e.g. 2D case), then we will
+    ! use the number of cells provided by the user
+    if ((extension1 .ne. 0) .or. (extension2 .ne. 0)) then
+       do binIndex = 1,nBin
 
-    ! See how many cells we need to create a geometric progression until the
-    ! fairfield. I used Geometric Progression sum to derive this equation
-    n_ff1_cells = ceiling(log(extension1*(xmax-xmin)*(ratio1-1.)/dx_cells(1)+1.)/ &
-         log(ratio1))
-    n_ff2_cells = ceiling(log(extension2*(xmax-xmin)*(ratio2-1.)/dx_cells(numBins)+1.)/ &
-         log(ratio2))
+          ! Compute the cell length at the current bin
+          curr_edge = binVol(binIndex)**(1./3.)
+          
+          ! Compute the cell length of the previous bin (except when
+          ! we are at the first bin)
+          if (binIndex .eq. 1) then
+             prev_edge = curr_edge
+          else
+             prev_edge = binVol(binIndex-1)**(1./3.)
+          end if
+          
+          ! Compute the cell length of the next bin (except when
+          ! we are at the last bin)
+          if (binIndex .eq. nBin) then
+             next_edge = curr_edge
+          else
+             next_edge = binVol(binIndex+1)**(1./3.)
+          end if
+          
+          ! The cell edges at the interfaces will be equal to the average of edges
+          ! of adjacent bins. We only need to store the start_edge for next steps
+          start_edge(binIndex) = (prev_edge + curr_edge)/2.
+          final_edge = (next_edge + curr_edge)/2.
+          
+          ! Compute the number of cells that we can fit with aritmetic progression
+          ! of edges
+          binCells(binIndex) = nint(2.*dxBin/(start_edge(binIndex) + final_edge))
+          
+          ! Recompute the sum of edges with the rounded number
+          sum_edges = 2.*dxBin/binCells(binIndex)
+          
+          ! Apply half of the correction to each edge
+          correction = sum_edges - start_edge(binIndex) - final_edge
+          start_edge(binIndex) = start_edge(binIndex) + correction/2.
+          final_edge = final_edge + correction/2.
+          
+          ! Compute the arithmetic growth factor using the corrected values
+          growth(binIndex) = &
+               (final_edge - start_edge(binIndex))/ &
+               start_edge(binIndex)/(binCells(binIndex) - 1)
+          
+          ! We won't populate the cells coordinates now because we don't know
+          ! the total number of cells to allocate the vector
+          
+       end do
+       
+    else ! As we have no farfield we have to use all the cells requested by the user
+
+       ! We will distrute the total number of cells according to the bin volumes
+
+       ! Proportionality factor
+       K = nCells/sum(binVol**(-1.))
+
+       ! Populate number of cells per bin and edges
+       do binIndex = 1,nBin
+
+          ! Compute number of cells for each bin using the factor
+          binCells(binIndex) = K/binVol(binIndex)
+
+          ! Compute average edge size that will fit this number of cells
+          avg_edge = dxBin/binCells(binIndex)
+
+          ! Assume that all cells have the average size for the first bin only
+          if (binIndex .eq. 1) then
+             start_edge(binIndex) = avg_edge
+          else ! Use the final edge obtained from the preivous bin
+             start_edge(binIndex) = final_edge
+          end if
+          
+          ! Compute the final edge using the average and initial edge
+          final_edge = 2.0*avg_edge - start_edge(binIndex)
+
+          ! Find the growth factor
+          growth(binIndex) = &
+               (final_edge - start_edge(binIndex))/ &
+               start_edge(binIndex)/(binCells(binIndex) - 1)
+
+       end do
+
+    end if
+
+    ! Now we need to find the remaining number of cells and distribute them
+    ! among the two farfield directions. The distribution will be based
+    ! on their extension, i.e. the higher the entension, the higher the
+    ! number if cells
+    if ((extension1 .ne. 0) .and. (extension2 .ne. 0)) then
+       n_ff1_cells = nint(extension1*(nCells-sum(binCells))/(extension1 + extension2))
+       n_ff2_cells = nCells - sum(binCells) - n_ff1_cells
+    else if (extension1 .ne. 0) then
+       n_ff1_cells = nCells - sum(binCells)
+       n_ff2_cells = 0
+    else if (extension2 .ne. 0) then
+       n_ff1_cells = 0
+       n_ff2_cells = nCells - sum(binCells)
+    else
+       n_ff1_cells = 0
+       n_ff2_cells = 0
+    end if
+    
+    ! Check if the user requested an appropriate number of cells
+    if ((n_ff1_cells .lt. 0) .or. (n_ff2_cells .lt. 0)) then
+       print *,'Requested number of cells is too low...'
+       print *,'Increase the number of cells.'
+    end if
+
+    ! Next we need to compute the geometric growth ratios for each side
+    ratio1 = findRatio(extension1, xmax-xmin, start_edge(1), n_ff1_cells)
+    ratio2 = findRatio(extension2, xmax-xmin, final_edge, n_ff2_cells)
 
     ! Allocate the coordinates array
-    allocate(xArray(n_ff1_cells + n_ff2_cells + sum(numBin_cells) + 1))
-    
+    allocate(xArray(n_ff1_cells + n_ff2_cells + sum(binCells) + 1))
+
     ! Populate the bounding block coordinates
     xArray(n_ff1_cells+1) = xmin ! First coordinate of bounding box
     position = n_ff1_cells + 1 ! Initialize position index
-    do binIndex = 1, numBins
-       do index = 1, numBin_cells(binIndex)
+    do binIndex = 1, nBin
+       do index = 1, binCells(binIndex)
           position = position + 1 ! Increment position index
-          xArray(position) = xArray(position-1) + dx_cells(binIndex)
+          xArray(position) = xArray(position-1) + &
+               start_edge(binIndex)*(1.+growth(binIndex)*(index-1))
        end do
     end do
-    
+
     ! Populate coordinates from the bounding box to the farfield
     if (n_ff2_cells > 0) then
-       offset = n_ff1_cells + sum(numBin_cells) + 1
+       offset = n_ff1_cells + sum(binCells) + 1
        do index = 1, n_ff2_cells
-          xArray(offset+index) = xArray(offset+index-1) + edge*ratio2**(index-1)
+          xArray(offset+index) = xArray(offset+index-1) + final_edge*ratio2**(index-1)
        end do
     end if
     
@@ -2340,11 +2449,70 @@ contains
     if (n_ff1_cells > 0) then
        offset = n_ff1_cells + 1
        do index = 1, n_ff1_cells
-          xArray(offset-index) = xArray(offset-index+1) - edge*ratio1**(index-1)
+          xArray(offset-index) = xArray(offset-index+1) - start_edge(1)*ratio1**(index-1)
        end do
     end if
 
   end subroutine generateArray
+
+  function findRatio(extension, bbox_length, edge0, nCells)
+    
+    ! This function returns the geometrical progression ratio that satisfies
+    ! the farfield distance and the number of cells. Newton search is used
+    ! INPUTS
+    ! extension: ratio of bbox_length and farfield distance
+    ! bbox_length: size of the bounding box
+    ! edge0: cell edge length at the end of the bounding box
+    ! nCells: number of cells used to reach farfield
+    
+    implicit none
+
+    ! Function type
+    real :: findRatio
+
+    ! Function inputs
+    real, intent(in) :: extension, bbox_length, edge0
+    integer, intent(in) :: nCells
+
+    ! Working variables
+    real :: q, q0, R, Rdot
+    integer :: nIters
+
+    ! Extra parameters
+    nIters = 200 ! Maximum number of iterations for Newton search
+    q0 = 20.0 ! Initial ratio
+
+    !
+    ! BEGIN EXECUTION
+    !
+
+    ! Initialize ratio
+    q = q0
+
+    ! Newton search loop
+    do i=1,nIters
+       ! Residual function
+       R = edge0*(1-q**nCells) - extension*bbox_length*(1-q)
+
+       ! Residual derivative
+       Rdot = -nCells*edge0*q**(nCells-1) + extension*bbox_length
+
+       ! Update ratio with Newton search
+       q = q - R/Rdot
+    end do
+
+    ! Check if we got a reasonable value
+    if ((q .le. 1) .or. (q .ge. q0)) then
+       print *,'Ratio may be too large...'
+       print *,'Increase number of cells or reduce extension'
+       stop
+    end if
+
+    ! Print and return result
+    print *,q
+    findRatio = q
+
+  end function findRatio
   
   !        ================================================================
   
