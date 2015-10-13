@@ -225,21 +225,18 @@ p_sub = subparsers.add_parser(
 p_sub.add_argument('gridFile', help='Name of input CGNS file')
 p_sub.add_argument('cartFile', help="File containing background mesh info. The file must consist of \n\
 5 lines contaning the following data: \n\
-<extensionX_front> <extensionY_bottom> <extensionZ_left> \n \
-<extensionX_aft> <extensionY_top> <extensionZ_right> \n \
-<ratioX_front> <ratioY_bottom> <ratioZ_left> \n \
-<ratioX_aft> <ratioY_top> <ratioZ_right> \n \
-<numBinX> <numBinY> <numBinZ> \n \
+  <extensionX1> <extensionY1> <extensionZ1> \n\
+  <extensionX2> <extensionY2> <extensionZ2> \n\
+  <numCellsX> <numCellsY> <numCellsZ> \n\
+  <numBinX> <numBinY> <numBinZ> \n\
 \n\
 where: \n\
-extension is the ratio between the distance of the cartesian box\n\
-  face to the corresponding bounding box face and the bounding\n\
-  box length. We need 2 values of extension per direction as we\n\
-  have two parallel faces for each one of them. \n\
-ratio is the geometrical growth ratio of the cells from the\n\
-  bounding box face to the cartesian box face. We also need\n\
-  2 values per axis. These numbers usually should be >1.0\n\
-  (e.g. 1.1 and 1.2 are good values) \n\
+extension is the distance of the cartesian box\n\
+  face to the corresponding bounding box face divided by the\n\
+  bounding box length. We need 2 values of extension per \n\
+  direction as we have two parallel faces for each one of them.\n\
+numCells is the number of cells that should be used along the \n\
+  edges of the cartesian mesh.\n\
 numBin is the number of different uniform steps that will be used\n\
   along each bounding box edge. If numBin=1, the program will \n\
   use the same cell size along the entire bounding box edge. \n\
@@ -251,16 +248,15 @@ numBin is the number of different uniform steps that will be used\n\
 If you want one symmetry plane in the z direction, for instance,\n\
   you need to set one of the extensionZ values to 0.\n\
 If you want two symmetry plane in the z direction, (e.g. to run\n\
-  a 2D case) you need to set both extensionZ values to 0 and use\n\
-  numBinZ=1.\n \n\
+  a 2D case) you need to set both extensionZ values to 0.\n \n\
 example:\n\
   10 10 0\n\
   10 10 0\n\
-  1.2 1.2 1.2\n\
-  1.2 1.2 1.2\n\
+  100 100 100\n\
   4 4 1\n ")
-p_sub.add_argument('outFile', nargs='?', default=None,
-                     help='Optional output file')
+p_sub.add_argument('outFile', help='Name of output CGNS file \n\
+The output file contains only one cartesian block. The input \n\
+mesh is not included.\n')
 
 # Finally get the arguments we need!
 args = parser.parse_args()
@@ -413,19 +409,20 @@ class Grid(object):
     def cartesian(self, cartFile, outFile):
         """Generates a cartesian mesh around the provided grid"""
 
+        print ('Running cartesian grid generator')
+
         # Preallocate arrays
         extensions = numpy.zeros((2,3),order='F')
-        ratios = numpy.zeros((2,3),order='F')
-        numBins = numpy.zeros(3)
+        nCells = numpy.zeros(3,order='F')
+        numBins = numpy.zeros(3,order='F')
 
         # Read the five lines of the cartesian specs file
         with open(cartFile, 'r') as f:
             lines = list(f)
         extensions[0,:] = lines[0].split()
         extensions[1,:] = lines[1].split()
-        ratios[0,:] = lines[2].split()
-        ratios[1,:] = lines[3].split()
-        numBins[:] = lines[4].split()
+        nCells[:] = lines[2].split()
+        numBins[:] = lines[3].split()
 
         # Initialize bounding box coordinates using the first point of the first zone
         xBounds = numpy.zeros((2,3),order='F')
@@ -435,7 +432,12 @@ class Grid(object):
         xBounds[1,1] = self.blocks[0].coords[0,0,0,1]
         xBounds[0,2] = self.blocks[0].coords[0,0,0,2]
         xBounds[1,2] = self.blocks[0].coords[0,0,0,2]
-        maxVol = numpy.zeros(numBins, order='F') # Assign zeroes to all bins
+        binVolX = numpy.zeros(numBins[0], order='F') # Assign zeroes to all bins
+        binVolY = numpy.zeros(numBins[1], order='F')
+        binVolZ = numpy.zeros(numBins[2], order='F')
+        binCellsX = numpy.zeros(numBins[0], order='F', dtype=int) # Initialize cells counter for each bin
+        binCellsY = numpy.zeros(numBins[1], order='F', dtype=int)
+        binCellsZ = numpy.zeros(numBins[2], order='F', dtype=int)
 
         # Loop over all blocks to find the bounding box coordinates
         for index in range(len(self.blocks)):
@@ -443,10 +445,14 @@ class Grid(object):
 
         # Loop over all blocks to find the bin volumes
         for index in [0]:#range(len(self.blocks)):
-            libcgns_utils.computevolumes(self.blocks[index].coords, xBounds, maxVol)
+            libcgns_utils.computevolumes(self.blocks[index].coords, xBounds, \
+                                         binVolX, binVolY, binVolZ, binCellsX, binCellsY, binCellsZ)
 
         # Write cartesian mesh
-        libcgns_utils.gencartesianmesh(maxVol, xBounds, extensions, ratios, outFile)
+        libcgns_utils.gencartesianmesh(xBounds, binVolX, binVolY, binVolZ, extensions, nCells, outFile)
+
+        # Print
+        print ('Mesh successfully generated and stored in: '+outFile)
 
     def split(self, extraSplits):
 
@@ -1542,11 +1548,7 @@ elif args.mode == 'double2d':
     curGrid.double2D()
 
 elif args.mode == 'cartesian':
-    if args.outFile is None:
-        outFile = 'cartgrid.cgns'
-    else:
-        outFile = args.outFile
-    curGrid.cartesian(args.cartFile,outFile)
+    curGrid.cartesian(args.cartFile,args.outFile)
     sys.exit(0)
 
 # Write out the grid.
