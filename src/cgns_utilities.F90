@@ -144,8 +144,10 @@ subroutine getBCInfo(cg, iBlock, iBC, bocoName, bocoType, ptRange, family)
 
   ! Working
   integer :: ier, base
-  integer NormalIndex(3), NormalListSize, NormalDataType, nDataSet
-  integer ptset_type, npnts, pnts(3,2),pnts_donor(3,2),ncon
+  integer :: NormalIndex(3), NormalListSize, NormalDataType, nDataSet
+  integer :: ptset_type, npnts, pnts(3,2),pnts_donor(3,2),ncon
+  integer :: nuserdata, index
+  character(len=256) :: name
 
   base = 1
   call cg_goto_f(cg, base, ier, 'end')
@@ -159,7 +161,30 @@ subroutine getBCInfo(cg, iBlock, iBC, bocoName, bocoType, ptRange, family)
 
   call cg_goto_f(cg, base, ier, "Zone_t", iBlock, "ZoneBC_t",1, "BC_t", iBC, "end")
   if (ier == 0) then ! Node exits
+
+     ! Get family name
      call cg_famname_read_f(family, ier)
+     if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+     ! Check for overset BC
+     ! First get number of user defined data
+     call cg_nuser_data_f(nuserdata, ier)
+     if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+     ! Loop over all user defined data to check for overset bc
+     do index = 1,nuserdata
+
+        ! Read user defined data
+        call cg_user_data_read_f(index, name, ier)
+        if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+        ! Compare names
+        if (name == 'BCOverset') then
+           bocoName = 'bcoverset'
+        end if
+        
+     end do
+
   end if
 
 end subroutine getBCInfo
@@ -250,8 +275,9 @@ subroutine writeZone(cg, zoneName, dims, zoneID)
 end subroutine writeZone
 
 subroutine writeCoordinates(cg, iBlock, il, jl, kl, X)
-  ! Return the subset of block coordinates of block 'iBlock', of dimensions
-  ! (il, jl, kl, 3) in X
+  ! Writes the subset of block coordinates 'X' of dimensions
+  ! (il, jl, kl, 3) into the block 'iBlock' of  the file 'cg',
+  ! (which should be open in write mode)
   implicit none
   include 'cgnslib_f.h'
 
@@ -2241,6 +2267,8 @@ subroutine genCartesianMesh(xBounds, binVolX, binVolY, binVolZ, &
        extensions(1,3), extensions(2,3), nCells(3), zArray)
   print *,''
 
+  print *,maxval(zArray)
+
   ! Get array sizes
   xSize = size(xArray)
   ySize = size(yArray)
@@ -2479,8 +2507,8 @@ contains
     integer :: nIters
 
     ! Extra parameters
-    nIters = 200 ! Maximum number of iterations for Newton search
-    q0 = 20.0 ! Initial ratio
+    nIters = 500 ! Maximum number of iterations for Newton search
+    q0 = 10.0 ! Initial ratio
 
     !
     ! BEGIN EXECUTION

@@ -409,6 +409,9 @@ class Grid(object):
     def cartesian(self, cartFile, outFile):
         """Generates a cartesian mesh around the provided grid"""
 
+        # PARAMETERS
+        inLayer = 2 # How many layers of the overset interpolation faces will be used for volume computation
+
         print ('Running cartesian grid generator')
 
         # Preallocate arrays
@@ -422,7 +425,8 @@ class Grid(object):
         extensions[0,:] = lines[0].split()
         extensions[1,:] = lines[1].split()
         nCells[:] = lines[2].split()
-        numBins[:] = lines[3].split()
+        #numBins[:] = lines[3].split()
+        numBins[:] = 1
 
         # Initialize bounding box coordinates using the first point of the first zone
         xBounds = numpy.zeros((2,3),order='F')
@@ -441,15 +445,280 @@ class Grid(object):
 
         # Loop over all blocks to find the bounding box coordinates
         for index in range(len(self.blocks)):
-            libcgns_utils.findbounds(self.blocks[index].coords, xBounds)
+            # Loop over all BCs of this block
+            for boco in self.blocks[index].bocos:
+                # Check if we have an overset boundary condition
+                if boco.name == 'bcoverset':
+                    # Find overset BC face and select some inner layers to compute volume
+                    r = boco.ptRange
+                    if r[0][0] == r[0][1] == 1: #ilow detected
+                        imin = 0
+                        imax = min(0+inLayer,self.blocks[index].dims[0])
+                        jmin = r[1][0]-1
+                        jmax = r[1][1]
+                        kmin = r[2][0]-1
+                        kmax = r[2][1]
+                    elif r[0][0] == r[0][1] == self.blocks[index].dims[0]: #ihigh detected
+                        imin = max(self.blocks[index].dims[0]-inLayer, 0)
+                        imax = self.blocks[index].dims[0]
+                        jmin = r[1][0]-1
+                        jmax = r[1][1]
+                        kmin = r[2][0]-1
+                        kmax = r[2][1]
+                    elif r[1][0] == r[1][1] == 1: #jlow detected
+                        imin = r[0][0]-1
+                        imax = r[0][1]
+                        jmin = 0
+                        jmax = min(0+inLayer,self.blocks[index].dims[1])
+                        kmin = r[2][0]-1
+                        kmax = r[2][1]
+                    elif r[1][0] == r[1][1] == self.blocks[index].dims[1]: #jhigh detected
+                        imin = r[0][0]-1
+                        imax = r[0][1]
+                        jmin = max(self.blocks[index].dims[1]-inLayer, 0)
+                        jmax = self.blocks[index].dims[1]
+                        kmin = r[2][0]-1
+                        kmax = r[2][1]
+                    elif r[2][0] == r[2][1] == 1: #klow detected
+                        imin = r[0][0]-1
+                        imax = r[0][1]
+                        jmin = r[1][0]-1
+                        jmax = r[1][1]
+                        kmin = 0
+                        kmax = min(0+inLayer,self.blocks[index].dims[2])
+                    elif r[2][0] == r[2][1] == self.blocks[index].dims[2]: #khigh detected
+                        imin = r[0][0]-1
+                        imax = r[0][1]
+                        jmin = r[1][0]-1
+                        jmax = r[1][1]
+                        kmin = max(self.blocks[index].dims[2]-inLayer, 0)
+                        kmax = self.blocks[index].dims[2]
+                    # Use the range to compute average volume
+                    libcgns_utils.findbounds(self.blocks[index].coords[imin:imax, jmin:jmax, kmin:kmax, :], xBounds)
 
         # Loop over all blocks to find the bin volumes
-        for index in [0]:#range(len(self.blocks)):
-            libcgns_utils.computevolumes(self.blocks[index].coords, xBounds, \
-                                         binVolX, binVolY, binVolZ, binCellsX, binCellsY, binCellsZ)
+        for index in range(len(self.blocks)):
+            # Loop over all BCs of this block
+            for boco in self.blocks[index].bocos:
+                # Check if we have an overset boundary condition
+                if boco.name == 'bcoverset':
+                    # Find overset BC face and select some inner layers to compute volume
+                    r = boco.ptRange
+                    if r[0][0] == r[0][1] == 1: #ilow detected
+                        imin = 0
+                        imax = min(0+inLayer,self.blocks[index].dims[0])
+                        jmin = r[1][0]-1
+                        jmax = r[1][1]
+                        kmin = r[2][0]-1
+                        kmax = r[2][1]
+                    elif r[0][0] == r[0][1] == self.blocks[index].dims[0]: #ihigh detected
+                        imin = max(self.blocks[index].dims[0]-inLayer, 0)
+                        imax = self.blocks[index].dims[0]
+                        jmin = r[1][0]-1
+                        jmax = r[1][1]
+                        kmin = r[2][0]-1
+                        kmax = r[2][1]
+                    elif r[1][0] == r[1][1] == 1: #jlow detected
+                        imin = r[0][0]-1
+                        imax = r[0][1]
+                        jmin = 0
+                        jmax = min(0+inLayer,self.blocks[index].dims[1])
+                        kmin = r[2][0]-1
+                        kmax = r[2][1]
+                    elif r[1][0] == r[1][1] == self.blocks[index].dims[1]: #jhigh detected
+                        imin = r[0][0]-1
+                        imax = r[0][1]
+                        jmin = max(self.blocks[index].dims[1]-inLayer, 0)
+                        jmax = self.blocks[index].dims[1]
+                        kmin = r[2][0]-1
+                        kmax = r[2][1]
+                    elif r[2][0] == r[2][1] == 1: #klow detected
+                        imin = r[0][0]-1
+                        imax = r[0][1]
+                        jmin = r[1][0]-1
+                        jmax = r[1][1]
+                        kmin = 0
+                        kmax = min(0+inLayer,self.blocks[index].dims[2])
+                    elif r[2][0] == r[2][1] == self.blocks[index].dims[2]: #khigh detected
+                        imin = r[0][0]-1
+                        imax = r[0][1]
+                        jmin = r[1][0]-1
+                        jmax = r[1][1]
+                        kmin = max(self.blocks[index].dims[2]-inLayer, 0)
+                        kmax = self.blocks[index].dims[2]
+                    # Use the range to compute average volume
+                    libcgns_utils.computevolumes(self.blocks[index].coords[imin:imax, jmin:jmax, kmin:kmax, :], xBounds, \
+                                                 binVolX, binVolY, binVolZ, binCellsX, binCellsY, binCellsZ)
 
-        # Write cartesian mesh
-        libcgns_utils.gencartesianmesh(xBounds, binVolX, binVolY, binVolZ, extensions, nCells, outFile)
+        # Define unidimension grid generation routines
+
+        # Define tangent bunching law
+        def tanDist(Sp1,Sp2,N):
+
+            # This is the tangential spacing developed by Ney Secco
+            # This bunching law is coarses at the ends an finer at the middle
+            # of the interval, just like shown below:
+            # |    |   |  | || |  |   |    |
+
+            # Sp1: initial spacing (within the [0,1] interval)
+            # Sp2: final spacing (within the [0,1] interval)
+            # N: number of nodes
+    
+            # IMPORTS
+            from numpy import tan, arange, pi
+            from scipy.optimize import minimize
+    
+            # Convert number of nodes to number of cells
+            N = N-1
+
+            # Define objective function
+            def func(P):
+                # Split variables
+                a = P[0]
+                e = P[1]
+                c = P[2]
+                # Find b
+                b = e - c
+                # Equations
+                Eq1 = a*(tan(b+c) - tan(c)) - 1
+                Eq2 = a*(tan(b/N+c) - tan(c)) - Sp1
+                Eq3 = a*(tan(b+c) - tan(b*(1-1/N)+c)) - Sp2
+                # Cost function
+                J = Eq1**2 + Eq2**2 + Eq3**2
+                # Return
+                return J
+
+            # Define bounds for the problem
+            a_bounds = [(0, None)]
+            e_bounds = [(0, pi/2)]
+            c_bounds = [(-pi/2 , 0)]
+            bounds = a_bounds + e_bounds + c_bounds
+
+            # Define initial guess
+            a_start = 1.0
+            e_start = pi/4
+            c_start = -pi/4
+            x_start = [a_start, e_start, c_start]
+
+            # Optimize
+            res = minimize(func, x_start, method='SLSQP', bounds=bounds, \
+                           options={'maxiter':1000,'disp':False,'ftol':1e-12})
+
+            # Split variables
+            a = res.x[0]
+            e = res.x[1]
+            c = res.x[2]
+
+            # Find other parameters
+            b = e - c
+            d = -a*tan(c)
+
+            # Generate spacing
+            index = arange(N+1)
+            S = a*tan(b*index/N+c)+d
+            
+            # Return spacing
+            return S
+
+        # Define function that optimizes bunching law to match grid resolution
+
+        def generateGrid(xmin, xmax, extension1, extension2, nCells, binVol):
+
+            # IMPORTS
+            from numpy import array, mean, zeros
+            from scipy.optimize import minimize
+
+            # Compute farfield coordinates
+            x0 = xmin - (xmax-xmin)*extension1
+            xf = xmax + (xmax-xmin)*extension2
+
+            # Get number of bins and bin size
+            nBins = len(binVol)
+            dxBin = (xmax-xmin)/nBins
+
+            # Get bin edges
+            binEdge = binVol**(1./3.)
+
+            # Define objective function
+            def func(P):
+                # Split variables
+                Sp1 = P[0]
+                Sp2 = P[1]
+
+                # Generate hyperbolic grid coordinates
+                S = tanDist(Sp1,Sp2,nCells+1)
+
+                # Rescale the interval
+                S = x0 + S*(xf-x0)
+
+                # Compute centroid and edge size of each cell
+                C = (S[1:]+S[:-1])/2
+                E = S[1:]-S[:-1]
+
+                # Initialize edge error
+                edgeError = 0
+
+                # Find cells that are inside each bin and check the edge difference
+                for binIndex in range(nBins):
+                    # Find bin interval
+                    x0bin = xmin + dxBin*binIndex
+                    xfbin = xmin + dxBin*(binIndex+1)
+                    # Find cells that touch this interval and get their edges
+                    bol = -(((S[:-1] < x0bin)*(S[1:] < x0bin))+((S[:-1] > xfbin)*(S[1:] > xfbin)))
+                    bolEdges = E[bol]
+                    #print bol
+                    # Compute edge mismatch and increment variable
+                    edgeError = edgeError + mean((bolEdges-binEdge[binIndex])**2)/2
+
+                # Return objective function
+                return edgeError
+
+            # Define initial guess
+            Sp1_start = 0.2
+            Sp2_start = 0.2
+            x_start = array([Sp1_start, Sp2_start])
+
+            # Optimize
+            res = minimize(func, x_start, method='Nelder-Mead',
+                           options={'maxiter':1000,'disp':True,'xtol':1e-8,'ftol':1e-8})
+
+            # Split variables
+            Sp1 = res.x[0]
+            Sp2 = res.x[1]
+
+            # Generate grid
+            S = tanDist(Sp1,Sp2,nCells+1)
+            S = x0 + S*(xf-x0)
+
+            # Return grid
+            return S
+
+        # Generate grid for each dimension
+        Sx = generateGrid(xBounds[0,0], xBounds[1,0], extensions[0,0], extensions[1,0], nCells[0], binVolX[0:1])
+        Sy = generateGrid(xBounds[0,1], xBounds[1,1], extensions[0,1], extensions[1,1], nCells[1], binVolY[0:1])
+        Sz = generateGrid(xBounds[0,2], xBounds[1,2], extensions[0,2], extensions[1,2], nCells[2], binVolZ[0:1])
+
+        # Allocate coordinates block
+        X = numpy.zeros((nCells[0]+1,nCells[1]+1,nCells[2]+1,3))
+
+        # Write grid coordinates
+        Xx, Xy, Xz = numpy.meshgrid(Sx, Sy, Sz)
+        X[:,:,:,0] = Xx
+        X[:,:,:,1] = Xy
+        X[:,:,:,2] = Xz
+        #X = numpy.asfortranarray(X)
+
+        # Open a new CGNS file
+        cg = libcgns_utils.openfile(outFile, CG_MODE_WRITE)
+
+        # Write a Zone to it
+        zoneID = libcgns_utils.writezone(cg, 'cartesian', nCells+1)
+
+        # Write mesh coordinates
+        libcgns_utils.writecoordinates(cg, zoneID, X)
+
+        # CLose file
+        libcgns_utils.closefile(cg)
 
         # Print
         print ('Mesh successfully generated and stored in: '+outFile)
@@ -953,7 +1222,9 @@ class Block(object):
         """
         
         # Check for existing boco and pop if necessary
-        for boco in self.bocos:
+        pop_list = []
+        for index in range(len(self.bocos)):
+            boco = self.bocos[index]
             r = boco.ptRange
             match = (
                 (r[0][0] == r[0][1] == 1 and faceStr == 'ilow') or
@@ -964,7 +1235,12 @@ class Block(object):
                 (r[2][0] == r[2][1] == self.dims[2] and faceStr == 'khigh'))
 
             if match:
-                self.boco.pop(boco)
+                pop_list = pop_list + [index]
+
+        # Pop all bcs in the face
+        pop_list.reverse() # We have to remove the hogher indices first
+        for index in pop_list:
+            self.bocos.pop(index)
 
         d = self.dims
         faceStr = faceStr.lower()
@@ -1548,6 +1824,10 @@ elif args.mode == 'double2d':
     curGrid.double2D()
 
 elif args.mode == 'cartesian':
+    for block in curGrid.blocks:
+        for boco in block.bocos:
+            if boco.name == 'bcoverset':
+                print ('found overset')
     curGrid.cartesian(args.cartFile,args.outFile)
     sys.exit(0)
 
