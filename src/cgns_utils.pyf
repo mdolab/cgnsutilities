@@ -164,18 +164,6 @@ python module libcgns_utils ! in
             integer, optional,intent(in),check(shape(binVolY,0)==nBinY),depend(binVolY) :: nBinY=shape(binVolY,0)
             integer, optional,intent(in),check(shape(binVolZ,0)==nBinZ),depend(binVolZ) :: nBinZ=shape(binVolZ,0)
         end subroutine computevolumes
-        subroutine gencartesianmesh(xBounds, binVolX, binVolY, binVolZ, extensions, nCells, cgnsfile, nBinX, nBinY, nBinZ) ! in :libcgns_utils:cgns_utilities.F90
-            real(kind=8) dimension(2,3), intent(in) :: xBounds
-            real(kind=8) dimension(nBinX), intent(inout) :: binVolX
-            real(kind=8) dimension(nBinY), intent(inout) :: binVolY
-            real(kind=8) dimension(nBinZ), intent(inout) :: binVolZ
-            real(kind=8) dimension(2,3), intent(in) :: extensions
-            integer dimension(3), intent(in) :: nCells
-            character*(*) intent(in) :: cgnsfile
-            integer, optional,intent(in),check(shape(binVolX,0)==nBinX),depend(binVolX) :: nBinX=shape(binVolX,0)
-            integer, optional,intent(in),check(shape(binVolY,0)==nBinY),depend(binVolY) :: nBinY=shape(binVolY,0)
-            integer, optional,intent(in),check(shape(binVolZ,0)==nBinZ),depend(binVolZ) :: nBinZ=shape(binVolZ,0)
-        end subroutine gencartesianmesh
 
     end interface 
 end python module libcgns_utils
