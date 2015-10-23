@@ -224,39 +224,39 @@ p_sub = subparsers.add_parser(
     'cartesian', help='Generates a background cartesian mesh', formatter_class=argparse.RawTextHelpFormatter)
 p_sub.add_argument('gridFile', help='Name of input CGNS file')
 p_sub.add_argument('cartFile', help="File containing background mesh info. The file must consist of \n\
-5 lines contaning the following data: \n\
-  <extensionX1> <extensionY1> <extensionZ1> \n\
-  <extensionX2> <extensionY2> <extensionZ2> \n\
-  <numCellsX> <numCellsY> <numCellsZ> \n\
-  <numBinX> <numBinY> <numBinZ> \n\
+4 lines contaning the following data: \n\
+  <extensionXneg> <extensionYneg> <extensionZneg> \n\
+  <extensionXpos> <extensionYpos> <extensionZpos> \n\
+  <numNodesX> <numNodesY> <numNodesZ> \n\
+  <weightGRX> <weightGRY> <weightGRZ> \n\
 \n\
 where: \n\
 extension is the distance of the cartesian box\n\
   face to the corresponding bounding box face divided by the\n\
   bounding box length. We need 2 values of extension per \n\
   direction as we have two parallel faces for each one of them.\n\
-numCells is the number of cells that should be used along the \n\
-  edges of the cartesian mesh.\n\
-numBin is the number of different uniform steps that will be used\n\
-  along each bounding box edge. If numBin=1, the program will \n\
-  use the same cell size along the entire bounding box edge. \n\
-  If numBin=2, it will use one step size for half of the \n\
-  bounding box length and another step size for the second half.\n\
-  This option should be used if the external cells of the\n\
-  provided grid have significant volume variation, so that the\n\
-  program may refine the step size near smaller cells.\n \n\
-If you want one symmetry plane in the z direction, for instance,\n\
-  you need to set one of the extensionZ values to 0.\n\
-If you want two symmetry plane in the z direction, (e.g. to run\n\
-  a 2D case) you need to set both extensionZ values to 0.\n \n\
+numNodes is the number of nodes that should be used along the \n\
+  edges of the cartesian mesh. If you want one symmetry plane\n\
+  in the z direction, for instance, you need to set one of the\n\
+  extensionZ values to 0. If you want two symmetry planes in\n\
+  the z direction, (e.g. to run a 2D case) you need to set both\n\
+  extensionZ values to 0.\n\
+weightGR are values between 0.0 and 1.0 used to balance edge\n\
+  growth ratio and cell volume resolution mismatch during the\n\
+  optimization. If weightGR = 0, the optimizer will not care\n\
+  about the growth ratios at the farfield and will just try\n\
+  to match the bounding box resolution. If weightGR = 1, the\n\
+  optimizer will not care about the bounding box resolution\n\
+  and will just try to get an uniform growth ratio. This\n\
+  results in an uniform mesh.\n\n\
 example:\n\
   10 10 0\n\
-  10 10 0\n\
-  100 100 100\n\
-  4 4 1\n ")
+  10 10 10\n\
+  65 65 65\n\
+  0.1 0.1 0.1\n")
 p_sub.add_argument('outFile', help='Name of output CGNS file \n\
 The output file contains only one cartesian block. The input \n\
-mesh is not included.\n')
+mesh is not included and BCs are applied.\n')
 
 # Finally get the arguments we need!
 args = parser.parse_args()
@@ -416,17 +416,20 @@ class Grid(object):
 
         # Preallocate arrays
         extensions = numpy.zeros((2,3),order='F')
-        nCells = numpy.zeros(3,order='F')
+        nNodes = numpy.zeros(3,order='F')
+        weightGR = numpy.zeros(3,order='F')
         numBins = numpy.zeros(3,order='F')
 
-        # Read the five lines of the cartesian specs file
+        # Read four lines of the cartesian specs file
         with open(cartFile, 'r') as f:
             lines = list(f)
         extensions[0,:] = lines[0].split()
         extensions[1,:] = lines[1].split()
-        nCells[:] = lines[2].split()
-        #numBins[:] = lines[3].split()
-        numBins[:] = 1
+        nNodes[:] = lines[2].split()
+        weightGR[:] = lines[3].split()
+
+        # Specify number of bins
+        numBins[:] = 1 #The tangent law only works for single bin
 
         # Initialize bounding box coordinates using the first point of the first zone
         xBounds = numpy.zeros((2,3),order='F')
@@ -550,13 +553,13 @@ class Grid(object):
                     libcgns_utils.computevolumes(self.blocks[index].coords[imin:imax, jmin:jmax, kmin:kmax, :], xBounds, \
                                                  binVolX, binVolY, binVolZ, binCellsX, binCellsY, binCellsZ)
 
-        # Define unidimension grid generation routines
+        # DEFINE UNIDIMENSIONAL GRID GENERATION ROUTINES
 
         # Define tangent bunching law
         def tanDist(Sp1,Sp2,N):
 
             # This is the tangential spacing developed by Ney Secco
-            # This bunching law is coarses at the ends an finer at the middle
+            # This bunching law is coarse at the ends an fine at the middle
             # of the interval, just like shown below:
             # |    |   |  | || |  |   |    |
 
@@ -568,7 +571,8 @@ class Grid(object):
             from numpy import tan, arange, pi
             from scipy.optimize import minimize
     
-            # Convert number of nodes to number of cells
+            # Convert number of nodes to number of cells, because I derived the equations using
+            # N the as number of cells =P.
             N = N-1
 
             # Define objective function
@@ -617,12 +621,31 @@ class Grid(object):
             index = arange(N+1)
             S = a*tan(b*index/N+c)+d
             
+            # Force the extremes to 0 and 1 so that we always meet the bounds
+            # (this is to avoid numerical issues with symmetry planes)
+            S[0] = 0.0
+            S[-1] = 1.0
+
             # Return spacing
             return S
 
         # Define function that optimizes bunching law to match grid resolution
 
-        def generateGrid(xmin, xmax, extension1, extension2, nCells, binVol):
+        def generateGrid(xmin, xmax, extension1, extension2, nNodes, binVol, weightGR):
+
+            # xmin: float -> position where the bounding box begins
+            # xmax: float -> position where the bounding box ends
+            # extension1: float > 0 -> ratio between the negative farfield distance and the bounding box length:
+            #                          extension1 = (xmin-negative_farfield_position)/(xmax-xmin)
+            # extension2: float > 0 -> ratio between the positive farfield distance and the bounding box length:
+            #                          extension2 = (positive_farfield_position-xmax)/(xmax-xmin)
+            # nNodes: integer > 0 -> Number of nodes along the edge
+            # binVol: float > 0 -> Average volume of the bounding box cells (foreground mesh)
+            # weightGR: 0 < float < 1 -> Weight used to balance growth ratio and cell volume during the optimization.
+            #                            If weightGR = 0, the optimizer will not care about the growth ratios at the
+            #                            farfield and will just try to match the bounding box resolution.
+            #                            If weightGR = 1, the optimizer will not care about the bounding box resolution
+            #                            and will just try to get an uniform growth ratio. This results in an uniform mesh.
 
             # IMPORTS
             from numpy import array, mean, zeros
@@ -645,14 +668,13 @@ class Grid(object):
                 Sp1 = P[0]
                 Sp2 = P[1]
 
-                # Generate hyperbolic grid coordinates
-                S = tanDist(Sp1,Sp2,nCells+1)
+                # Generate grid coordinates with tangent bunching law
+                S = tanDist(Sp1,Sp2,nNodes)
 
                 # Rescale the interval
                 S = x0 + S*(xf-x0)
 
-                # Compute centroid and edge size of each cell
-                C = (S[1:]+S[:-1])/2
+                # Compute edge size of each cell
                 E = S[1:]-S[:-1]
 
                 # Initialize edge error
@@ -670,49 +692,79 @@ class Grid(object):
                     # Compute edge mismatch and increment variable
                     edgeError = edgeError + mean((bolEdges-binEdge[binIndex])**2)/2
 
-                # Return objective function
-                return edgeError
+                # Compute term regarding growing ratios at the ends
+                if nNodes > 3:
+                    growthRatio = ((S[1]-S[0])/(S[2]-S[1])-1.0)**2 + ((S[-1]-S[-2])/(S[-2]-S[-3])-1)**2
+                else: #There's no way to define growth ratio when we have less than 3 cells
+                    growthRatio = 0
 
-            # Define initial guess
-            Sp1_start = 0.2
-            Sp2_start = 0.2
+                # Return objective function
+                return (1-weightGR)*edgeError/mean(binEdge) + weightGR*growthRatio
+                # Note that the edgeError is normalized so that the weighed average makes sense
+
+            # Define initial guess based on uniform spacing
+            Sp1_start = 1/(nNodes-1)
+            Sp2_start = 1/(nNodes-1)
             x_start = array([Sp1_start, Sp2_start])
 
             # Optimize
             res = minimize(func, x_start, method='Nelder-Mead',
-                           options={'maxiter':1000,'disp':True,'xtol':1e-8,'ftol':1e-8})
+                           options={'maxiter':2000,'disp':True,'xtol':1e-8,'ftol':1e-8})
 
             # Split variables
             Sp1 = res.x[0]
             Sp2 = res.x[1]
 
             # Generate grid
-            S = tanDist(Sp1,Sp2,nCells+1)
+            S = tanDist(Sp1,Sp2,nNodes)
             S = x0 + S*(xf-x0)
 
             # Return grid
             return S
 
         # Generate grid for each dimension
-        Sx = generateGrid(xBounds[0,0], xBounds[1,0], extensions[0,0], extensions[1,0], nCells[0], binVolX[0:1])
-        Sy = generateGrid(xBounds[0,1], xBounds[1,1], extensions[0,1], extensions[1,1], nCells[1], binVolY[0:1])
-        Sz = generateGrid(xBounds[0,2], xBounds[1,2], extensions[0,2], extensions[1,2], nCells[2], binVolZ[0:1])
+        Sx = generateGrid(xBounds[0,0], xBounds[1,0], extensions[0,0], extensions[1,0], nNodes[0], binVolX[0:1], weightGR[0])
+        Sy = generateGrid(xBounds[0,1], xBounds[1,1], extensions[0,1], extensions[1,1], nNodes[1], binVolY[0:1], weightGR[1])
+        Sz = generateGrid(xBounds[0,2], xBounds[1,2], extensions[0,2], extensions[1,2], nNodes[2], binVolZ[0:1], weightGR[2])
+
+        # Compute growth ratios
+        if nNodes[0] > 3:
+            gx = max((Sx[1]-Sx[0])/(Sx[2]-Sx[1]), (Sx[-1]-Sx[-2])/(Sx[-2]-Sx[-3]))
+        else:
+            gx = None
+        if nNodes[1] > 3:
+            gy = max((Sy[1]-Sy[0])/(Sy[2]-Sy[1]), (Sy[-1]-Sy[-2])/(Sy[-2]-Sy[-3]))
+        else:
+            gy = None
+        if nNodes[2] > 3:
+            gz = max((Sz[1]-Sz[0])/(Sz[2]-Sz[1]), (Sz[-1]-Sz[-2])/(Sz[-2]-Sz[-3]))
+        else:
+            gz = None
+
+        # Print growth ratios
+        print ('')
+        print ('Maximum growth ratios along each direction:')
+        print ('X: ',gx)
+        print ('Y: ',gy)
+        print ('Z: ',gz)
+        if max(gx,gy,gz) > 1.2:
+            print ("You may bring weightGR closer to 1 to decrease ratios")
+        print ('')
 
         # Allocate coordinates block
-        X = numpy.zeros((nCells[0]+1,nCells[1]+1,nCells[2]+1,3))
+        X = numpy.zeros((nNodes[0],nNodes[1],nNodes[2],3))
 
         # Write grid coordinates
         Xx, Xy, Xz = numpy.meshgrid(Sx, Sy, Sz)
         X[:,:,:,0] = Xx
         X[:,:,:,1] = Xy
         X[:,:,:,2] = Xz
-        #X = numpy.asfortranarray(X)
 
         # Open a new CGNS file
         cg = libcgns_utils.openfile(outFile, CG_MODE_WRITE)
 
         # Write a Zone to it
-        zoneID = libcgns_utils.writezone(cg, 'cartesian', nCells+1)
+        zoneID = libcgns_utils.writezone(cg, 'cartesian', nNodes)
 
         # Write mesh coordinates
         libcgns_utils.writecoordinates(cg, zoneID, X)
@@ -1824,11 +1876,15 @@ elif args.mode == 'double2d':
     curGrid.double2D()
 
 elif args.mode == 'cartesian':
+    found_overset = False
     for block in curGrid.blocks:
         for boco in block.bocos:
             if boco.name == 'bcoverset':
-                print ('found overset')
-    curGrid.cartesian(args.cartFile,args.outFile)
+                found_overset = True
+    if found_overset:
+        curGrid.cartesian(args.cartFile,args.outFile)
+    else:
+        print ('The CGNS file has no overset boundary conditions')
     sys.exit(0)
 
 # Write out the grid.
