@@ -965,7 +965,7 @@ class Grid(object):
 
                     # Finally recursively call itself for the new
                     # block, dimension and index
-                    self._addSplit(newBlock, abs_idim, index_new)
+                    self._addSplit(newBlock, abs_idim, index_new, mapping)
                             
     def connect(self):
         """Generate block-to-block connectivity information for a grid. It
@@ -1014,6 +1014,7 @@ class Grid(object):
 
         # Return most of the information we computed since other
         # routines (autobc for example) may need this.
+
         return types, pointRanges, myIDs, faceAvgs, faceNormals
 
     def autoBC(self, radius, sym, offset):
