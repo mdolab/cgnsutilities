@@ -1732,7 +1732,7 @@ contains
     call kdtree2_n_nearest(tree, qv, 2, results)
     
     ! Check the distances
-    if (abs(results(1)%dis) < tol .and. abs(results(2)%dis) < tol) then
+    if (sqrt(results(1)%dis) < tol .and. sqrt(results(2)%dis) < tol) then
        ! We found a match: Now determine if it was the first
        ! or second one that isn't myself:
        
