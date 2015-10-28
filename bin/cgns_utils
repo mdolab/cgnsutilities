@@ -291,6 +291,16 @@ p_anf.add_argument('sym', help='Normal for possible symmetry plane.',
 p_anf.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
+# ------------ Options for 'autoFarfieldBC' mode
+p_anf = subparsers.add_parser(
+    'autoFarfieldBC', help='Automatically generate connectivity and boundary conditions'
+    'for an overset farfield mesh with possible symmetry plane.')
+p_anf.add_argument('gridFile', help='Name of input CGNS file')
+p_anf.add_argument('sym', help='Normal for possible symmetry plane.',
+                  choices=['x', 'y', 'z'])
+p_anf.add_argument('outFile', nargs='?', default=None,
+                     help='Optional output file')
+
 # Finally get the arguments we need!
 args = parser.parse_args()
 
@@ -520,6 +530,51 @@ class Grid(object):
                     # Flag as overset
                     bocoType = BC['bcoverset']
                     famName = 'overset'
+                
+                # Now simply add the boco
+                self.blocks[blockID].addBoco(Boco(
+                    'dummy', bocoType, pointRanges[:, :, i], famName))
+ 
+        # Lastly rename the BCs to be consistent
+        self.renameBCs()
+
+
+    def autoFarfieldBC(self, sym):
+        """This is essentially a simplified version of autoBC that flags all
+        boundaries as BCOverset except for possible symmetry planes."""
+
+        # Remove any BCinfo/B2B info we may have.
+        for blk in self.blocks:
+            blk.bocos = []
+            blk.B2Bs = []
+
+        if sym == 'x':
+            symAxis = 0
+        elif sym == 'y':
+            symAxis = 1
+        else:
+            symAxis = 2
+
+        symNormal = [0.0, 0.0, 0.0]
+        symNormal[symAxis] = 1.0
+
+        # Do the b2b by running connect:
+        types, pointRanges, myIDs, faceAvg, faceNormal = self.connect()
+        
+        # Loop over all subfaces and deal with the BCs
+        for i in range(len(types)):
+            blockID = myIDs[i] - 1
+            
+            if types[i] == 0: # Boco
+                coor_check = abs(faceAvg[symAxis, i]) < 1e-3
+                dp_check = abs(numpy.dot(faceNormal[:, i], symNormal)) > 0.98
+                if dp_check and coor_check:
+                    bocoType = BC['bcsymmetryplane']
+                    famName = 'sym'
+                else:
+                    # Flag as overset
+                    bocoType = BC['bcfarfield']
+                    famName = 'far'
                 
                 # Now simply add the boco
                 self.blocks[blockID].addBoco(Boco(
@@ -2030,6 +2085,9 @@ elif args.mode == 'autoOversetBC':
 
 elif args.mode == 'autoNearfieldBC':
     curGrid.autoNearfieldBC(args.sym)
+
+elif args.mode == 'autoFarfieldBC':
+    curGrid.autoFarfieldBC(args.sym)
 
 # Write out the grid.
 curGrid.writeToCGNS(outFileName)
