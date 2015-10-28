@@ -177,11 +177,6 @@ subroutine getBCInfo(cg, iBlock, iBC, bocoName, bocoType, ptRange, family)
         ! Read user defined data
         call cg_user_data_read_f(index, name, ier)
         if (ier .eq. CG_ERROR) call cg_error_exit_f
-
-        ! Compare names
-        if (name == 'BCOverset') then
-           bocoName = 'bcoverset'
-        end if
         
      end do
 

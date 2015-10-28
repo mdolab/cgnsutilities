@@ -579,7 +579,7 @@ class Grid(object):
             # Loop over all BCs of this block
             for boco in self.blocks[index].bocos:
                 # Check if we have an overset boundary condition
-                if boco.name == 'bcoverset':
+                if boco.type == BC['bcoverset']:
                     # Find overset BC face and select some inner layers to compute volume
                     r = boco.ptRange
                     if r[0][0] == r[0][1] == 1: #ilow detected
@@ -632,7 +632,7 @@ class Grid(object):
             # Loop over all BCs of this block
             for boco in self.blocks[index].bocos:
                 # Check if we have an overset boundary condition
-                if boco.name == 'bcoverset':
+                if boco.type == BC['bcoverset']:
                     # Find overset BC face and select some inner layers to compute volume
                     r = boco.ptRange
                     if r[0][0] == r[0][1] == 1: #ilow detected
@@ -2014,7 +2014,7 @@ elif args.mode == 'cartesian':
     found_overset = False
     for block in curGrid.blocks:
         for boco in block.bocos:
-            if boco.name == 'bcoverset':
+            if boco.type == BC['bcoverset']:
                 found_overset = True
     if found_overset:
         curGrid.cartesian(args.cartFile,args.outFile)
