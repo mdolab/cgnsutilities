@@ -2100,6 +2100,14 @@ contains
              ! pyramid. Remember that volpym computes 6 times the
              ! volume.
              
+             ! Avoid negative volumes
+             vp1 = abs(vp1)
+             vp2 = abs(vp2)
+             vp3 = abs(vp3)
+             vp4 = abs(vp4)
+             vp5 = abs(vp5)
+             vp6 = abs(vp6)
+
              vol = (vp1 + vp2 + vp3 + vp4 + vp5 + vp6)/6.0
 
              ! Now we need to find the bin which the current element belongs
