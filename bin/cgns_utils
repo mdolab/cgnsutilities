@@ -938,7 +938,7 @@ class Grid(object):
         X = numpy.zeros((nNodes[0],nNodes[1],nNodes[2],3))
 
         # Write grid coordinates
-        Xx, Xy, Xz = numpy.meshgrid(Sx, Sy, Sz)
+        Xx, Xy, Xz = numpy.meshgrid(Sx, Sy, Sz, indexing='ij')
         X[:,:,:,0] = Xx
         X[:,:,:,1] = Xy
         X[:,:,:,2] = Xz
