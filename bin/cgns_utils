@@ -219,6 +219,16 @@ p_dd = subparsers.add_parser(
 p_dd.add_argument('gridFiles', metavar='files', type=str, nargs='+', help='Name of CGNS files to combine')
 p_dd.add_argument('outFile', type=str, help='Output CGNS file name')
 
+# ------------ Options for 'break' mode  --------------------
+p_dd = subparsers.add_parser(
+    'break', help='Take one multiblock cgns file and break it into single-block cgns files.')
+p_dd.add_argument('gridFile', type=str, help='Name of input multiblock CGNS file')
+p_dd.add_argument('outFile', nargs='?', default=None, help='Optional reference to name output files. \n\
+An integer will be added to the end. \n\
+if none is given, the input filename will be used as reference. \n\
+All connectivity information between different blocks is lost in this step. Only \n\
+internal connectivity remains.')
+
 # ------------ Options for 'cartesian' mode --------------------
 p_sub = subparsers.add_parser(
     'cartesian', help='Generates a background cartesian mesh', formatter_class=argparse.RawTextHelpFormatter)
@@ -1935,6 +1945,30 @@ def combineGrids(grids):
 
     return newGrid
 
+def breakGrid(grid):
+    """Method that takes one multiblock grid and returns a list of grids, each
+    one containing a single block of the original multiblock grid
+    """
+
+    # Initialize list of empty grids
+    newGrids = [Grid() for dummy in range(len(grid.blocks))]
+
+    # Initialize counter
+    gridID = 0
+
+    # Add one block to each grid
+    for blk in grid.blocks:
+        newGrids[gridID].addBlock(blk)
+        # Now rename the blocks, bcs and redo-connectivity
+        newGrids[gridID].renameBlocks()
+        newGrids[gridID].renameBCs()
+        newGrids[gridID].connect()
+        # Increment counter
+        gridID = gridID + 1
+
+    # return list of grids
+    return newGrids
+
 
 # -------------------------------------------
 #         Selection of the task
@@ -2088,6 +2122,27 @@ elif args.mode == 'autoNearfieldBC':
 
 elif args.mode == 'autoFarfieldBC':
     curGrid.autoFarfieldBC(args.sym)
+
+elif args.mode == 'break':
+    # Split original multiblock grid in a list of single-block grids
+    newGrids = breakGrid(curGrid)
+
+    # Check if the user gave a reference name. Otherwise, use the input name as reference
+    if args.outFile is None:
+        # Get the base name
+        outFile = os.path.splitext(os.path.basename(args.gridFile))[0]
+    else:
+        outFile = args.outFile
+
+    # Generate a list of names for the files by adding integers to the reference name
+    fileNames = [outFile + '_%03d'%index + '.cgns' for index in range(1,len(newGrids)+1)]
+    
+    # Save each grid
+    for index in range(len(newGrids)):
+        newGrids[index].writeToCGNS(fileNames[index])
+
+    # Finish execution
+    sys.exit(0)
 
 # Write out the grid.
 curGrid.writeToCGNS(outFileName)
