@@ -219,15 +219,24 @@ p_dd = subparsers.add_parser(
 p_dd.add_argument('gridFiles', metavar='files', type=str, nargs='+', help='Name of CGNS files to combine')
 p_dd.add_argument('outFile', type=str, help='Output CGNS file name')
 
-# ------------ Options for 'break' mode  --------------------
+# ------------ Options for 'explode' mode  --------------------
 p_dd = subparsers.add_parser(
-    'break', help='Take one multiblock cgns file and break it into single-block cgns files.')
+    'explode', help='Take one multiblock cgns file and explodes it into single-block cgns files.')
 p_dd.add_argument('gridFile', type=str, help='Name of input multiblock CGNS file')
 p_dd.add_argument('outFile', nargs='?', default=None, help='Optional reference to name output files. \n\
 An integer will be added to the end. \n\
 if none is given, the input filename will be used as reference. \n\
 All connectivity information between different blocks is lost in this step. Only \n\
 internal connectivity remains.')
+
+# ------------ Options for 'explodeKmin' mode  --------------------
+p_dd = subparsers.add_parser(
+    'explodeKmin', help='Take one multiblock cgns file and explodes it into single-block plot3d files that contains \n\
+    only the K=1 faces.')
+p_dd.add_argument('gridFile', type=str, help='Name of input multiblock CGNS file')
+p_dd.add_argument('outFile', nargs='?', default=None, help='Optional reference to name output files. \n\
+An integer will be added to the end. \n\
+if none is given, the input filename will be used as reference.')
 
 # ------------ Options for 'cartesian' mode --------------------
 p_sub = subparsers.add_parser(
@@ -1820,6 +1829,7 @@ def readGrid(fileName):
     
     for iBlock in range(1, nBlock+1):
         zoneName, dims, nBoco, nB2B = libcgns_utils.getblockinfo(inFile, iBlock)
+
         if cellDim == 2:
             dims[2] = 1
         coords = libcgns_utils.getcoordinates(inFile, iBlock,
@@ -1945,29 +1955,63 @@ def combineGrids(grids):
 
     return newGrid
 
-def breakGrid(grid):
+def explodeGrid(grid,kMin=False):
     """Method that takes one multiblock grid and returns a list of grids, each
     one containing a single block of the original multiblock grid
     """
 
-    # Initialize list of empty grids
-    newGrids = [Grid() for dummy in range(len(grid.blocks))]
+    # IMPORTS
+    import re
 
-    # Initialize counter
-    gridID = 0
+    # Organize block names alpha-numerically (we need to do this because
+    # in some cases, cgns_lib will create zones with variable digits in
+    # the integers. For instance, Zone22 will come before Zone9.
+    # We will use the last integer in the block name to do the ordering.
+    
+    # Initialize list of names
+    nameList = []
+
+    # Loop over the blocks to add more significant digits to the last integer
+    for blk in grid.blocks:
+        # Find last integer in the current name
+        last_int = re.findall('\d+', blk.name)[-1]
+        # Proceed only if we have found an integer
+        if last_int:
+            # Crop the integer from the name
+            blk.name = blk.name[:-len(last_int)]
+            # Convert the integer from string to integer
+            last_int = int(last_int)
+            # Append integer with more significant digits back to the name
+            blk.name = blk.name + '%03d'%last_int
+            # Append new name to the names list
+            nameList.append(blk.name)
+        # Reduce block size if just Kmin face is needed
+        if kMin:
+            blk.dims[2] = 1
+            blk.coords = blk.coords[:, :, 0:1, :]
+        
+    # Reorder blocks based on their new names
+    grid.blocks = [blk for (n,blk) in sorted(zip(nameList,grid.blocks))]
+
+    # Initialize list of single block grids
+    gridList = []
 
     # Add one block to each grid
     for blk in grid.blocks:
-        newGrids[gridID].addBlock(blk)
-        # Now rename the blocks, bcs and redo-connectivity
-        newGrids[gridID].renameBlocks()
-        newGrids[gridID].renameBCs()
-        newGrids[gridID].connect()
-        # Increment counter
-        gridID = gridID + 1
+        # Initialize new grid
+        newGrid = Grid()
+        # Add a single block to this grid
+        newGrid.addBlock(blk)
+        # Now rename the blocks, bcs and redo-connectivity, only if we have full mesh
+        if kMin is False:
+            newGrid.renameBlocks()
+            newGrid.renameBCs()
+            newGrid.connect()
+        # Append this new grid to the grids list
+        gridList.append(newGrid)
 
     # return list of grids
-    return newGrids
+    return gridList
 
 
 # -------------------------------------------
@@ -2123,9 +2167,9 @@ elif args.mode == 'autoNearfieldBC':
 elif args.mode == 'autoFarfieldBC':
     curGrid.autoFarfieldBC(args.sym)
 
-elif args.mode == 'break':
+elif args.mode == 'explode':
     # Split original multiblock grid in a list of single-block grids
-    newGrids = breakGrid(curGrid)
+    gridList = explodeGrid(curGrid)
 
     # Check if the user gave a reference name. Otherwise, use the input name as reference
     if args.outFile is None:
@@ -2135,11 +2179,33 @@ elif args.mode == 'break':
         outFile = args.outFile
 
     # Generate a list of names for the files by adding integers to the reference name
-    fileNames = [outFile + '_%03d'%index + '.cgns' for index in range(1,len(newGrids)+1)]
+    fileNames = [outFile + '_%03d'%index + '.cgns' for index in range(1,len(gridList)+1)]
     
     # Save each grid
-    for index in range(len(newGrids)):
-        newGrids[index].writeToCGNS(fileNames[index])
+    for index in range(len(gridList)):
+        gridList[index].writeToCGNS(fileNames[index])
+
+    # Finish execution
+    sys.exit(0)
+
+elif args.mode == 'explodeKmin':
+    # Split original multiblock grid in a list of single-block grids
+    # that contains just the K = 1 face
+    gridList = explodeGrid(curGrid,kMin=True)
+
+    # Check if the user gave a reference name. Otherwise, use the input name as reference
+    if args.outFile is None:
+        # Get the base name
+        outFile = os.path.splitext(os.path.basename(args.gridFile))[0]
+    else:
+        outFile = args.outFile
+
+    # Generate a list of names for the files by adding integers to the reference name
+    fileNames = [outFile + '_%03d'%index + '.xyz' for index in range(1,len(gridList)+1)]
+    
+    # Save each grid
+    for index in range(len(gridList)):
+        gridList[index].writePlot3d(fileNames[index])
 
     # Finish execution
     sys.exit(0)
