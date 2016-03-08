@@ -190,6 +190,20 @@ Specifying a seed will make process deterministic.')
 p_ran.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
+# ------------ Options for 'reorder' mode --------------------
+p_reorder = subparsers.add_parser(
+    'reorder', help='Sort blocks in an alpha-numerical order. It can also add extra digits \
+    to the integers at the end of the block names to facilitate ordering.')
+p_reorder.add_argument('gridFile', help='Name of input CGNS file')
+p_reorder.add_argument('intDigits', type=int, default=5, help="Number of digits used for the integers. \n\
+When CGNSlib generates a CGNS file \n\
+(when converting from a plot3d file, for instance), it does not add extra digits to the integers \n\
+when naming zones. This becomes a problem when you have more than 10 zones because the ordering will be: \n\
+Zone1, Zone11, Zone12, ..., Zone19, Zone2, Zone21, ...\n\
+This method will add extra digits to the zone names to give the correct ordering.")
+p_reorder.add_argument('outFile', nargs='?', default=None,
+                     help='Optional output file')
+
 # ------------ Options for 'symmzero' mode --------------------
 p_sym = subparsers.add_parser(
     'symmzero', help='Hard-zero any nodes within a given tolerance. Used for ensuring planar symmetry planes.')
@@ -220,29 +234,29 @@ p_dd.add_argument('gridFiles', metavar='files', type=str, nargs='+', help='Name 
 p_dd.add_argument('outFile', type=str, help='Output CGNS file name')
 
 # ------------ Options for 'explode' mode  --------------------
-p_dd = subparsers.add_parser(
+p_exp = subparsers.add_parser(
     'explode', help='Take one multiblock cgns file and explodes it into single-block cgns files.')
-p_dd.add_argument('gridFile', type=str, help='Name of input multiblock CGNS file')
-p_dd.add_argument('outFile', nargs='?', default=None, help='Optional reference to name output files. \n\
+p_exp.add_argument('gridFile', type=str, help='Name of input multiblock CGNS file')
+p_exp.add_argument('outFile', nargs='?', default=None, help='Optional reference to name output files. \n\
 An integer will be added to the end. \n\
 if none is given, the input filename will be used as reference. \n\
 All connectivity information between different blocks is lost in this step. Only \n\
 internal connectivity remains.')
 
 # ------------ Options for 'explodeKmin' mode  --------------------
-p_dd = subparsers.add_parser(
+p_expkmin = subparsers.add_parser(
     'explodeKmin', help='Take one multiblock cgns file and explodes it into single-block plot3d files that contains \n\
     only the K=1 faces.')
-p_dd.add_argument('gridFile', type=str, help='Name of input multiblock CGNS file')
-p_dd.add_argument('outFile', nargs='?', default=None, help='Optional reference to name output files. \n\
+p_expkmin.add_argument('gridFile', type=str, help='Name of input multiblock CGNS file')
+p_expkmin.add_argument('outFile', nargs='?', default=None, help='Optional reference to name output files. \n\
 An integer will be added to the end. \n\
 if none is given, the input filename will be used as reference.')
 
 # ------------ Options for 'cartesian' mode --------------------
-p_sub = subparsers.add_parser(
+p_cart = subparsers.add_parser(
     'cartesian', help='Generates a background cartesian mesh', formatter_class=argparse.RawTextHelpFormatter)
-p_sub.add_argument('gridFile', help='Name of input CGNS file')
-p_sub.add_argument('cartFile', help="File containing background mesh info. The file must consist of \n\
+p_cart.add_argument('gridFile', help='Name of input CGNS file')
+p_cart.add_argument('cartFile', help="File containing background mesh info. The file must consist of \n\
 4 lines contaning the following data: \n\
   <extensionXneg> <extensionYneg> <extensionZneg> \n\
   <extensionXpos> <extensionYpos> <extensionZpos> \n\
@@ -273,7 +287,7 @@ example:\n\
   10 10 10\n\
   65 65 65\n\
   0.1 0.1 0.1\n")
-p_sub.add_argument('outFile', help='Name of output CGNS file \n\
+p_cart.add_argument('outFile', help='Name of output CGNS file \n\
 The output file contains only one cartesian block. The input \n\
 mesh is not included and BCs are applied.\n')
 
@@ -1177,6 +1191,41 @@ class Grid(object):
 
         # Finally reconnect
         self.connect()
+
+    def reorder(self, intDigits):
+        """
+        When CGNSlib generates a CGNS file (when converting from a plot3d file, for instance),
+        it does not add extra digits to the integers when naming zones. This becomes a problem
+        when you have more than 10 zones because the ordering will be:
+        Zone1, Zone11, Zone12, ..., Zone19, Zone2, Zone21, ...
+        This method will add extra digits to the zone names to give the correct ordering.
+        """
+        
+        # IMPORTS
+        import re
+        
+        # Initialize list of names
+        nameList = []
+
+        # Loop over the blocks to add more significant digits to the last integer
+        for blk in self.blocks:
+            # Find last integer in the current name
+            last_int = re.findall('\d+', blk.name)[-1]
+
+            # Apply modifications only if we have found an integer
+            if last_int:
+                # Crop the integer from the name
+                blk.name = blk.name[:-len(last_int)]
+                # Add zeros to get the necessary number of digits
+                last_int = last_int.zfill(intDigits)
+                # Append integer with more significant digits back to the name
+                blk.name = blk.name + last_int
+
+            # Append the name to the names list
+            nameList.append(blk.name)
+        
+        # Reorder blocks based on their new names
+        self.blocks = [blk for (n,blk) in sorted(zip(nameList,self.blocks))]
         
     def symmZero(self, sym):
         """Zero nodes along axis 'sym'"""
@@ -1985,38 +2034,11 @@ def explodeGrid(grid,kMin=False):
     one containing a single block of the original multiblock grid
     """
 
-    # IMPORTS
-    import re
-
-    # Organize block names alpha-numerically (we need to do this because
-    # in some cases, cgns_lib will create zones with variable digits in
-    # the integers. For instance, Zone22 will come before Zone9.
-    # We will use the last integer in the block name to do the ordering.
-    
-    # Initialize list of names
-    nameList = []
-
-    # Loop over the blocks to add more significant digits to the last integer
-    for blk in grid.blocks:
-        # Find last integer in the current name
-        last_int = re.findall('\d+', blk.name)[-1]
-        # Proceed only if we have found an integer
-        if last_int:
-            # Crop the integer from the name
-            blk.name = blk.name[:-len(last_int)]
-            # Convert the integer from string to integer
-            last_int = int(last_int)
-            # Append integer with more significant digits back to the name
-            blk.name = blk.name + '%03d'%last_int
-            # Append new name to the names list
-            nameList.append(blk.name)
-        # Reduce block size if just Kmin face is needed
-        if kMin:
+    # Reduce block size if just Kmin face is needed
+    if kMin:
+        for blk in grid.blocks:
             blk.dims[2] = 1
             blk.coords = blk.coords[:, :, 0:1, :]
-        
-    # Reorder blocks based on their new names
-    grid.blocks = [blk for (n,blk) in sorted(zip(nameList,grid.blocks))]
 
     # Initialize list of single block grids
     gridList = []
@@ -2161,6 +2183,9 @@ elif args.mode == 'rebunch':
 
 elif args.mode == 'randomize':
     curGrid.randomize(args.seed)
+
+elif args.mode == 'reorder':
+    curGrid.reorder(args.intDigits)
 
 elif args.mode == 'symmzero':
     curGrid.symmZero(args.sym)
