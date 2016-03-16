@@ -1357,7 +1357,6 @@ class Block(object):
         # First find the 2D direction
         for dim_index in range(3):
             if self.dims[dim_index] == 2:
-                print('hei')
                 # Increase the size of the 2D dimension
                 new_dimensions = self.dims[:]
                 new_dimensions[dim_index] = new_dimensions[dim_index] + 1
