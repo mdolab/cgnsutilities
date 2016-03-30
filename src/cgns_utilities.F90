@@ -1860,11 +1860,11 @@ subroutine findBounds(x, xBounds, il, jl, kl)
   implicit none
   
   ! Subroutine inputs
-  real, dimension(il,jl,kl,3), intent(in) :: x
+  real(kind=8), dimension(il,jl,kl,3), intent(in) :: x
   integer, intent(in) :: il, jl, kl
 
   ! Subroutine inputs/outputs.
-  real, dimension(2,3), intent(inout) :: xBounds
+  real(kind=8), dimension(2,3), intent(inout) :: xBounds
 
   !
   ! BEGIN EXECUTION
@@ -1903,10 +1903,10 @@ contains
     
     ! Subroutine Inputs
     integer, intent(in) :: imin, imax, jmin, jmax, kmin, kmax
-    real, dimension(:,:,:,:), intent(in) :: x
+    real(kind=8), dimension(:,:,:,:), intent(in) :: x
     
     ! Subroutine Outputs
-    real, dimension(2,3), intent(inout) :: xBounds
+    real(kind=8), dimension(2,3), intent(inout) :: xBounds
     
     ! Working variables
     integer :: i, j, k
@@ -1956,14 +1956,14 @@ subroutine computeVolumes(x, xBounds, binVolX, binVolY, binVolZ, &
   implicit none
 
   ! Subroutine inputs
-  real, dimension(il,jl,kl,3), intent(in) :: x
-  real, dimension(2,3), intent(in) :: xBounds
+  real(kind=8), dimension(il,jl,kl,3), intent(in) :: x
+  real(kind=8), dimension(2,3), intent(in) :: xBounds
   integer, intent(in) :: il, jl, kl, nBinX, nBinY, nBinZ
 
   ! Subroutine inputs/outputs.
-  real, dimension(nBinX), intent(inout) :: binVolX
-  real, dimension(nBinY), intent(inout) :: binVolY
-  real, dimension(nBinZ), intent(inout) :: binVolZ
+  real(kind=8), dimension(nBinX), intent(inout) :: binVolX
+  real(kind=8), dimension(nBinY), intent(inout) :: binVolY
+  real(kind=8), dimension(nBinZ), intent(inout) :: binVolZ
   integer, dimension(nBinX), intent(inout) :: binCellsX
   integer, dimension(nBinY), intent(inout) :: binCellsY
   integer, dimension(nBinZ), intent(inout) :: binCellsZ
@@ -2012,21 +2012,21 @@ contains
 
     ! Subroutine Inputs
     integer, intent(in) :: imin, imax, jmin, jmax, kmin, kmax
-    real, dimension(:,:,:,:), intent(in) :: x
-    real, dimension(2,3), intent(in) :: xBounds
+    real(kind=8), dimension(:,:,:,:), intent(in) :: x
+    real(kind=8), dimension(2,3), intent(in) :: xBounds
     integer, intent(in) :: nBinX, nBinY, nBinZ
 
     ! Subroutine  Outputs
-    real, dimension(:), intent(inout) :: binVolX
-    real, dimension(:), intent(inout) :: binVolY
-    real, dimension(:), intent(inout) :: binVolZ
+    real(kind=8), dimension(:), intent(inout) :: binVolX
+    real(kind=8), dimension(:), intent(inout) :: binVolY
+    real(kind=8), dimension(:), intent(inout) :: binVolZ
     integer, dimension(:), intent(inout) :: binCellsX
     integer, dimension(:), intent(inout) :: binCellsY
     integer, dimension(:), intent(inout) :: binCellsZ
 
     ! Working variables
-    real :: vol, xp, yp, zp, eighth
-    real :: vp1, vp2, vp3, vp4, vp5, vp6
+    real(kind=8) :: vol, xp, yp, zp, eighth
+    real(kind=8) :: vp1, vp2, vp3, vp4, vp5, vp6
     integer :: i, j, k, l, m, n, iBin, jBin, kBin
 
     ! Compute the volumes. The hexahedron is split into 6 pyramids
@@ -2157,17 +2157,17 @@ contains
     !
     !        Function type.
     !
-    real :: volpym
+    real(kind=8) :: volpym
     !
     !        Function arguments.
     !
-    real, intent(in) :: xa, ya, za, xb, yb, zb
-    real, intent(in) :: xc, yc, zc, xd, yd, zd
-    real, intent(in) :: xp, yp, zp
+    real(kind=8), intent(in) :: xa, ya, za, xb, yb, zb
+    real(kind=8), intent(in) :: xc, yc, zc, xd, yd, zd
+    real(kind=8), intent(in) :: xp, yp, zp
     !
     !        Working
     !
-    real :: fourth
+    real(kind=8) :: fourth
 
     !
     !        ****************************************************************
@@ -2203,11 +2203,11 @@ contains
     integer :: findBin
     
     ! Function inputs
-    real, intent(in) :: xmin, xmax, x
+    real(kind=8), intent(in) :: xmin, xmax, x
     integer, intent(in) :: numBins
     
     ! Working variables
-    real :: dx
+    real(kind=8) :: dx
     
     !
     ! BEGIN EXECUTION
@@ -2229,3 +2229,72 @@ end subroutine computeVolumes
 !     END OF CARTESIAN MESH SUBROUTINES       !
 !                                             !
 !=============================================!
+
+
+subroutine calcGridRatio(N, s0, S, ratio)
+  !***DESCRIPTION
+  !
+  !     Written by Gaetan Kenway
+  !
+  !     Abstract: calcGridRatio() calculates the exponential
+  !     distribution Turns out we need to solve a transendental
+  !     equation here. We will do this with a bisection search
+  !
+  !     Parameters
+  !     ----------
+  !     N : integer
+  !         The number of nodes in sequence
+  !     s0 : real
+  !         The initial grid spacing
+  !     S : real
+  !         The total integrated length
+  !     
+  !     Returns
+  !     -------
+  !     ratio : real
+  !         The computed grid ratio that satifies, N, s0, and S.
+
+
+  implicit none
+
+  ! Input Parameters
+  integer(kind=4), intent(in) :: N
+  real(kind=8), intent(in) :: s0, S
+
+  ! Output Parameters
+  real(kind=8), intent(out) :: ratio
+
+  ! Working Parameters
+  integer(kind=4) :: i, M
+  real(kind=8) ::  r, a,b, c, f, fa, fb
+
+  ! function 'f' is S - s0*(1-r^n)/(1-r) where S is total length, s0 is
+  ! initial ratio and r is the grid ratio. 
+
+  M = N-1
+
+  ! Do a bisection search
+  ! Max and min bounds...root must be in here...
+  a = 1.0_8 + 1e-8
+  b = 4.0_8
+
+  fa = S - s0*(1-a**M)/(1-a)
+  fb = S - s0*(1-b**M)/(1-b)
+  do i=1, 100
+     c = 0.5_8*(a + b)
+     f = S - s0*(1-c**M)/(1-c)
+     if (abs(f) < 1e-6) then ! Converged
+        exit
+     end if
+
+     if (f * fa > 0) then 
+        a = c
+     else
+        b = c
+     end if
+  end do
+
+  ! Finally set the ratio variable to r
+  ratio = c
+
+end subroutine calcGridRatio
