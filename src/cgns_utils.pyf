@@ -164,6 +164,12 @@ python module libcgns_utils ! in
             integer, optional,intent(in),check(shape(binVolY,0)==nBinY),depend(binVolY) :: nBinY=shape(binVolY,0)
             integer, optional,intent(in),check(shape(binVolZ,0)==nBinZ),depend(binVolZ) :: nBinZ=shape(binVolZ,0)
         end subroutine computevolumes
+        subroutine calcgridratio(n,s0,s,ratio) ! in :test:cgns_utilities.F90
+            integer(kind=4) intent(in) :: n
+            real(kind=8) intent(in) :: s0
+            real(kind=8) intent(in) :: s
+            real(kind=8) intent(out) :: ratio
+        end subroutine calcgridratio
 
     end interface 
 end python module libcgns_utils
