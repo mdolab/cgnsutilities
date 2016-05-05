@@ -346,6 +346,15 @@ p_anf.add_argument('sym', help='Normal for possible symmetry plane.',
 p_anf.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
+# ------------ Options for 'include' mode
+p_inc = subparsers.add_parser(
+    'include', help='Write a new file including only the zones specified the given numbers/ranges.')
+p_inc.add_argument('gridFile', help='Name of input CGNS file')
+p_inc.add_argument('rangeSpec', help='Range to extract. Comma separated list. \
+Ranges can given like 6-8. Must be 1 based. Exampe: rangeSpec=4,5,9-16,19')
+p_inc.add_argument('outFile', help='Output file')
+
+
 # Finally get the arguments we need!
 args = parser.parse_args()
 
@@ -381,6 +390,13 @@ class Grid(object):
         outFile = libcgns_utils.openfile(fileName, CG_MODE_WRITE)
         for blk in self.blocks:
             blk.writeToCGNS(outFile)
+        libcgns_utils.closefile(outFile)
+
+    def writeToCGNSSelected(self, fileName, toWrite):
+        """Write what is in this grid tree to the fileName provided"""
+        outFile = libcgns_utils.openfile(fileName, CG_MODE_WRITE)
+        for iblk in toWrite:
+            self.blocks[iblk-1].writeToCGNS(outFile)
         libcgns_utils.closefile(outFile)
 
     def writePlot3d(self, fileName):
@@ -514,7 +530,6 @@ class Grid(object):
         # Loop over all subfaces and deal with the BCs
         for i in range(len(types)):
             blockID = myIDs[i] - 1
-            
             if types[i] == 0: # Boco
                 coor_check = abs(faceAvg[symAxis, i]) < 1e-3
                 dp_check = abs(numpy.dot(faceNormal[:, i], symNormal)) > 0.98
@@ -2328,6 +2343,23 @@ elif args.mode == 'autoNearfieldBC':
 
 elif args.mode == 'autoFarfieldBC':
     curGrid.autoFarfieldBC(args.sym)
+
+elif args.mode == 'include':
+    toWrite = []
+    for spec in args.rangeSpec.split(','):
+        if '-' in spec:
+            tmp = spec.split('-')
+            start = int(tmp[0])
+            end = int(tmp[1])
+        else:
+            start = int(spec)
+            end = int(spec)
+        for i in range(start, end+1):
+            toWrite.append(i)
+    toWrite = numpy.unique(toWrite)
+    toWrite.sort()
+    curGrid.writeToCGNSSelected(args.outFile, toWrite)
+    sys.exit(0)
 
 elif args.mode == 'explode':
     # Split original multiblock grid in a list of single-block grids
