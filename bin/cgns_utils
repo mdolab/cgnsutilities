@@ -151,23 +151,37 @@ p_sub = subparsers.add_parser(
 p_sub.add_argument('gridFile', help='Name of input CGNS file')
 p_sub.add_argument('bcFile', help="File containing additional bc info. The\
 File must consist of one or more lines contaning the following data: \n\
-<block number> <faceID> <BCType> <family> [key value, ....] \n \
+<block number> <faceID> <BCType> <family> [dataset] \n \
 \n\
 where: \n\
 block number is the block index *IN 1 BASED NUMBERING* \n\
-faceID is one of iLow, iHigh jLow, jHigh, kLow or kHigh \n\
-BCType is one of the supported CGNS boundary conditions. The supported \n\
-BCs are : bcfarfield, bcsymmetryplane bcwall, bcwallinviscid, bcwallviscous \n\
+faceID - one of iLow, iHigh jLow, jHigh, kLow or kHigh \n\
+BCType - one of the supported CGNS boundary conditions. \See below for supported types\n\
+family - the family name. \n\
+\n\
+Supported BC Typess are : bcfarfield, bcsymmetryplane bcwall, bcwallinviscid, bcwallviscous \n\
    bcwallviscousheatflux, bcwallviscousisothermal, bcoutflow, bcoutflowsubsonic \n\
    bcinflowsubsonic \n\
-family is the family name. \n\
-Optionally, additional data may be specified using (key value) pairs. These \n\
+\n\
+Optionally, additional datasets may be specified. These \n\
 can be used to set additional boundary condition data. \n\
+The format of the dataset line is as follows: \n\
+<BCSetName> <BCSetType> <DirNeuArr> <DataArrName1> <dataArr1>, ..., <DataArrNameN> <dataArrN> \n\
+\n\
+where: \n\
+BCSetName     - bc dataset name \n\
+BCSetType     - the dataset bc type. This is in most cases the same type as the BCType specified \n\
+DirNeuArr     - can have one of two options: Dirichlet or Neumann \n\
+DataArrNameN  - name of first property specified. This can be a range of things. Refer to ICEM or SUMAD supported BC properties \n\
+dataArrN      - the actual data for the property \n\
+\n\
+Note that only scalar values are supported at the moment for dataArrN.\n\
 \n\
 Example lines are as follows: \n\
 \n\
 7 kLow bcwallviscous wing \n\
-4 jHigh bcsymmetryplane sym\n\n")
+4 jHigh bcsymmetryplane sym\n\
+5 khigh bcoutflowsubsonic turb_inlet BCDataSet_1 BCInFlowSubsonic Dirichlet PressureStagnation 1234.0 TemperatureStagnation 4556.0 \n")
 p_sub.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
@@ -391,6 +405,18 @@ p_info = subparsers.add_parser(
     'info', help='Print some metrics for the CGNS file.')
 p_info.add_argument('gridFile', help='Name of input CGNS file')
 
+# ------------ Options for 'extrude' mode
+p_p2D = subparsers.add_parser(
+    'extrude', help='Takes a true 2D mesh (planar) and extrude it in one direction to make \
+    it a 3D mesh, one cell wide. This method assumes that BCs are already set in the CGNS file. \
+    BCs are retained and applies symmetry BCs on planar surfaces.')
+p_p2D.add_argument('gridFile', help='Name of input CGNS file. Note that the planar grid should \
+    not have symmetry ')
+p_p2D.add_argument('direction', help='Direction which to extrude the grid',
+                  choices=['x', 'y', 'z'])
+p_p2D.add_argument('outFile', nargs='?', default=None,
+                     help='Optional output CGNS file')
+
 # Finally get the arguments we need!
 args = parser.parse_args()
 
@@ -407,6 +433,15 @@ BC = {'bcfarfield':7,
       'bcoutflowsupersonic':15,
       'bcinflowsubsonic':10,
       'bcoverset':1} #The Overset BC will be considered as a CG_USERDEFINED option ()
+
+BCDATATYPE = {"Dirichlet" : 2,
+              "Neumann"   : 3}
+
+CGNSDATATYPES = { "Integer"     : 2,
+                  "RealSingle"  : 3,
+                  "RealDouble"  : 4,
+                  "Character"   : 5,
+                  "LongInteger" : 6}
 
 CG_MODE_READ = 0
 CG_MODE_WRITE = 1
@@ -583,11 +618,35 @@ class Grid(object):
                 face = aux[1]
                 bctype = aux[2]
                 family = aux[3]
-                data = {}
-                for i in range(4, len(aux), 2):
-                    data[aux[i]] = float(aux[i+1])
-                
-                self.blocks[block].overwriteBCs(face, bctype, family, data)
+
+                dataSet = []
+                # Check if we have possible datasets specified
+                if len(aux) > 3:
+                    bocoSetName = aux[4]
+                    bocoDataSetType = aux[5]
+                    DirNeu = aux[6]
+                    bcDSet = BocoDataSet(bocoSetName, BC[bocoDataSetType.lower()])
+                    
+                    for i in range(7, len(aux), 2):
+                        arrayName = aux[i]
+                        dType = CGNSDATATYPES["RealDouble"]
+                        nDims = 1
+                        dataDims = numpy.ones(3, dtype=numpy.int32, order='F')
+                        dataArr = numpy.zeros(1, dtype=numpy.float64, order='F')
+                        dataArr[0] = float(aux[i+1])
+                        
+
+                        bcDataArr = BocoDataSetArray(arrayName, dType, nDims, dataDims, dataArr)
+                        if DirNeu == "Dirichlet":
+                            bcDSet.addDirichletDataSet(bcDataArr)
+                        elif DirNeu == "Neumann":
+                            bcDSet.addNeumannDataSet(bcDataArr)
+                        else:
+                            print("ERROR: Datatype <{0}> not supported.".format(DirNeu))
+                            exit()
+                    dataSet.append(bcDSet)
+
+                self.blocks[block].overwriteBCs(face, bctype, family, dataSet)
         f.close()
 
     def autoOversetBC(self, sym):
@@ -1509,6 +1568,23 @@ class Grid(object):
     def translate(self, dx, dy, dz):
         for blk in self.blocks:
             blk.coords[:, :, :] += [dx, dy, dz]
+            
+    def extrude(self, direction):
+        """
+        Takes a planar grid in true 2D and extrudes into the third 
+        dimension making a 3D that is single cell wide. This routine 
+        maintains the BCs and creates 2 new symm BCs for each side. 
+        
+        direction: "str" {x,y,z}
+        """
+        
+        # Extrude all blocks
+        for blk in self.blocks:
+            blk.extrude(direction)
+        
+        # Rebuild B2B connectivity
+        self.connect()
+        
 
 class Block(object):
     """Class for storing information related to a single block
@@ -1535,18 +1611,31 @@ class Block(object):
 
     def writeToCGNS(self, cg):
         """ Write all information in this block to the cg file handle"""
-
         zoneID = libcgns_utils.writezone(cg, self.name, self.dims)
         libcgns_utils.writecoordinates(cg, zoneID, self.coords)
 
         for boco in self.bocos:
             iBC = libcgns_utils.writebc(cg, zoneID, boco.name, boco.family, 
                                         boco.ptRange, boco.type)
-            writeHeader = True
-            for key in boco.data:
-                libcgns_utils.writebcdata(cg, zoneID, boco.type, iBC, 
-                                          key, boco.data[key], writeHeader)
-                writeHeader = False
+            for dataSet in boco.dataSets:
+                # Write the header for the BCDataSet
+                iDataSet = libcgns_utils.writebcdataheader(cg, zoneID, dataSet.type, iBC, dataSet.name)
+                
+                # Loop over all Dirichlet and Neumann sets
+                writeBCDataHeader = True
+                for dirArr in dataSet.dirichletArrays:
+                    libcgns_utils.writebcdata(cg, zoneID, iBC, iDataSet, BCDATATYPE["Dirichlet"], writeBCDataHeader,
+                                          dirArr.name, dirArr.dataType, dirArr.nDimensions, dirArr.dataDimensions,
+                                          dirArr.dataArr, dirArr.dataArr.shape)
+                    writeBCDataHeader = False
+
+                writeBCDataHeader = True
+                for neuArr in dataSet.neumannArrays:
+                    libcgns_utils.writebcdata(cg, zoneID, iBC, iDataSet, BCDATATYPE["Neumann"], writeBCDataHeader,
+                                          neuArr.name, neuArr.dataType, neuArr.nDimensions, neuArr.dataDimensions,
+                                          neuArr.dataArr, neuArr.dataArr.shape)
+                    writeBCDataHeader = False
+
 
         for b2b in self.B2Bs:
             libcgns_utils.writeb2b(cg, zoneID, b2b.name, b2b.donorName,
@@ -1675,6 +1764,91 @@ class Block(object):
                 # Replace previous coordinates
                 self.coords = newCoords
                 self.dims = new_dimensions[:]
+
+    def extrude(self, direction):
+        """Extrudes from 2D panar grid to 3D"""
+    
+        # Note that the self.dims always has data in the first and second
+        # slot like it is a xy plane dataset. The third slot always has ones
+        # set in readgrid() function. This will we updated.
+
+        if direction == "x":
+            # Data given is in yz-plane
+            order = [2, 0, 1]
+            newDims = [2, self.dims[0], self.dims[1], 3]
+        elif direction == "y":
+            # Data given is in xz-plane
+            order = [0, 2, 1]
+            newDims = [self.dims[0], 2, self.dims[1], 3]
+        elif direction == "z":
+            # Data given is in xy-plane
+            order = [0, 1, 2]
+            newDims = [self.dims[0], self.dims[1], 2, 3]
+        else:
+            print("ERROR direction...exit", direction)
+            exit()
+            
+        # Allocate memory for new coordinates
+        newCoords = numpy.zeros(newDims)
+        
+        # Now copy current coords into new coord array.
+        
+        # As for the dims above the coordinates have only data in the first two slots i,j and k is zero
+        # The actual coordinates stored however are given in the plane specified by the user they are 
+        # therefore not updated/changed.
+        for i in range(self.dims[0]):
+            for j in range(self.dims[1]):
+                if direction == "x":
+                    newCoords[0, i, j, :] = self.coords[i, j, 0, :]
+                    newCoords[1, i, j, :] = self.coords[i, j, 0, :]
+                    # Update the x-dimension coord with unit length
+                    newCoords[1, i, j, 1, 0] = 1.0                        
+                elif direction == "y":     
+                    newCoords[i, 0, j, :] = self.coords[i, j, 0, :]
+                    newCoords[i, 1, j, :] = self.coords[i, j, 0, :]
+                    # Update the y-dimension coord with unit length
+                    newCoords[i, 1, j, 1] = 1.0
+                elif direction == "z":
+                    newCoords[i, j, 0, :] = self.coords[i, j, 0, :]
+                    newCoords[i, j, 1, :] = self.coords[i, j, 0, :]
+                    # Update the z-dimension coord with unit length
+                    newCoords[i, j, 1, 2] = 1.0                        
+        
+        # Update the coordinates
+        self.coords = newCoords
+        
+        # Update current BCs
+        for boco in self.bocos:
+            for j in range(2):
+                # Find where we have zeros. That will indicate dimension that has not been updated
+                # We only need to check the last row of ptRange because the data actual data is always
+                # in the first two rows
+                if boco.ptRange[2, j] == 0:
+                    boco.ptRange[2, j] = j+1
+            
+            # Sort based on which dimension we want to extrude in
+            boco.ptRange = boco.ptRange[order]
+        
+        
+        # Create 2 new SYMM BCs for this block (each side). This is the plane which the grid was created in
+        bocoType = BC["bcsymmetryplane"]
+        family = "sym"
+        for j in range(2):
+            bocoName = "SYMM-{0}".format(j)
+            ptRange = numpy.ones((3,2))
+            ptRange[0,1] = self.dims[0]
+            ptRange[1,1] = self.dims[1]
+            ptRange[2,:] = j+1
+
+            # Sort based on which dimension we want to extrude in
+            ptRange = ptRange[order]
+        
+            # Create and add the BC
+            self.addBoco(Boco(bocoName, bocoType, ptRange, family))
+            
+        # Update the dims. This is done last since the original dims are used above to simplify and reduce code
+        self.dims = newDims[:-1]
+
 
     def getSplitBlocks(self):
         """Return a list of blocks that have been split according to
@@ -1825,7 +1999,7 @@ class Block(object):
             if match:
                 boco.family = family
 
-    def overwriteBCs(self, faceStr, bcType, family, data):
+    def overwriteBCs(self, faceStr, bcType, family, dataSet):
         """Find any BCs on this face and toast them. Note that we *ONLY ALLOW
         ONE BC per face*
         """
@@ -1867,7 +2041,7 @@ class Block(object):
             ptRange = [[1, 1, d[2]], [d[0], d[1], d[2]]]
         ptRange = numpy.array(ptRange).T
         newBoco = Boco("boco_%d"%self.bocoCounter, BC[bcType.lower()], 
-                       ptRange, family, data)
+                       ptRange, family, dataSet)
         self.bocoCounter += 1
         self.bocos.append(newBoco)
 
@@ -1985,16 +2159,24 @@ class Block(object):
 class Boco(object):
 
     """Class for storing information related to a boundary condition"""
-    def __init__(self, bocoName, bocoType, ptRange, family, bcData=None):
+    def __init__(self, bocoName, bocoType, ptRange, family, bcDataSets=None):
         self.name = bocoName.strip()
         self.type = bocoType
         self.ptRange = ptRange
-        self.data = {}
+        
+        if bcDataSets is None:
+            self.dataSets = []
+        else:
+            self.dataSets = bcDataSets
 
         if family is None or family.strip() == '':
             self.family = 'default'
         else:
             self.family = family
+
+    def addBocoDataSet(self, bocoDataSet):
+        """Add a boundary condition dataset to this bc"""
+        self.dataSets.append(bocoDataSet)
 
     def coarsen(self):
         """Coarsen the range of the BC"""
@@ -2007,6 +2189,33 @@ class Boco(object):
         for i in range(3):
             for j in range(2):
                 self.ptRange[i, j] = (self.ptRange[i, j]-1)*2 + 1
+
+
+class BocoDataSet(object):
+    """Container class that contains list of data arrays that are associated to a boundary condition"""
+
+    def __init__(self, bocoSetName, bocoDataSetType):
+        self.name = bocoSetName.strip()
+        self.type = bocoDataSetType             # BC type
+        self.dirichletArrays = []
+        self.neumannArrays = []
+    
+    def addDirichletDataSet(self, dirDataSet):
+        self.dirichletArrays.append(dirDataSet)
+    
+    def addNeumannDataSet(self, neuDataSet):
+        self.neumannArrays.append(dirDataSet)
+
+
+class BocoDataSetArray(object):
+    """Class that contains the actual dataset associated to a boundary condition"""
+
+    def __init__(self, arrayName, dType, nDims, dataDims, dataArr):
+        self.name = arrayName.strip()
+        self.dataType = dType                   # This is the CGNS datatype that was read from the CGNS file. 
+        self.nDimensions = nDims                # Number of dimensions that the data has
+        self.dataDimensions = dataDims          # Number of data points of every dimensions. Array of ints
+        self.dataArr = dataArr                  # Note that this is a flat 1D numpy array and is float64
 
 
 class B2B(object):
@@ -2186,9 +2395,63 @@ def readGrid(fileName):
         blk = Block(zoneName, dims, coords)
 
         for iBoco in range(1, nBoco+1):
-            bocoName, bocoType, ptRange, family = libcgns_utils.getbcinfo(
-                inFile, iBlock, iBoco)
-            blk.addBoco(Boco(bocoName, bocoType, ptRange, family))
+            # Get the BCs
+            bocoName, bocoType, ptRange, family, nDataSets = libcgns_utils.getbcinfo(
+                inFile, iBlock, iBoco, cellDim)
+            bc = Boco(bocoName, bocoType, ptRange, family)
+
+            # Get the BCDataSets
+            if nDataSets != 0:
+                # Loop over all the datasets for this BC
+                for iBocoDataSet in range(1, nDataSets+1):
+                    
+                    bocoDatasetName, bocoDataSetType, nDirichletArrays, nNeumannArrays = libcgns_utils.getbcdatasetinfo(inFile, iBlock, iBoco, iBocoDataSet)
+                    bcDSet = BocoDataSet(bocoDatasetName, bocoType)
+                    
+                    def getBocoDataSetArray(flagDirNeu):
+                         # Get data information
+                        dataArrayName, dataType, nDimensions, dataDimensionVector = libcgns_utils.getbcdataarrayinfo(inFile, iBlock, iBoco, iBocoDataSet, iDir, flagDirNeu)
+
+                        # Create a flat array for the data
+                        # Note we make it float64 although it can contain integers.
+                        nDataArr = numpy.prod(dataDimensionVector)
+                        dataArr = numpy.zeros(nDataArr, dtype=numpy.float64, order="F")
+                        
+                        # Get the data. Note the dataArr is populated when the routine exits
+                        libcgns_utils.getbcdataarray(inFile, iBlock, iBoco, iBocoDataSet, iDir, flagDirNeu, dataArr, nDataArr)
+                        
+                        # Create a BocoDataSetArray object and return
+                        return  BocoDataSetArray(dataArrayName, dataType, nDimensions, dataDimensionVector, dataArr)
+                        
+                        
+                    if nDirichletArrays > 0:
+                        # Loop over Dirichlet data and get the actual data
+                        for iDir in range(1,nDirichletArrays+1):
+                            
+                            # Get the data set
+                            bcDSetArr = getBocoDataSetArray(BCDATATYPE["Dirichlet"])
+                            
+                            # Append a BocoDataSetArray to the datasets
+                            bcDSet.addDirichletDataSet(bcDSetArr)
+                        
+                        # Append the Dirichlet BC dataset to the BC    
+                        bc.addBocoDataSet(bcDSet)
+                    
+                    if nNeumannArrays > 0:
+                        # Loop over Neumann data sets
+                        for nDir in range(1,nNeumannArrays+1):
+                            
+                            # Get the data set
+                            bcDSetArr = getBocoDataSetArray(BCDATATYPE["Neumann"])
+
+                            # Append a BocoDataSetArray to the datasets
+                            bcDSet.addNeumannDataSet(bcDSetArr)
+
+                        # Append the Neumann BC dataset to the BC
+                        bc.addBocoDataSet(bcNSet)
+
+            blk.addBoco(bc)
+        
         for iB2B in range(1, nB2B+1):
             connectName, donorName, ptRange, donorRange, transform = \
                          libcgns_utils.getb2binfo(inFile, iBlock, iB2B)
@@ -2845,6 +3108,8 @@ elif args.mode == 'info':
     curGrid.printInfo()
     sys.exit(0)
 
+elif args.mode == 'extrude':
+    curGrid.extrude(args.direction)
 
 # Write out the grid.
 curGrid.writeToCGNS(outFileName)
