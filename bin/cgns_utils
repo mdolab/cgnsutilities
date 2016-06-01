@@ -310,6 +310,22 @@ p_sub.add_argument('sym', help='Normal for possible sym plane', type=str)
 p_sub.add_argument('mgcycle', help='Minimum MG cycle to enforce', type=int)
 p_sub.add_argument('outFile', help='Name of output CGNS file')
 
+# ------------ Options for 'explicitCart' mode --------------------
+p_sub = subparsers.add_parser(
+    'explicitCart', help='Generates a background cartesian mesh', formatter_class=argparse.RawTextHelpFormatter)
+p_sub.add_argument('xmin', type=float, help='min x coordinate')
+p_sub.add_argument('ymin', type=float, help='min y coordinate')
+p_sub.add_argument('zmin', type=float, help='min z coordinate')
+p_sub.add_argument('xmax', type=float, help='max x coordinate')
+p_sub.add_argument('ymax', type=float, help='max y coordinate')
+p_sub.add_argument('zmax', type=float, help='max z coordinate')
+p_sub.add_argument('dh', help='Uniform spacing size', type=float)
+p_sub.add_argument('hExtra', help='Extension in each dimension', type=float)
+p_sub.add_argument('nExtra', help='Number of nodes to use for extension', type=int)
+p_sub.add_argument('sym', help='Normal for possible sym plane', type=str)
+p_sub.add_argument('mgcycle', help='Minimum MG cycle to enforce', type=int)
+p_sub.add_argument('outFile', help='Name of output CGNS file')
+
 # ------------ Options for 'simpleOCart' mode --------------------
 p_sub = subparsers.add_parser(
     'simpleOCart', help='Generates a background cartesian mesh surrounding by an OMesh', formatter_class=argparse.RawTextHelpFormatter)
@@ -746,94 +762,9 @@ class Grid(object):
             for iDim in range(3):
                 xMin[iDim] = min(xMin[iDim], tmp1[iDim])
                 xMax[iDim] = max(xMax[iDim], tmp2[iDim])
-        
-        # Now determine how many nodes we need on the inside
-        MGFact = 2**(mgcycle-1)
-        N = numpy.zeros(3, 'intc')
-        dx = numpy.zeros(3)
-        r = numpy.zeros(3)
-        Xcart = []  
-        for iDim in range(3):
-            n = int((xMax[iDim]-xMin[iDim])/dh)
-            n = n//MGFact + 1
-            N[iDim] = n*MGFact # Number of CELLS
 
-            # Compute the *actual* dx's 
-            dx[iDim] = (xMax[iDim]-xMin[iDim])/N[iDim]
-
-            # Next we need to find the grid stretch ratios for each
-            # direction to satify our requested extra distance. 
-            r[iDim] = libcgns_utils.calcgridratio(nExtra, dx[iDim], hExtra)
-            
-            # Determine if this direction should have a sym plane:
-            pos = True
-            neg = True
-
-            if sym == 'x' and iDim == 0:
-                neg = False
-            if sym == 'y' and iDim == 1:
-                neg = False
-            if sym == 'z' and iDim == 2:
-                neg = False
-                
-            # Now fill up the cartesian direction
-            n = N[iDim]
-            iStart = 0
-            if neg:
-                n += nExtra
-                iStart = nExtra
-
-            if pos:
-                n += nExtra
-
-            # cordinates for this dimension
-            x = numpy.zeros(n + 1)
-
-            # First coordinate is at iStart:
-            x[iStart] = xMin[iDim]
-
-            # Add remainder of the uniform part:
-            for i in range(N[iDim]):
-                x[i+1+iStart] = x[i+iStart] + dx[iDim]
-
-            # Add neg part if necessary:
-            if neg:
-                for i in range(nExtra):
-                    x[iStart - 1 -i] = x[iStart - i] - r[iDim]*(
-                        x[iStart -i +1] - x[iStart - i])
-            if pos:
-                iStart = iStart + N[iDim]
-                for i in range(nExtra):
-                    x[iStart + i + 1] = x[iStart + i] + r[iDim]*(
-                        x[iStart + i] - x[iStart + i - 1])
-            
-            Xcart.append(x)
-            
-        # Allocate coordinates block
-        shp = [Xcart[0].shape[0], Xcart[1].shape[0], Xcart[2].shape[0]]
-        X = numpy.zeros((shp[0], shp[1], shp[2], 3))
-
-        print ('Grid Dimensions:', shp)
-        print ('Grid Ratios:', r)
-        # Write grid coordinates
-        Xx, Xy, Xz = numpy.meshgrid(Xcart[0], Xcart[1], Xcart[2], indexing='ij')
-        X[:,:,:,0] = Xx
-        X[:,:,:,1] = Xy
-        X[:,:,:,2] = Xz
-
-        # Open a new CGNS file and write if necessary:
-        cg = libcgns_utils.openfile(outFile, CG_MODE_WRITE)
-
-        # Write a Zone to it
-        zoneID = libcgns_utils.writezone(cg, 'cartesian', shp)
-        
-        # Write mesh coordinates
-        libcgns_utils.writecoordinates(cg, zoneID, X)
-        
-        # CLose file
-        libcgns_utils.closefile(cg)
-
-        return X, dx
+        # Call the generic routine
+        simpleCart(xMin, xMax, dh, hExtra, sym, mgcycle, outFile)
 
     def simpleOCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile):
         """Generates a cartesian mesh around the provided grid, surrounded by
@@ -2149,7 +2080,99 @@ def inRange(ptRange, chkRange):
             val = False
 
     return val
-             
+     
+def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
+    """Generates a cartesian mesh"""
+
+    # Now determine how many nodes we need on the inside
+    MGFact = 2**(mgcycle-1)
+    N = numpy.zeros(3, 'intc')
+    dx = numpy.zeros(3)
+    r = numpy.zeros(3)
+    Xcart = []  
+    for iDim in range(3):
+        n = int((xMax[iDim]-xMin[iDim])/dh)
+        n = n//MGFact + 1
+        N[iDim] = n*MGFact # Number of CELLS
+
+        # Compute the *actual* dx's 
+        dx[iDim] = (xMax[iDim]-xMin[iDim])/N[iDim]
+
+        # Next we need to find the grid stretch ratios for each
+        # direction to satify our requested extra distance. 
+        r[iDim] = libcgns_utils.calcgridratio(nExtra, dx[iDim], hExtra)
+
+        # Determine if this direction should have a sym plane:
+        pos = True
+        neg = True
+
+        if sym == 'x' and iDim == 0:
+            neg = False
+        if sym == 'y' and iDim == 1:
+            neg = False
+        if sym == 'z' and iDim == 2:
+            neg = False
+
+        # Now fill up the cartesian direction
+        n = N[iDim]
+        iStart = 0
+        if neg:
+            n += nExtra
+            iStart = nExtra
+
+        if pos:
+            n += nExtra
+
+        # cordinates for this dimension
+        x = numpy.zeros(n + 1)
+
+        # First coordinate is at iStart:
+        x[iStart] = xMin[iDim]
+
+        # Add remainder of the uniform part:
+        for i in range(N[iDim]):
+            x[i+1+iStart] = x[i+iStart] + dx[iDim]
+
+        # Add neg part if necessary:
+        if neg:
+            for i in range(nExtra):
+                x[iStart - 1 -i] = x[iStart - i] - r[iDim]*(
+                    x[iStart -i +1] - x[iStart - i])
+        if pos:
+            iStart = iStart + N[iDim]
+            for i in range(nExtra):
+                x[iStart + i + 1] = x[iStart + i] + r[iDim]*(
+                    x[iStart + i] - x[iStart + i - 1])
+
+        Xcart.append(x)
+
+    # Allocate coordinates block
+    shp = [Xcart[0].shape[0], Xcart[1].shape[0], Xcart[2].shape[0]]
+    X = numpy.zeros((shp[0], shp[1], shp[2], 3))
+
+    print ('Grid Dimensions:', shp)
+    print ('Grid Ratios:', r)
+    # Write grid coordinates
+    Xx, Xy, Xz = numpy.meshgrid(Xcart[0], Xcart[1], Xcart[2], indexing='ij')
+    X[:,:,:,0] = Xx
+    X[:,:,:,1] = Xy
+    X[:,:,:,2] = Xz
+
+    # Open a new CGNS file and write if necessary:
+    cg = libcgns_utils.openfile(outFile, CG_MODE_WRITE)
+
+    # Write a Zone to it
+    zoneID = libcgns_utils.writezone(cg, 'cartesian', shp)
+
+    # Write mesh coordinates
+    libcgns_utils.writecoordinates(cg, zoneID, X)
+
+    # CLose file
+    libcgns_utils.closefile(cg)
+
+    return X, dx
+
+        
 # def normal_direction(iFace1, iFace2):
 #     """Normal direction is positive if iFace1 and iFace two are of
 #     opposite oddity, even if they are the same oddity"""
@@ -2653,6 +2676,16 @@ if args.mode == 'combine':
     combinedGrid.writeToCGNS(args.outFile)
 
     # This task is now finished
+    sys.exit(0)
+
+if args.mode == 'explicitCart':
+    # This task doesn't have args.gridFile so do it first
+    xMin = [args.xmin, args.ymin, args.zmin]
+    xMax = [args.xmax, args.ymax, args.zmax]
+
+    simpleCart(xMin, xMax, args.dh, args.hExtra, args.nExtra, 
+               args.sym, args.mgcycle, args.outFile)
+
     sys.exit(0)
 
 # Get the current working grid 'curGrid' by reading the input
