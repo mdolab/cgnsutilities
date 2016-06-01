@@ -129,24 +129,27 @@ subroutine getBlockInfo(cg, iBlock, zoneName, dims, nBoco, nB2B)
 
 end subroutine getBlockInfo
 
-subroutine getBCInfo(cg, iBlock, iBC, bocoName, bocoType, ptRange, family)
+subroutine getBCInfo(cg, iBlock, iBC, cellDim, bocoName, bocoType, ptRange, family, nDataSet)
   ! Get the BCInfor for 'iBC' condition on block 'iBlock' We determine
   ! the bocoName, the botoType, and pointRange which is sufficient to
   ! reproduce the boundary condition. 
+
+  ! Note that ptRange can be a 2D i.e. (2,2) but we force it 3D (3,2)
+  ! tmpPtRange contains the actual size 
 
   implicit none
   include 'cgnslib_f.h'
 
   ! Input/Output
-  integer, intent(in) :: cg, iBlock, iBC
-  integer, intent(out) :: bocoType, ptRange(3, 2)
+  integer, intent(in) :: cg, iBlock, iBC, cellDim
+  integer, intent(out) :: bocoType, ptRange(3, 2), nDataSet
   character(len=256), intent(out) :: bocoName, family
 
   ! Working
-  integer :: ier, base
-  integer :: NormalIndex(3), NormalListSize, NormalDataType, nDataSet
-  integer :: ptset_type, npnts, pnts(3,2),pnts_donor(3,2),ncon
-  integer :: nuserdata, index
+  integer :: ier, base, i
+  integer :: NormalIndex(3), NormalListSize, NormalDataType
+  integer :: ptset_type, npnts, tmpPtRange(cellDim,2),pnts_donor(cellDim,2),ncon
+  integer :: nuserdata
   character(len=256) :: name
 
   base = 1
@@ -156,9 +159,15 @@ subroutine getBCInfo(cg, iBlock, iBC, bocoName, bocoType, ptRange, family)
   call cg_boco_info_f(cg, base, iBlock, iBC, bocoName, bocoType, &
        ptset_type, npnts, NormalIndex, NormalListSize, NormalDataType, nDataSet, ier)
   if (ier .eq. CG_ERROR) call cg_error_exit_f
-  call cg_boco_read_f(cg, base, iBlock, iBC, ptRange, Integer, ier)
+  call cg_boco_read_f(cg, base, iBlock, iBC, tmpPtRange, Integer, ier)
   if (ier .eq. CG_ERROR) call cg_error_exit_f
 
+  if (cellDim == 2) then
+     ptRange(1:2,1:2) = tmpPtRange(1:2,1:2)
+  else
+     ptRange = tmpPtRange
+  end if 
+  
   call cg_goto_f(cg, base, ier, "Zone_t", iBlock, "ZoneBC_t",1, "BC_t", iBC, "end")
   if (ier == 0) then ! Node exits
 
@@ -172,17 +181,118 @@ subroutine getBCInfo(cg, iBlock, iBC, bocoName, bocoType, ptRange, family)
      if (ier .eq. CG_ERROR) call cg_error_exit_f
 
      ! Loop over all user defined data to check for overset bc
-     do index = 1,nuserdata
+     do i = 1,nuserdata
 
         ! Read user defined data
-        call cg_user_data_read_f(index, name, ier)
+        call cg_user_data_read_f(i, name, ier)
         if (ier .eq. CG_ERROR) call cg_error_exit_f
         
      end do
-
   end if
-
+  
 end subroutine getBCInfo
+
+subroutine getBCDataSetInfo(cg, iBlock, iBC, iBCDataSet, bocoDatasetName, &
+        bocoType, nDirichletArrays, nNeumannArrays)
+  
+  ! This subroutine returns information about any BC datasets 
+  ! that might be associated to this BC and the number of each type.
+
+  implicit none
+  include 'cgnslib_f.h'
+
+  ! Input/Output
+  integer, intent(in) :: cg, iBlock, iBC, iBCDataSet
+  integer, intent(out) :: nDirichletArrays, nNeumannArrays, bocoType
+  character(len=256), intent(out) :: bocoDatasetName
+
+  ! Working
+  integer :: ier, base
+  integer :: DirichletFlag, NeumannFlag
+
+  base = 1
+  call cg_dataset_read_f(cg, base, iBlock, iBC, iBCDataSet, &
+       bocoDatasetName, bocoType, DirichletFlag, NeumannFlag, ier)
+  if (ier .eq. CG_ERROR) call cg_error_exit_f
+  
+  if (DirichletFlag == 1) then
+    call cg_goto_f(cg, base, ier, 'Zone_t', iBlock, 'ZoneBC_t', 1, 'BC_t', &
+          iBC, 'BCDataSet_t', iBCDataSet, 'BCData_t', Dirichlet, 'end')
+    if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+    ! Read number of variables specified here.
+    call cg_narrays_f(nDirichletArrays, ier)
+  end if
+  
+  if (NeumannFlag == 1) then
+    call cg_goto_f(cg, base, ier, 'Zone_t', iBlock, 'ZoneBC_t', 1, 'BC_t', &
+          iBC, 'BCDataSet_t', iBCDataSet, 'BCData_t', Neumann, 'end')
+    if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+    ! Read number of variables specified here.
+    call cg_narrays_f(nNeumannArrays, ier)
+  end if
+  
+end subroutine getBCDataSetInfo
+
+
+subroutine getBCDataArrayInfo(cg, iBlock, iBC, iBCDataSet, iDataArr, &
+        flagDirNeu, dataArrayName, dataType, nDataDimensions, &
+        dataDimensionVector)
+
+  ! This subroutine returns information about data arrays in a particular BC dataset.
+
+  implicit none
+  include 'cgnslib_f.h'
+
+  ! Input/Output
+  integer, intent(in) :: cg, iBlock, iBC, iBCDataSet, iDataArr, flagDirNeu
+  integer, intent(out) :: dataType, nDataDimensions
+  integer, intent(out), dimension(3) :: dataDimensionVector
+  character(len=256), intent(out) :: dataArrayName
+
+  ! Working
+  integer :: ier, base, i
+  
+  ! Initialize from zeros to ones to make sure nothing bad happens
+  ! when we get the total number of elements
+  dataDimensionVector = 1
+
+  base = 1  
+  call cg_goto_f(cg, base, ier, 'Zone_t', iBlock, 'ZoneBC_t', 1, 'BC_t', &
+        iBC, 'BCDataSet_t', iBCDataSet, 'BCData_t', flagDirNeu, 'end')
+  if (ier .eq. CG_ERROR) call cg_error_exit_f
+  
+  call cg_array_info_f(iDataArr, &
+        dataArrayName, dataType, nDataDimensions, dataDimensionVector, ier)
+  if (ier .eq. CG_ERROR) call cg_error_exit_f
+  
+end subroutine getBCDataArrayInfo
+
+subroutine getBCDataArray(cg, iBlock, iBC, iBCDataSet, iDataArr, flagDirNeu, dataArr, nDataArr)
+  ! This subroutine retrieves and returns BC dataset array
+  
+  implicit none
+  include 'cgnslib_f.h'
+
+  ! Input/Output
+  integer, intent(in) :: cg, iBlock, iBC, iBCDataSet, iDataArr, flagDirNeu, nDataArr  
+  real(kind=8), intent(inout), dimension(nDataArr) :: dataArr
+
+  ! Working
+  integer :: ier, base
+  
+  ! Call the goto to make sure we are at the right location in the tree
+  base = 1  
+  call cg_goto_f(cg, base, ier, 'Zone_t', iBlock, 'ZoneBC_t', 1, 'BC_t', &
+        iBC, 'BCDataSet_t', iBCDataSet, 'BCData_t', flagDirNeu, 'end')
+  if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+  ! Note we read all data as real double even though it is integer or single.
+  call cg_array_read_as_f(iDataArr, RealDouble, dataArr, ier)
+  if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+end subroutine getBCDataArray
 
 subroutine getB2BInfo(cg, iBlock, iB2B, connectName, donorName, ptRange, donorRange, transform)
   ! Get the block to block connection information for 'iB2B' condition
@@ -337,7 +447,33 @@ subroutine writeBC(cg, iBlock, bcName, bcFam, ptRange, bcType, bcOut)
 
 end subroutine writeBC
 
-subroutine writeBCData(cg, iBlock, bcType, bcIn, dataName, dataValue, writeHeader)
+
+
+subroutine writeBCDataHeader(cg, iBlock, bcType, iBC, datasetName, iDataSet)
+
+  implicit none
+  include 'cgnslib_f.h'
+
+  ! Input/Output
+  integer,intent(in) :: cg, iBlock, bcType, iBC
+  character*(*),  intent(in) :: datasetName
+  integer,intent(out) :: iDataSet
+  
+  ! Working
+  integer :: ier, base
+
+  base = 1
+  
+  call cg_dataset_write_f(cg, base, iBlock, iBC, datasetName, bcType, iDataSet, ier)
+  if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+
+end subroutine writeBCDataHeader
+
+
+subroutine writeBCData(cg, iBlock, iBC, iDataSet, flagDirNeu, writeBCDataHeader,&
+           dataArrayName, dataType, nDataDimensions, dataDimensionVector, &
+           dataArr, nDataArr)
 
   ! This function writes actual BCData. The writeBCDataHeader must
   ! have already been called. 
@@ -345,30 +481,31 @@ subroutine writeBCData(cg, iBlock, bcType, bcIn, dataName, dataValue, writeHeade
   include 'cgnslib_f.h'
 
   ! Input/Output
-  integer,intent(in) :: cg, iBlock, bcIn, bcType 
-  character*(*),  intent(in) :: dataName
-  real(kind=8), intent(in) :: dataValue
-  logical :: writeHeader
+  integer, intent(in) :: cg, iBlock, iBC, iDataSet, flagDirNeu
+  integer, intent(in) :: dataType, nDataDimensions, nDataArr
+  logical, intent(in) :: writeBCDataHeader
+  character*(*),  intent(in) :: dataArrayName
+  integer, intent(in), dimension(3) :: dataDimensionVector
+  real(kind=8), intent(in), dimension(nDataArr) :: dataArr
+  
   ! Working
-  integer :: ier, base, i, iDataSet
+  integer :: ier, base
 
   base = 1
-  iDataSet = 1
 
-  if (writeHeader) then 
-     call cg_dataset_write_f(cg, base, iBlock, bcIn, "data", BCType, idataset, ier )
-     if (ier .eq. CG_ERROR) call cg_error_exit_f
-
-     call cg_bcdata_write_f(cg, base, iBlock, bcIn, iDataSet, Dirichlet, ier)
+  if (writeBCDataHeader) then 
+     call cg_bcdata_write_f(cg, base, iBlock, iBC, iDataSet, flagDirNeu, ier)
      if (ier .eq. CG_ERROR) call cg_error_exit_f
   end if
 
   call cg_goto_f(cg, base, ier, 'Zone_t', iBlock, "ZoneBC_t", 1, &
-       "BC_t", BCIn, "BCDataSet_t", idataSet, "BCData_t", Dirichlet, &
-       "end")
+       "BC_t", iBC, "BCDataSet_t", idataSet, "BCData_t", flagDirNeu, "end")
   if (ier .eq. CG_ERROR) call cg_error_exit_f
 
-  call cg_array_write_f(trim(dataName), RealDouble, 1, (/1/), dataValue, ier)
+  ! Note that dataType is ignored here since the data is stored 
+  ! as RealDouble in python. Everything is thus written as double.
+  call cg_array_write_f(trim(dataArrayName), RealDouble, nDataDimensions, &
+        dataDimensionVector, dataArr, ier)
   if (ier .eq. CG_ERROR) call cg_error_exit_f
 
 end subroutine writeBCData
