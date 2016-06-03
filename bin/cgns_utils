@@ -425,12 +425,29 @@ p_info.add_argument('gridFile', help='Name of input CGNS file')
 p_p2D = subparsers.add_parser(
     'extrude', help='Takes a true 2D mesh (planar) and extrude it in one direction to make \
     it a 3D mesh, one cell wide. This method assumes that BCs are already set in the CGNS file. \
-    BCs are retained and applies symmetry BCs on planar surfaces.')
+    BCs are retained and symmetry BCs are applied on planar surfaces.')
 p_p2D.add_argument('gridFile', help='Name of input CGNS file. Note that the planar grid should \
-    not have symmetry ')
+    not have symmetry BCs set on the plane.')
 p_p2D.add_argument('direction', help='Direction which to extrude the grid',
                   choices=['x', 'y', 'z'])
 p_p2D.add_argument('outFile', nargs='?', default=None,
+                     help='Optional output CGNS file')
+
+
+# ------------ Options for 'revolve' mode
+p_p2R = subparsers.add_parser(
+    'revolve', help='Takes a true 2D mesh (planar) and reloves it about specified axis to make \
+    a 3D axisymmetric mesh, one cell wide. This method assumes that BCs are already set in the CGNS file. \
+    BCs are retained and symmetry BCs are applied on planar surfaces. Output should be a wedge shape.')
+p_p2R.add_argument('gridFile', help='Name of input CGNS file. Note that the planar grid should \
+    not have symmetry BCs set on the plane.')
+p_p2R.add_argument('normalDirection', help='This is the direction in which the plane normal points in. \
+                    Example: If supplied data is in xz coordinates, the normal points in y',
+                  choices=['x', 'y', 'z'])
+p_p2R.add_argument('axis', help='Axis which to rotate about',
+                  choices=['x', 'y', 'z'])
+p_p2R.add_argument('angle', type=float, help='Rotation angle given in degrees. Typically this is a small quantity.')
+p_p2R.add_argument('outFile', nargs='?', default=None,
                      help='Optional output CGNS file')
 
 # Finally get the arguments we need!
@@ -1502,7 +1519,7 @@ class Grid(object):
             
     def extrude(self, direction):
         """
-        Takes a planar grid in true 2D and extrudes into the third 
+        Takes a planar grid in 2D and extrudes into the third 
         dimension making a 3D that is single cell wide. This routine 
         maintains the BCs and creates 2 new symm BCs for each side. 
         
@@ -1512,6 +1529,25 @@ class Grid(object):
         # Extrude all blocks
         for blk in self.blocks:
             blk.extrude(direction)
+        
+        # Rebuild B2B connectivity
+        self.connect()
+
+
+    def revolve(self, normalDirection, axis, angle):
+        """
+        Takes a planar grid in 2D and revolves about specified axis to 
+        make a 3D axisymmetric mesh. This routine maintains the BCs and
+        creates 2 new symm BCs for each side. 
+        
+        normalDirection: "str" {x,y,z}
+        axis: "str" {x,y,z}
+        angle: "float" degrees
+        """
+        
+        # Extrude all blocks
+        for blk in self.blocks:
+            blk.revolve(normalDirection, axis, angle)
         
         # Rebuild B2B connectivity
         self.connect()
@@ -1696,57 +1732,36 @@ class Block(object):
                 self.coords = newCoords
                 self.dims = new_dimensions[:]
 
-    def extrude(self, direction):
-        """Extrudes from 2D panar grid to 3D"""
-    
+
+
+    def _extrudeGetDataOrderAndDIms(self, directionNormal):
+        """ This is a support function that member functions extrude and revolve call"""
+        
         # Note that the self.dims always has data in the first and second
         # slot like it is a xy plane dataset. The third slot always has ones
         # set in readgrid() function. This will we updated.
 
-        if direction == "x":
+        if directionNormal == "x":
             # Data given is in yz-plane
             order = [2, 0, 1]
             newDims = [2, self.dims[0], self.dims[1], 3]
-        elif direction == "y":
+        elif directionNormal == "y":
             # Data given is in xz-plane
             order = [0, 2, 1]
             newDims = [self.dims[0], 2, self.dims[1], 3]
-        elif direction == "z":
+        elif directionNormal == "z":
             # Data given is in xy-plane
             order = [0, 1, 2]
             newDims = [self.dims[0], self.dims[1], 2, 3]
         else:
-            print("ERROR direction...exit", direction)
-            exit()
-            
-        # Allocate memory for new coordinates
-        newCoords = numpy.zeros(newDims)
-        
-        # Now copy current coords into new coord array.
-        
-        # As for the dims above the coordinates have only data in the first two slots i,j and k is zero
-        # The actual coordinates stored however are given in the plane specified by the user they are 
-        # therefore not updated/changed.
-        for i in range(self.dims[0]):
-            for j in range(self.dims[1]):
-                if direction == "x":
-                    newCoords[0, i, j, :] = self.coords[i, j, 0, :]
-                    newCoords[1, i, j, :] = self.coords[i, j, 0, :]
-                    # Update the x-dimension coord with unit length
-                    newCoords[1, i, j, 1, 0] = 1.0                        
-                elif direction == "y":     
-                    newCoords[i, 0, j, :] = self.coords[i, j, 0, :]
-                    newCoords[i, 1, j, :] = self.coords[i, j, 0, :]
-                    # Update the y-dimension coord with unit length
-                    newCoords[i, 1, j, 1] = 1.0
-                elif direction == "z":
-                    newCoords[i, j, 0, :] = self.coords[i, j, 0, :]
-                    newCoords[i, j, 1, :] = self.coords[i, j, 0, :]
-                    # Update the z-dimension coord with unit length
-                    newCoords[i, j, 1, 2] = 1.0                        
-        
-        # Update the coordinates
-        self.coords = newCoords
+            print("ERROR direction normal <{0}> not supported...exit".format(directionNormal))
+            exit()        
+
+        return order, newDims
+
+
+    def _extrudeBocoAndAddSymmBoco(self, order):
+        """ This is a support function that member functions extrude and revolve call"""
         
         # Update current BCs
         for boco in self.bocos:
@@ -1758,9 +1773,9 @@ class Block(object):
                     boco.ptRange[2, j] = j+1
             
             # Sort based on which dimension we want to extrude in
-            boco.ptRange = boco.ptRange[order]
-        
-        
+            boco.ptRange = boco.ptRange[order]        
+
+
         # Create 2 new SYMM BCs for this block (each side). This is the plane which the grid was created in
         bocoType = BC["bcsymmetryplane"]
         family = "sym"
@@ -1777,7 +1792,111 @@ class Block(object):
             # Create and add the BC
             self.addBoco(Boco(bocoName, bocoType, ptRange, family))
             
+            
+    def extrude(self, direction):
+        """Extrudes from 2D panar grid to 3D"""
+    
+        # Get the data order and new dims
+        order, newDims =  self._extrudeGetDataOrderAndDIms(direction)
+            
+        # Allocate memory for new coordinates
+        newCoords = numpy.zeros(newDims)
+        
+        # Now copy current coords into new coord array.
+        
+        # As for the dims above the coordinates have only data in the first two slots i,j.
+        # The actual coordinates stored however are given in the plane specified by the user they are 
+        # therefore not updated/changed.
+        for i in range(self.dims[0]):
+            for j in range(self.dims[1]):
+                if direction == "x":
+                    newCoords[0, i, j, :] = self.coords[i, j, 0, :]
+                    newCoords[1, i, j, :] = self.coords[i, j, 0, :]
+                    # Update the x-dimension coord with unit length
+                    newCoords[1, i, j, 0] = 1.0                        
+                elif direction == "y":     
+                    newCoords[i, 0, j, :] = self.coords[i, j, 0, :]
+                    newCoords[i, 1, j, :] = self.coords[i, j, 0, :]
+                    # Update the y-dimension coord with unit length
+                    newCoords[i, 1, j, 1] = 1.0
+                elif direction == "z":
+                    newCoords[i, j, 0, :] = self.coords[i, j, 0, :]
+                    newCoords[i, j, 1, :] = self.coords[i, j, 0, :]
+                    # Update the z-dimension coord with unit length
+                    newCoords[i, j, 1, 2] = 1.0                        
+        
+        # Update the coordinates
+        self.coords = newCoords
+        
+        # Update current BCs
+        self._extrudeBocoAndAddSymmBoco(order)
+            
         # Update the dims. This is done last since the original dims are used above to simplify and reduce code
+        self.dims = newDims[:-1]
+
+
+    def revolve(self, normalDirection, rotationAxis, angle):
+        """Revolves a 2D planar grid to create a 3D axisymmetric grid"""
+
+        angleRad = angle*numpy.pi/180.0
+
+        # Get the data order and new dims
+        order, newDims =  self._extrudeGetDataOrderAndDIms(normalDirection)
+
+        # Allocate memory for new coordinates
+        newCoords = numpy.zeros(newDims)
+        
+        # Now copy current coords into new coord array.
+        for i in range(self.dims[0]):
+            for j in range(self.dims[1]):
+                
+                tc = self.coords[i, j, 0, :].copy()
+                
+                if normalDirection == "x":
+                    if rotationAxis == "y":
+                        r = numpy.linalg.norm(tc[[0,2]])
+                        tc[0] = numpy.sin(angleRad) * r
+                        tc[2] = numpy.cos(angleRad) * r
+                    elif rotationAxis == "z":
+                        r = numpy.linalg.norm(tc[0:2])
+                        tc[0] = numpy.sin(angleRad) * r
+                        tc[1] = numpy.cos(angleRad) * r
+                        
+                    newCoords[0, i, j, :] = self.coords[i, j, 0, :]
+                    newCoords[1, i, j, :] = tc
+      
+                elif normalDirection == "y":   
+                    if rotationAxis == "x":
+                        r = numpy.linalg.norm(tc[1:])
+                        tc[1] = numpy.sin(angleRad) * r
+                        tc[2] = numpy.cos(angleRad) * r
+                    elif rotationAxis == "z":
+                        r = numpy.linalg.norm(tc[0:2])
+                        tc[0] = numpy.cos(angleRad) * r
+                        tc[1] = numpy.sin(angleRad) * r
+                        
+                    newCoords[i, 0, j, :] = self.coords[i, j, 0, :]
+                    newCoords[i, 1, j, :] = tc
+
+                elif normalDirection == "z":
+                    if rotationAxis == "x":
+                        tc[2] = numpy.sin(angleRad) * r
+                        tc[1] = numpy.cos(angleRad) * r
+                    elif rotationAxis == "y":
+                        tc[0] = numpy.sin(angleRad) * r
+                        tc[2] = numpy.cos(angleRad) * r
+                        
+                    newCoords[i, j, 0, :] = self.coords[i, j, 0, :]
+                    newCoords[i, j, 1, :] = tc
+        
+        # Update the coordinates
+        self.coords = newCoords
+        
+        # Update current BCs
+        self._extrudeBocoAndAddSymmBoco(order)
+            
+        # Update the dims. This is done last since the original dims
+        # are used above to simplify and reduce code
         self.dims = newDims[:-1]
 
 
@@ -3143,6 +3262,9 @@ elif args.mode == 'info':
 
 elif args.mode == 'extrude':
     curGrid.extrude(args.direction)
+
+elif args.mode == 'revolve':
+    curGrid.revolve(args.normalDirection, args.axis, args.angle)
 
 # Write out the grid.
 curGrid.writeToCGNS(outFileName)
