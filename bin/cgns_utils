@@ -476,7 +476,7 @@ class Grid(object):
         for blk in self.blocks:
             totalCells += (blk.dims[0]-1)*(blk.dims[1]-1)*(blk.dims[2]-1)
             totalNodes += blk.dims[0]*blk.dims[1]*blk.dims[2]
-            
+
         print ('Grid Info: %s'%args.gridFile)
         print ('Total Zones:', len(self.blocks))
         print ('Total Cells:', totalCells)
@@ -484,7 +484,7 @@ class Grid(object):
 
         boundaryNodes = 0
         boundaryCells = 0
-        wallBCs = [BC['bcwallviscous'], BC['bcwall'], BC['bcwallinviscid'], 
+        wallBCs = [BC['bcwallviscous'], BC['bcwall'], BC['bcwallinviscid'],
                    BC['bcwallviscousheatflux'], BC['bcwallviscousisothermal']]
         for blk in self.blocks:
             for boco in blk.bocos:
@@ -514,8 +514,8 @@ class Grid(object):
 
         print ('Wall Boundary Cells:', boundaryCells)
         print ('Wall Boundary Nodes:', boundaryNodes)
-        
-        
+
+
     def addBlock(self, blk):
 
         """Add a block to the grid"""
@@ -545,12 +545,12 @@ class Grid(object):
         for blk in self.blocks:
             blk.writeCoordsPlot3d(f)
         f.close()
-        
+
     def scale(self, scaleFact):
         """Scale blocks in this grid"""
         for blk in self.blocks:
             blk.scale(scaleFact)
-            
+
     def flip(self, axis):
         """Flip the grid about a axis, 'x', 'y' or 'z'"""
         for blk in self.blocks:
@@ -560,12 +560,12 @@ class Grid(object):
         """Coarsen the block by taking every-other grid line"""
         for blk in self.blocks:
             blk.coarsen()
-            
+
     def refine(self):
         """Refine he block by interpolating every-other grid line"""
         for blk in self.blocks:
             blk.refine()
-                
+
     def renameBlocks(self):
         """Rename all blocks in a consistent fashion"""
         i = 1
@@ -579,7 +579,7 @@ class Grid(object):
             for boco in blk.bocos:
                 boco.name = 'BC%d'% i
                 i += 1
-                
+
     def extractSurface(self, fileName):
         """ Extract wall surfaces and write to plot3d file"""
         patches = []
@@ -590,7 +590,7 @@ class Grid(object):
             f.write('%d\n' % len(patches))
             for i in range(len(patches)):
 
-                f.write('%d %d 1\n' %(patches[i].shape[0], 
+                f.write('%d %d 1\n' %(patches[i].shape[0],
                                       patches[i].shape[1]))
             for i in range(len(patches)):
                 patches[i][:, :, 0].flatten(1).tofile(f, sep='\n', format='%20.15g')
@@ -642,7 +642,7 @@ class Grid(object):
                     bocoDataSetType = aux[5]
                     DirNeu = aux[6]
                     bcDSet = BocoDataSet(bocoSetName, BC[bocoDataSetType.lower()])
-                    
+
                     for i in range(7, len(aux), 2):
                         arrayName = aux[i]
                         dType = CGNSDATATYPES["RealDouble"]
@@ -650,7 +650,7 @@ class Grid(object):
                         dataDims = numpy.ones(3, dtype=numpy.int32, order='F')
                         dataArr = numpy.zeros(1, dtype=numpy.float64, order='F')
                         dataArr[0] = float(aux[i+1])
-                        
+
 
                         bcDataArr = BocoDataSetArray(arrayName, dType, nDims, dataDims, dataArr)
                         if DirNeu == "Dirichlet":
@@ -686,7 +686,7 @@ class Grid(object):
 
         # Do the b2b by running connect:
         types, pointRanges, myIDs, faceAvg, faceNormal = self.connect()
-        
+
         # Loop over all subfaces and deal with the BCs
         for i in range(len(types)):
             blockID = myIDs[i] - 1
@@ -710,7 +710,7 @@ class Grid(object):
                 # Now simply add the boco
                 self.blocks[blockID].addBoco(Boco(
                     'dummy', bocoType, pointRanges[:, :, i], famName))
- 
+
         # Lastly rename the BCs to be consistent
         self.renameBCs()
 
@@ -735,7 +735,7 @@ class Grid(object):
 
         # Do the b2b by running connect:
         types, pointRanges, myIDs, faceAvg, faceNormal = self.connect()
-        
+
         # Loop over all subfaces and deal with the BCs
         for i in range(len(types)):
             blockID = myIDs[i] - 1
@@ -780,7 +780,7 @@ class Grid(object):
 
         # Do the b2b by running connect:
         types, pointRanges, myIDs, faceAvg, faceNormal = self.connect()
-        
+
         # Loop over all subfaces and deal with the BCs
         for i in range(len(types)):
             blockID = myIDs[i] - 1
@@ -823,7 +823,7 @@ class Grid(object):
                 xMax[iDim] = max(xMax[iDim], tmp2[iDim])
 
         # Call the generic routine
-        simpleCart(xMin, xMax, dh, hExtra, sym, mgcycle, outFile)
+        return simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile)
 
     def simpleOCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile):
         """Generates a cartesian mesh around the provided grid, surrounded by
@@ -831,10 +831,10 @@ class Grid(object):
 
         # First run simpleCart with no extension:
         X, dx = self.simpleCart(dh, 0.0, 0, sym, mgcycle, outFile)
-        
+
         # Pull out the patches. Note that we have to pay attention to
         # the symmetry and the ordering of the patches to make sure
-        # that all the normals are pointing out. 
+        # that all the normals are pointing out.
         patches = []
         patches.append(X[-1, :, :, :])
         patches.append(X[:, -1, :, :][::-1, :, :])
@@ -876,7 +876,7 @@ class Grid(object):
         grid.BCs = []
         grid.autoFarfieldBC(sym)
         grid.writeToCGNS(outFile)
-            
+
         # Delete the temp file
         os.remove(fName)
 
@@ -1041,11 +1041,11 @@ class Grid(object):
             # Sp1: initial spacing (within the [0,1] interval)
             # Sp2: final spacing (within the [0,1] interval)
             # N: number of nodes
-    
+
             # IMPORTS
             from numpy import tan, arange, pi
             from scipy.optimize import minimize
-    
+
             # Convert number of nodes to number of cells, because I derived the equations using
             # N the as number of cells =P.
             N = N-1
@@ -1095,7 +1095,7 @@ class Grid(object):
             # Generate spacing
             index = arange(N+1)
             S = a*tan(b*index/N+c)+d
-            
+
             # Force the extremes to 0 and 1 so that we always meet the bounds
             # (this is to avoid numerical issues with symmetry planes)
             S[0] = 0.0
@@ -1277,7 +1277,7 @@ class Grid(object):
 
             for split in splits:
                 self._addSplit(iBlock, split[0]+1, split[1], mapping)
-                
+
         # And Add the extra splits:
         for split in extraSplits:
             self._addSplit(split[0]-1, split[1], split[2], mapping)
@@ -1313,7 +1313,7 @@ class Grid(object):
                     # Finally recursively call itself for the new
                     # block, dimension and index
                     self._addSplit(newBlock, abs_idim, index_new, mapping)
-                            
+
     def connect(self):
         """Generate block-to-block connectivity information for a grid. It
         does not need to be face matched, only point matched"""
@@ -1332,7 +1332,7 @@ class Grid(object):
             coords[istart*3:3*iend] = blk.coords.flatten()
             sizes.append(blk.dims)
             istart = iend
-        
+
         # Get our list of sizes
         sizes  = numpy.vstack(sizes)
 
@@ -1350,13 +1350,13 @@ class Grid(object):
 
         for i in range(nPatches):
             blockID = myIDs[i] - 1
-            
+
             if types[i] == 1: # B2B
                 connectName = 'SF%d'%i
                 donorName = self.blocks[donorIDs[i]-1].name
-                
+
                 self.blocks[blockID].B2Bs.append(B2B(
-                    connectName, donorName, pointRanges[:, :, i], 
+                    connectName, donorName, pointRanges[:, :, i],
                     pointRangeDonors[:, :, i], transforms[:, i]))
 
         # Return most of the information we computed since other
@@ -1389,11 +1389,11 @@ class Grid(object):
 
         # Do the b2b by running connect:
         types, pointRanges, myIDs, faceAvg, faceNormal = self.connect()
-        
+
         # Loop over all subfaces and deal with the BCs
         for i in range(len(types)):
             blockID = myIDs[i] - 1
-            
+
             if types[i] == 0: # Boco
                 coor_check = abs(faceAvg[symAxis, i]) < 1e-3
                 dp_check = abs(numpy.dot(faceNormal[:, i], symNormal)) > 0.98
@@ -1411,11 +1411,11 @@ class Grid(object):
                         # Must be a farfield
                         bocoType = BC['bcfarfield']
                         famName = 'far'
-                
+
                 # Now simply add the boco
                 self.blocks[blockID].addBoco(Boco(
                     'dummy', bocoType, pointRanges[:, :, i], famName))
- 
+
         # Lastly rename the BCs to be consistent
         self.renameBCs()
 
@@ -1458,10 +1458,10 @@ class Grid(object):
         Zone1, Zone11, Zone12, ..., Zone19, Zone2, Zone21, ...
         This method will add extra digits to the zone names to give the correct ordering.
         """
-        
+
         # IMPORTS
         import re
-        
+
         # Initialize list of names
         nameList = []
 
@@ -1481,10 +1481,10 @@ class Grid(object):
 
             # Append the name to the names list
             nameList.append(blk.name)
-        
+
         # Reorder blocks based on their new names
         self.blocks = [blk for (n,blk) in sorted(zip(nameList,self.blocks))]
-        
+
     def symmZero(self, sym):
         """Zero nodes along axis 'sym'"""
         if sym == 'x':
@@ -1499,43 +1499,43 @@ class Grid(object):
     def translate(self, dx, dy, dz):
         for blk in self.blocks:
             blk.coords[:, :, :] += [dx, dy, dz]
-            
+
     def extrude(self, direction):
         """
-        Takes a planar grid in true 2D and extrudes into the third 
-        dimension making a 3D that is single cell wide. This routine 
-        maintains the BCs and creates 2 new symm BCs for each side. 
-        
+        Takes a planar grid in true 2D and extrudes into the third
+        dimension making a 3D that is single cell wide. This routine
+        maintains the BCs and creates 2 new symm BCs for each side.
+
         direction: "str" {x,y,z}
         """
-        
+
         # Extrude all blocks
         for blk in self.blocks:
             blk.extrude(direction)
-        
+
         # Rebuild B2B connectivity
         self.connect()
-        
+
 
 class Block(object):
     """Class for storing information related to a single block
     structured zone"""
-    
+
     def __init__(self, zoneName, dims, coords):
         self.name = zoneName.strip()
         self.dims = dims
         self.coords = coords
         self.bocos = []
         self.B2Bs = []
-        self.splits = [[1, dims[0]], 
-                       [1, dims[1]], 
+        self.splits = [[1, dims[0]],
+                       [1, dims[1]],
                        [1, dims[2]]]
         self.bocoCounter = 0
 
     def addBoco(self, boco):
         """ A add a boundary condition to this block"""
         self.bocos.append(boco)
-        
+
     def addB2B(self, b2b):
         """ A  block-2-block connection to this block"""
         self.B2Bs.append(b2b)
@@ -1546,12 +1546,12 @@ class Block(object):
         libcgns_utils.writecoordinates(cg, zoneID, self.coords)
 
         for boco in self.bocos:
-            iBC = libcgns_utils.writebc(cg, zoneID, boco.name, boco.family, 
+            iBC = libcgns_utils.writebc(cg, zoneID, boco.name, boco.family,
                                         boco.ptRange, boco.type)
             for dataSet in boco.dataSets:
                 # Write the header for the BCDataSet
                 iDataSet = libcgns_utils.writebcdataheader(cg, zoneID, dataSet.type, iBC, dataSet.name)
-                
+
                 # Loop over all Dirichlet and Neumann sets
                 writeBCDataHeader = True
                 for dirArr in dataSet.dirichletArrays:
@@ -1582,7 +1582,7 @@ class Block(object):
         for iDim in range(3):
             self.coords[:, :, :, iDim].flatten(1).tofile(f, sep="\n", format='%20.15g')
             f.write('\n')
-            
+
     def scale(self, scaleFact):
         """Scale the coordinates"""
         self.coords *= scaleFact
@@ -1599,7 +1599,7 @@ class Block(object):
 
         # HOWEVER just doing this results in a left-handed block (if
         # the original block was right handed). So we have to also
-        # reverse ONE of the indices 
+        # reverse ONE of the indices
         for k in range(self.dims[2]):
             for j in range(self.dims[1]):
                 for idim in range(3):
@@ -1607,11 +1607,11 @@ class Block(object):
         # AND we now have to flip the BC's on i-faces since they will
         # now be on the other side:
         for boco in self.bocos:
-            if (boco.ptRange[0, 0] == boco.ptRange[0, 1] and 
+            if (boco.ptRange[0, 0] == boco.ptRange[0, 1] and
                 boco.ptRange[0, 0] == 1):
                 boco.ptRange[0,0] = self.dims[0]
                 boco.ptRange[0,1] = self.dims[0]
-            elif (boco.ptRange[0, 0] == boco.ptRange[0, 1] and 
+            elif (boco.ptRange[0, 0] == boco.ptRange[0, 1] and
                   boco.ptRange[0, 0] == self.dims[0]):
                 boco.ptRange[0,0] = 1
                 boco.ptRange[0,1] = 1
@@ -1647,7 +1647,7 @@ class Block(object):
         self.dims[0] = self.coords.shape[0]
         self.dims[1] = self.coords.shape[1]
         self.dims[2] = self.coords.shape[2]
-      
+
     def double2D(self):
         """Double in just the 2D direction"""
         # First find the 2D direction
@@ -1657,27 +1657,27 @@ class Block(object):
                 new_dimensions = self.dims[:]
                 new_dimensions[dim_index] = new_dimensions[dim_index] + 1
                 newCoords = numpy.zeros((new_dimensions[0], new_dimensions[1], new_dimensions[2], 3))
-                
+
                 if dim_index == 0:
                     for i in range(self.dims[1]):
                         for j in range(self.dims[2]):
                             newCoords[0, i, j, :] = self.coords[0, i, j, :]
                             newCoords[2, i, j, :] = self.coords[1, i, j, :]
-                            newCoords[1, i, j, :] = 0.5*(newCoords[0, i, j, :] + 
+                            newCoords[1, i, j, :] = 0.5*(newCoords[0, i, j, :] +
                                                          newCoords[2, i, j, :])
                 elif dim_index == 1:
                     for i in range(self.dims[0]):
                         for j in range(self.dims[2]):
                             newCoords[i, 0, j, :] = self.coords[i, 0, j, :]
                             newCoords[i, 2, j, :] = self.coords[i, 1, j, :]
-                            newCoords[i, 1, j, :] = 0.5*(newCoords[i, 0, j, :] + 
+                            newCoords[i, 1, j, :] = 0.5*(newCoords[i, 0, j, :] +
                                                          newCoords[i, 2, j, :])
                 elif dim_index == 2:
                     for i in range(self.dims[0]):
                         for j in range(self.dims[1]):
                             newCoords[i, j, 0, :] = self.coords[i, j, 0, :]
                             newCoords[i, j, 2, :] = self.coords[i, j, 1, :]
-                            newCoords[i, j, 1, :] = 0.5*(newCoords[i, j, 0, :] + 
+                            newCoords[i, j, 1, :] = 0.5*(newCoords[i, j, 0, :] +
                                                          newCoords[i, j, 2, :])
 
 
@@ -1698,7 +1698,7 @@ class Block(object):
 
     def extrude(self, direction):
         """Extrudes from 2D panar grid to 3D"""
-    
+
         # Note that the self.dims always has data in the first and second
         # slot like it is a xy plane dataset. The third slot always has ones
         # set in readgrid() function. This will we updated.
@@ -1718,14 +1718,14 @@ class Block(object):
         else:
             print("ERROR direction...exit", direction)
             exit()
-            
+
         # Allocate memory for new coordinates
         newCoords = numpy.zeros(newDims)
-        
+
         # Now copy current coords into new coord array.
-        
+
         # As for the dims above the coordinates have only data in the first two slots i,j and k is zero
-        # The actual coordinates stored however are given in the plane specified by the user they are 
+        # The actual coordinates stored however are given in the plane specified by the user they are
         # therefore not updated/changed.
         for i in range(self.dims[0]):
             for j in range(self.dims[1]):
@@ -1733,8 +1733,8 @@ class Block(object):
                     newCoords[0, i, j, :] = self.coords[i, j, 0, :]
                     newCoords[1, i, j, :] = self.coords[i, j, 0, :]
                     # Update the x-dimension coord with unit length
-                    newCoords[1, i, j, 1, 0] = 1.0                        
-                elif direction == "y":     
+                    newCoords[1, i, j, 1, 0] = 1.0
+                elif direction == "y":
                     newCoords[i, 0, j, :] = self.coords[i, j, 0, :]
                     newCoords[i, 1, j, :] = self.coords[i, j, 0, :]
                     # Update the y-dimension coord with unit length
@@ -1743,11 +1743,11 @@ class Block(object):
                     newCoords[i, j, 0, :] = self.coords[i, j, 0, :]
                     newCoords[i, j, 1, :] = self.coords[i, j, 0, :]
                     # Update the z-dimension coord with unit length
-                    newCoords[i, j, 1, 2] = 1.0                        
-        
+                    newCoords[i, j, 1, 2] = 1.0
+
         # Update the coordinates
         self.coords = newCoords
-        
+
         # Update current BCs
         for boco in self.bocos:
             for j in range(2):
@@ -1756,11 +1756,11 @@ class Block(object):
                 # in the first two rows
                 if boco.ptRange[2, j] == 0:
                     boco.ptRange[2, j] = j+1
-            
+
             # Sort based on which dimension we want to extrude in
             boco.ptRange = boco.ptRange[order]
-        
-        
+
+
         # Create 2 new SYMM BCs for this block (each side). This is the plane which the grid was created in
         bocoType = BC["bcsymmetryplane"]
         family = "sym"
@@ -1773,10 +1773,10 @@ class Block(object):
 
             # Sort based on which dimension we want to extrude in
             ptRange = ptRange[order]
-        
+
             # Create and add the BC
             self.addBoco(Boco(bocoName, bocoType, ptRange, family))
-            
+
         # Update the dims. This is done last since the original dims are used above to simplify and reduce code
         self.dims = newDims[:-1]
 
@@ -1809,7 +1809,7 @@ class Block(object):
                         chkRange = [[s[0][i], s[0][i]],
                                     [s[1][j], s[1][j+1]],
                                     [s[2][k], s[2][k+1]]]
-                        
+
                         if inRange(boco.ptRange, chkRange):
                             blk.addBoco(Boco(
                                 boco.name, boco.type,
@@ -1820,7 +1820,7 @@ class Block(object):
                         chkRange = [[s[0][i+1], s[0][i+1]],
                                     [s[1][j],   s[1][j+1]],
                                     [s[2][k],   s[2][k+1]]]
-                        
+
                         if inRange(boco.ptRange, chkRange):
                             blk.addBoco(Boco(
                                 boco.name, boco.type,
@@ -1831,7 +1831,7 @@ class Block(object):
                         chkRange = [[s[0][i], s[0][i+1]],
                                     [s[1][j], s[1][j]],
                                     [s[2][k], s[2][k+1]]]
-                        
+
                         if inRange(boco.ptRange, chkRange):
                             blk.addBoco(Boco(
                                 boco.name, boco.type,
@@ -1842,7 +1842,7 @@ class Block(object):
                         chkRange = [[s[0][i  ], s[0][i+1]],
                                     [s[1][j+1], s[1][j+1]],
                                     [s[2][k]  , s[2][k+1]]]
-                        
+
                         if inRange(boco.ptRange, chkRange):
                             blk.addBoco(Boco(
                                 boco.name, boco.type,
@@ -1853,7 +1853,7 @@ class Block(object):
                         chkRange = [[s[0][i], s[0][i+1]],
                                     [s[1][j], s[1][j+1]],
                                     [s[2][k], s[2][k]]]
-                        
+
                         if inRange(boco.ptRange, chkRange):
                             blk.addBoco(Boco(
                                 boco.name, boco.type,
@@ -1864,7 +1864,7 @@ class Block(object):
                         chkRange = [[s[0][i]  , s[0][i+1]],
                                     [s[1][j]  , s[1][j+1]],
                                     [s[2][k+1], s[2][k+1]]]
-                        
+
                         if inRange(boco.ptRange, chkRange):
                             blk.addBoco(Boco(
                                 boco.name, boco.type,
@@ -1873,7 +1873,7 @@ class Block(object):
 
                     blkList.append(blk)
         return blkList
-    
+
     def divide(self):
         """Return a list of 8 blocks split derivied from the current
         block. Boundary condition information is kept, but
@@ -1883,12 +1883,12 @@ class Block(object):
         for iDim in range(3):
             self.splits[iDim].append((self.dims[iDim]-1)//2 + 1)
             self.splits[iDim].sort()
-            
+
         return self.getSplitBlocks()
-    
+
     def removeSymBCs(self):
         """Remove any sym BC's there may be"""
-        self.bocos = [boco for boco in self.bocos 
+        self.bocos = [boco for boco in self.bocos
                       if not boco.type == BC['bcsymmetryplane']]
 
     def extractWallSurfaces(self):
@@ -1898,18 +1898,18 @@ class Block(object):
             if isWall(boco.type):
                 ptRange = boco.ptRange - 1 # Convert to python ordering
                 patches.append(self.coords[
-                    ptRange[0, 0]:ptRange[0, 1]+1, 
-                    ptRange[1, 0]:ptRange[1, 1]+1, 
+                    ptRange[0, 0]:ptRange[0, 1]+1,
+                    ptRange[1, 0]:ptRange[1, 1]+1,
                     ptRange[2, 0]:ptRange[2, 1]+1, :].squeeze())
                 # Make sure the patch is correctly orientated since we
                 # might have left-handed faces. Essentially we have to
                 # flip an index on any "high" boundary condition:
 
-                if ((ptRange[0, 0] == ptRange[0, 1] and 
-                     ptRange[0, 0]+1 == self.dims[0]) or 
-                    (ptRange[1, 0] == ptRange[1, 1] and 
-                     ptRange[1, 0]+1 == 1) or 
-                    (ptRange[2, 0] == ptRange[2, 1] and 
+                if ((ptRange[0, 0] == ptRange[0, 1] and
+                     ptRange[0, 0]+1 == self.dims[0]) or
+                    (ptRange[1, 0] == ptRange[1, 1] and
+                     ptRange[1, 0]+1 == 1) or
+                    (ptRange[2, 0] == ptRange[2, 1] and
                      ptRange[2, 0]+1 == self.dims[2])):
                     patches[-1] = patches[-1][::-1, :, :]
 
@@ -1934,7 +1934,7 @@ class Block(object):
         """Find any BCs on this face and toast them. Note that we *ONLY ALLOW
         ONE BC per face*
         """
-        
+
         # Check for existing boco and pop if necessary
         pop_list = []
         for index in range(len(self.bocos)):
@@ -1971,7 +1971,7 @@ class Block(object):
         elif faceStr == 'khigh':
             ptRange = [[1, 1, d[2]], [d[0], d[1], d[2]]]
         ptRange = numpy.array(ptRange).T
-        newBoco = Boco("boco_%d"%self.bocoCounter, BC[bcType.lower()], 
+        newBoco = Boco("boco_%d"%self.bocoCounter, BC[bcType.lower()],
                        ptRange, family, dataSet)
         self.bocoCounter += 1
         self.bocos.append(newBoco)
@@ -1985,7 +1985,7 @@ class Block(object):
         self.dims[2] += extraCells
         if nStar == -1:
             nStar = self.dims[2]
-            
+
         newNodes = numpy.zeros((self.dims[0], self.dims[1], self.dims[2] ,3))
         for i in range(self.dims[0]):
             for j in range(self.dims[1]):
@@ -1995,13 +1995,13 @@ class Block(object):
                 # First get the distance off-wall:
                 d = numpy.linalg.norm(self.coords[i, j, 0, :] -
                                       self.coords[i, j, 1, :])
-        
+
                 # This is the segment of S we are dealing with:
                 sSegment = c.s[0:nStar]
 
                 # Compute the new S0
                 s0 = (spacing / d)*c.s[1]
-                # Get the newS. 
+                # Get the newS.
                 newS = getS(len(sSegment) + extraCells + 1, s0, sSegment[-1])
                 # The final 's' for evaluation
                 newS = numpy.hstack([newS, c.s[nStar+1:]])
@@ -2034,9 +2034,9 @@ class Block(object):
                 for i in range(self.dims[0]):
                     for idim in range(3):
                         self.coords[i, j, :, idim] = self.coords[i, j, ::-1, idim]
-        
+
         # So that filps the order of the axis. We can also perform
-        # axis swapping. 
+        # axis swapping.
         if numpy.random.random() > 0.5:
             # Swap X and Y axis
             newCoords = numpy.zeros((self.dims[1], self.dims[0], self.dims[2], 3))
@@ -2056,14 +2056,14 @@ class Block(object):
 
             self.dims = list(newCoords.shape[0:3])
             self.coords = newCoords.copy()
-            
+
         if numpy.random.random() > 0.5:
             # Swap Y and Z axis
             newCoords = numpy.zeros((self.dims[0], self.dims[2], self.dims[1], 3))
             for i in range(self.dims[0]):
                 for idim in range(3):
                     newCoords[i, :, :, idim] = numpy.rot90(self.coords[i, :, :, idim])
-                
+
             self.dims = list(newCoords.shape[0:3])
             self.coords = newCoords.copy()
 
@@ -2073,8 +2073,8 @@ class Block(object):
                 # 'r' is the range. We need to subtract off -1 from
                 # the low end since it was in fortran 1-based ordering
                 r = bc.ptRange.copy()
-                self.coords[r[0,0]-1:r[0,1], 
-                            r[1,0]-1:r[1,1], 
+                self.coords[r[0,0]-1:r[0,1],
+                            r[1,0]-1:r[1,1],
                             r[2,0]-1:r[2,1], idir] = 0.0
 
     def getFaceCoords(self, blockID):
@@ -2086,7 +2086,7 @@ class Block(object):
         nFace = 2*(  (il-1)*(jl-1) + (il-1)*(kl-1) + (jl-1)*(kl-1))
 
         return libcgns_utils.computefacecoords(self.coords, nFace, blockID)
-      
+
 class Boco(object):
 
     """Class for storing information related to a boundary condition"""
@@ -2094,7 +2094,7 @@ class Boco(object):
         self.name = bocoName.strip()
         self.type = bocoType
         self.ptRange = ptRange
-        
+
         if bcDataSets is None:
             self.dataSets = []
         else:
@@ -2130,10 +2130,10 @@ class BocoDataSet(object):
         self.type = bocoDataSetType             # BC type
         self.dirichletArrays = []
         self.neumannArrays = []
-    
+
     def addDirichletDataSet(self, dirDataSet):
         self.dirichletArrays.append(dirDataSet)
-    
+
     def addNeumannDataSet(self, neuDataSet):
         self.neumannArrays.append(dirDataSet)
 
@@ -2143,7 +2143,7 @@ class BocoDataSetArray(object):
 
     def __init__(self, arrayName, dType, nDims, dataDims, dataArr):
         self.name = arrayName.strip()
-        self.dataType = dType                   # This is the CGNS datatype that was read from the CGNS file. 
+        self.dataType = dType                   # This is the CGNS datatype that was read from the CGNS file.
         self.nDimensions = nDims                # Number of dimensions that the data has
         self.dataDimensions = dataDims          # Number of data points of every dimensions. Array of ints
         self.dataArr = dataArr                  # Note that this is a flat 1D numpy array and is float64
@@ -2178,10 +2178,10 @@ class B2B(object):
 # ----------------------------------------
 def isWall(bc):
     """Determine if a bc is a wall-type boundary condition"""
-    if (bc == BC['bcwall'] or 
-        bc == BC['bcwallinviscid'] or 
-        bc == BC['bcwallviscous'] or 
-        bc == BC['bcwallviscousheatflux'] or 
+    if (bc == BC['bcwall'] or
+        bc == BC['bcwallinviscid'] or
+        bc == BC['bcwallviscous'] or
+        bc == BC['bcwallviscousheatflux'] or
         bc == BC['bcwallviscousisothermal']):
         return True
     else:
@@ -2190,7 +2190,7 @@ def isWall(bc):
 def getS(N, s0, S):
     """Determine the new set of parameters that geometrically fit N
     nodes with the last distance S"""
-    
+
     # function 'f' is 1 - s0*(1-r^n)/(1-r), s0 is initial ratio and r
     # is the grid ratio.
 
@@ -2215,36 +2215,36 @@ def getS(N, s0, S):
         ff = S - f(c)
         if abs(ff) < 1e-6:
             break
-     
+
         if ff * fa > 0:
             a = c
         else:
             b = c
     s = numpy.zeros(N)
     s[1] = s0
-  
+
     for i in range(2, N):
         s[i] = s[i-1] + c*(s[i-1] - s[i-2])
 
     return s
-  
+
 def getSplits(ptRange):
     """Return info required to split this face to make it face
     matched"""
     if ptRange[0][0] == ptRange[0][1]:
-        splits = [(1, ptRange[1][0]), 
-                  (1, ptRange[1][1]), 
-                  (2, ptRange[2][0]), 
+        splits = [(1, ptRange[1][0]),
+                  (1, ptRange[1][1]),
+                  (2, ptRange[2][0]),
                   (2, ptRange[2][1])]
     elif ptRange[1][0] == ptRange[1][1]:
-        splits = [(0, ptRange[0][0]), 
-                  (0, ptRange[0][1]), 
-                  (2, ptRange[2][0]), 
+        splits = [(0, ptRange[0][0]),
+                  (0, ptRange[0][1]),
+                  (2, ptRange[2][0]),
                   (2, ptRange[2][1])]
     elif ptRange[2][0] == ptRange[2][1]:
-        splits = [(0, ptRange[0][0]), 
-                  (0, ptRange[0][1]), 
-                  (1, ptRange[1][0]), 
+        splits = [(0, ptRange[0][0]),
+                  (0, ptRange[0][1]),
+                  (1, ptRange[1][0]),
                   (1, ptRange[1][1])]
     return splits
 
@@ -2284,12 +2284,12 @@ def inRange(ptRange, chkRange):
     """Determine if 'chkRange' fully overlaps with 'ptRange'"""
     val = True
     for iDim in range(3):
-        if not (chkRange[iDim][0] >= ptRange[iDim][0] and 
+        if not (chkRange[iDim][0] >= ptRange[iDim][0] and
                 chkRange[iDim][1] <= ptRange[iDim][1]):
             val = False
 
     return val
-     
+
 def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
     """Generates a cartesian mesh"""
 
@@ -2298,17 +2298,17 @@ def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
     N = numpy.zeros(3, 'intc')
     dx = numpy.zeros(3)
     r = numpy.zeros(3)
-    Xcart = []  
+    Xcart = []
     for iDim in range(3):
         n = int((xMax[iDim]-xMin[iDim])/dh)
         n = n//MGFact + 1
         N[iDim] = n*MGFact # Number of CELLS
 
-        # Compute the *actual* dx's 
+        # Compute the *actual* dx's
         dx[iDim] = (xMax[iDim]-xMin[iDim])/N[iDim]
 
         # Next we need to find the grid stretch ratios for each
-        # direction to satify our requested extra distance. 
+        # direction to satify our requested extra distance.
         r[iDim] = libcgns_utils.calcgridratio(nExtra, dx[iDim], hExtra)
 
         # Determine if this direction should have a sym plane:
@@ -2381,7 +2381,7 @@ def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
 
     return X, dx
 
-        
+
 # def normal_direction(iFace1, iFace2):
 #     """Normal direction is positive if iFace1 and iFace two are of
 #     opposite oddity, even if they are the same oddity"""
@@ -2407,7 +2407,7 @@ def readGrid(fileName):
     cellDim = libcgns_utils.getgriddimension(inFile)
     nBlock = libcgns_utils.getnblocks(inFile)
     newGrid = Grid()
-    
+
     for iBlock in range(1, nBlock+1):
         zoneName, dims, nBoco, nB2B = libcgns_utils.getblockinfo(inFile, iBlock)
 
@@ -2427,10 +2427,10 @@ def readGrid(fileName):
             if nDataSets != 0:
                 # Loop over all the datasets for this BC
                 for iBocoDataSet in range(1, nDataSets+1):
-                    
+
                     bocoDatasetName, bocoDataSetType, nDirichletArrays, nNeumannArrays = libcgns_utils.getbcdatasetinfo(inFile, iBlock, iBoco, iBocoDataSet)
                     bcDSet = BocoDataSet(bocoDatasetName, bocoType)
-                    
+
                     def getBocoDataSetArray(flagDirNeu):
                          # Get data information
                         dataArrayName, dataType, nDimensions, dataDimensionVector = libcgns_utils.getbcdataarrayinfo(inFile, iBlock, iBoco, iBocoDataSet, iDir, flagDirNeu)
@@ -2439,31 +2439,31 @@ def readGrid(fileName):
                         # Note we make it float64 although it can contain integers.
                         nDataArr = numpy.prod(dataDimensionVector)
                         dataArr = numpy.zeros(nDataArr, dtype=numpy.float64, order="F")
-                        
+
                         # Get the data. Note the dataArr is populated when the routine exits
                         libcgns_utils.getbcdataarray(inFile, iBlock, iBoco, iBocoDataSet, iDir, flagDirNeu, dataArr, nDataArr)
-                        
+
                         # Create a BocoDataSetArray object and return
                         return  BocoDataSetArray(dataArrayName, dataType, nDimensions, dataDimensionVector, dataArr)
-                        
-                        
+
+
                     if nDirichletArrays > 0:
                         # Loop over Dirichlet data and get the actual data
                         for iDir in range(1,nDirichletArrays+1):
-                            
+
                             # Get the data set
                             bcDSetArr = getBocoDataSetArray(BCDATATYPE["Dirichlet"])
-                            
+
                             # Append a BocoDataSetArray to the datasets
                             bcDSet.addDirichletDataSet(bcDSetArr)
-                        
-                        # Append the Dirichlet BC dataset to the BC    
+
+                        # Append the Dirichlet BC dataset to the BC
                         bc.addBocoDataSet(bcDSet)
-                    
+
                     if nNeumannArrays > 0:
                         # Loop over Neumann data sets
                         for nDir in range(1,nNeumannArrays+1):
-                            
+
                             # Get the data set
                             bcDSetArr = getBocoDataSetArray(BCDATATYPE["Neumann"])
 
@@ -2474,13 +2474,13 @@ def readGrid(fileName):
                         bc.addBocoDataSet(bcNSet)
 
             blk.addBoco(bc)
-        
+
         for iB2B in range(1, nB2B+1):
             connectName, donorName, ptRange, donorRange, transform = \
                          libcgns_utils.getb2binfo(inFile, iBlock, iB2B)
             blk.addB2B(B2B(connectName, donorName, ptRange, donorRange,
                            transform))
-       
+
         newGrid.addBlock(blk)
 
     libcgns_utils.closefile(inFile)
@@ -2560,12 +2560,12 @@ def mergeGrid(grid):
     """Method that that takes a grid with block to block connections and
     merges as many blocks as possible, reducing the total number of
     blocks in the mesh"""
-    
+
     def fullFace(blk, ptRange):
 
         # Face size of the patch:
         fSize = abs(ptRange[:, 1] - ptRange[:, 0])
-        
+
         fullFace = True
         for i in range(3):
             if fSize[i] != 0:
@@ -2591,7 +2591,7 @@ def mergeGrid(grid):
             faceID = 3
 
         return faceID
-    
+
     # Outer Iterative Loop
     cont = True
     iteration = 0
@@ -2622,15 +2622,15 @@ def mergeGrid(grid):
                     # Determine if this B2B is a full patch on my block
                     # *and* the other block
                     if (fullFace(blk, b2b.ptRange) and
-                        fullFace(otherBlk, b2b.donorRange) and 
-                        blockUsed[otherIndex] == 0 and 
+                        fullFace(otherBlk, b2b.donorRange) and
+                        blockUsed[otherIndex] == 0 and
                         i != otherIndex):
-                        
+
                         print ('Merging:', i+1, otherIndex+1)
 
                         # Great! These block match. Let's make the new
-                        # block 
-                        
+                        # block
+
                         # Transform describes how the current block,
                         # blk, is related to the other block, otherBlk
                         transform = b2b.transform
@@ -2651,7 +2651,7 @@ def mergeGrid(grid):
                         # the transfrom matrix back to [1, 2, 3],
                         # which means the block completely line up.
                         otherCoords = otherBlk.coords
-                        
+
                         tmp = abs(transform)
                         # Now swap the axes until we get 1,2,3. There
                         # are only 6 cases, so just do them individually
@@ -2674,14 +2674,14 @@ def mergeGrid(grid):
 
                         elif tmp[0] == 3 and tmp[1] == 2 and tmp[2] == 1:
                             otherCoords = numpy.swapaxes(otherCoords, 2, 0)
-                            
+
                         # This flips any axis not in the right order
                         if transform[0] < 0:
                             otherCoords = otherCoords[::-1, :, :, :]
                         if transform[1] < 0:
-                            otherCoords = otherCoords[:, ::-1, :, :]                            
+                            otherCoords = otherCoords[:, ::-1, :, :]
                         if transform[2] < 0:
-                            otherCoords = otherCoords[:, :, ::-1, :]   
+                            otherCoords = otherCoords[:, :, ::-1, :]
 
                         if face > 0:
                             # blk then otherBlk
@@ -2714,7 +2714,7 @@ def mergeGrid(grid):
 
                         # Create the new block
                         newBlk = Block('doesNotMatter', dims, newCoords)
-                        
+
                         # Now deal with the boundary conditions. These
                         # need to be corrected depending on how the
                         # blocks get added.
@@ -2731,7 +2731,7 @@ def mergeGrid(grid):
                             offset[1] = dims[1] - blk.dims[1]
                         elif face == -3:
                             offset[2] = dims[2] - blk.dims[2]
-                        
+
                         # Add all the bocos from the first block:
                         for boco in blk.bocos:
                             if face > 0:
@@ -2799,7 +2799,7 @@ def mergeGrid(grid):
 
         if len(newBlocks) == 0:
             cont = False
-            
+
         # Now loop back through the grids appending the blocks we
         # haven't used to "newBlocks"
         for i in range(len(grid.blocks)):
@@ -2849,7 +2849,7 @@ def combineGrids(grids):
         for blk in grid.blocks:
             for b2b in blk.B2Bs:
                 b2b.donorName = zoneMap[b2b.donorName]
-                
+
         # Now add the new processed blocks to our newgrid
         newGrid.blocks.extend(grid.blocks)
 
@@ -2892,7 +2892,7 @@ def explodeGrid(grid,kMin=False):
 # -------------------------------------------
 
 # The time combine is special. First we generate the list of files we
-# need to deal with. 
+# need to deal with.
 if args.mode == 'timecombine':
     # Get the directory name where the baseName is:
     path = os.path.dirname(os.path.abspath(args.baseName))
@@ -2918,7 +2918,7 @@ if args.mode == 'timecombine':
         outFile = args.outFile
 
     # Now we make a character array of the file names, and hand if off to
-    # fortran for all the actual reading/writing. 
+    # fortran for all the actual reading/writing.
     fileNames = numpy.zeros((len(files), 256), 'c')
     for i in range(len(files)):
         fileNames[i, 0:len(files[i])] = files[i]
@@ -2928,13 +2928,13 @@ if args.mode == 'timecombine':
 
 
 # The 'combine' function is done first sicne it is the only function
-# that reads multiple cgns files. 
+# that reads multiple cgns files.
 if args.mode == 'combine':
     grids = []
     for fName in args.gridFiles:
         grid = readGrid(fName)
         grids.append(grid)
-        
+
     combinedGrid = combineGrids(grids)
     combinedGrid.writeToCGNS(args.outFile)
 
@@ -2946,7 +2946,7 @@ if args.mode == 'explicitCart':
     xMin = [args.xmin, args.ymin, args.zmin]
     xMax = [args.xmax, args.ymax, args.zmax]
 
-    simpleCart(xMin, xMax, args.dh, args.hExtra, args.nExtra, 
+    simpleCart(xMin, xMax, args.dh, args.hExtra, args.nExtra,
                args.sym, args.mgcycle, args.outFile)
 
     sys.exit(0)
@@ -2970,7 +2970,7 @@ try:
     if args.outFile is None:
         # Determine where to put a file:
         dirpath = tempfile.mkdtemp()
-        
+
         # Define a temp output file
         outFileName = os.path.join(dirpath, 'tmp.cgns')
     else:
@@ -3048,12 +3048,12 @@ elif args.mode == 'cartesian':
     sys.exit(0)
 
 elif args.mode == 'simpleCart':
-    curGrid.simpleCart(args.dh, args.hExtra, args.nExtra, args.sym, 
+    curGrid.simpleCart(args.dh, args.hExtra, args.nExtra, args.sym,
                       args.mgcycle, args.outFile)
     sys.exit(0)
 
 elif args.mode == 'simpleOCart':
-    curGrid.simpleOCart(args.dh, args.hExtra, args.nExtra, args.sym, 
+    curGrid.simpleOCart(args.dh, args.hExtra, args.nExtra, args.sym,
                       args.mgcycle, args.outFile)
     sys.exit(0)
 
@@ -3107,7 +3107,7 @@ elif args.mode == 'explode':
 
     # Generate a list of names for the files by adding integers to the reference name
     fileNames = [outFile + '_%03d'%index + '.cgns' for index in range(1,len(gridList)+1)]
-    
+
     # Save each grid
     for index in range(len(gridList)):
         gridList[index].writeToCGNS(fileNames[index])
@@ -3129,7 +3129,7 @@ elif args.mode == 'explodeKmin':
 
     # Generate a list of names for the files by adding integers to the reference name
     fileNames = [outFile + '_%03d'%index + '.xyz' for index in range(1,len(gridList)+1)]
-    
+
     # Save each grid
     for index in range(len(gridList)):
         gridList[index].writePlot3d(fileNames[index])
