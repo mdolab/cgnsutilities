@@ -442,9 +442,10 @@ p_p2R = subparsers.add_parser(
 p_p2R.add_argument('gridFile', help='Name of input CGNS file. Note that the planar grid should \
     not have symmetry BCs set on the plane.')
 p_p2R.add_argument('normalDirection', help='This is the direction in which the plane normal points in. \
-                    Example: If supplied data is in xz coordinates, the normal points in y',
+                    Example: If supplied data is in xz plane, the normal points in y',
                   choices=['x', 'y', 'z'])
-p_p2R.add_argument('axis', help='Axis which to rotate about',
+p_p2R.add_argument('axis', help='Axis which to rotate about \
+                    Example: If supplied data is in xz plane, you would give either x or z',
                   choices=['x', 'y', 'z'])
 p_p2R.add_argument('angle', type=float, help='Rotation angle given in degrees. Typically this is a small quantity.')
 p_p2R.add_argument('outFile', nargs='?', default=None,
@@ -3264,6 +3265,9 @@ elif args.mode == 'extrude':
     curGrid.extrude(args.direction)
 
 elif args.mode == 'revolve':
+    if args.normalDirection == args.axis:
+        print("ERROR: Normal direction and revolve axis cannot be the same. Exiting...")
+        sys.exit(0)
     curGrid.revolve(args.normalDirection, args.axis, args.angle)
 
 # Write out the grid.
