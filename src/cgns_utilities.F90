@@ -320,6 +320,109 @@ subroutine getB2BInfo(cg, iBlock, iB2B, connectName, donorName, ptRange, donorRa
 
 end subroutine getB2BInfo
 
+subroutine getConvInfo(cg, niterations, narrays)
+  ! Get the convegence information stored under the "GlobalConvergenceHistory" node.
+  ! This function only get the size of the data.
+  ! Ney Secco, 2016
+
+  implicit none
+  include 'cgnslib_f.h'
+
+  ! Input/Output
+  integer, intent(in) :: cg
+  integer, intent(out) :: niterations, narrays
+
+  ! Working
+  character(len=256) :: NormDefinitions
+  integer :: ier, base
+
+  ! Navigate to base 1, which usually contains convergence data
+  base = 1
+  call cg_goto_f(cg, base, ier, 'end')
+  if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+  ! Get the number of iterations in the convergence history
+  call cg_convergence_read_f(niterations, NormDefinitions, ier)
+
+  ! If no history was found, set the number of iterations to zero and exit
+  if (ier .ne. CG_OK) then
+
+     niterations = 0
+     narrays = 0
+
+  else ! Continue reading
+
+     print *,'Found convergence history...'
+
+     ! Navigate to the convergence data node
+     call cg_goto_f(cg, base, ier, 'ConvergenceHistory_t', 1, 'end')
+     if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+     ! Get the number of entries (arrays) in the convergence history
+     call cg_narrays_f(narrays, ier)
+     if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+  end if
+
+  ! The we can call the getConvArray subroutine from python to get data for each array
+
+end subroutine getConvInfo
+
+subroutine getConvArray(cg, niterations, arrayID, arrayName, arrayData)
+  ! Get the convegence data from a the arrayID data node.
+  ! arrayID folows 1-based ordering (unlike Python).
+  ! This subroutine only reads 1D arrays with real numbers.
+  ! Ney Secco, 2016
+
+  implicit none
+  include 'cgnslib_f.h'
+
+  ! Input/Output
+  integer, intent(in) :: cg, niterations, arrayID
+  character(len=256), intent(out) :: arrayName
+  real(kind=8), intent(out) :: arrayData(niterations)
+
+  ! Working
+  integer :: ier, base, DataType, DataDimension
+  integer :: DimensionVector(12) ! 12 is the max size allowed to DimensionVector according to the manual
+
+  ! We will only read info from base 1
+  base = 1
+
+  ! Navigate to the convergence data node
+  call cg_goto_f(cg, base, ier, 'ConvergenceHistory_t', 1, 'end')
+  if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+  ! Initialize DimensionVector
+  DImensionVector = 0
+
+  ! Get the data array info
+  call cg_array_info_f(arrayID, arrayName, DataType, DataDimension, DimensionVector, ier)
+  if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+  ! Print name of the array
+  print *,'reading array: ',arrayName(:33)
+
+  ! Initialize array data
+  arrayData = 0
+
+  ! Check if we have 1D array with no chars
+  if (DimensionVector(2) .gt. 0) then
+     print *,'   found 2D array in convergence history. Unable to read'
+
+  else if (DataType .eq. Character) then
+     print *,'   found char in convergence history. Unable to read'
+
+  else ! We can proceed
+
+     ! Read Data
+     call cg_array_read_as_f(arrayID, RealDouble, arrayData, ier)
+     if (ier .eq. CG_ERROR) call cg_error_exit_f
+
+  end if
+
+end subroutine getConvArray
+
 subroutine getCoordinates(cg, iBlock, il, jl, kl, X)
   ! Return the subset of block coordinates of block 'iBlock', of dimensions
   ! (il, jl, kl, 3) in X
