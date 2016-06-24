@@ -80,6 +80,16 @@ python module libcgns_utils ! in
             integer dimension(3,2),intent(out) :: donorrange
             integer dimension(3),intent(out) :: transform
         end subroutine getb2binfo
+        subroutine getconvinfo(cg, niterations, narrays) ! in :libcgns_utils:cgns_utilities.F90
+            integer intent(in) :: cg
+            integer intent(out) :: niterations, narrays
+        end subroutine getconvinfo
+        subroutine getconvarray(cg, niterations, arrayID, arrayName, arrayData)
+            integer intent(in) :: cg
+            integer intent(in) :: niterations, arrayID
+            character*256 intent(out) :: arrayName
+            real(kind=8) dimension(niterations),intent(out),depend(niterations) :: arrayData
+        end subroutine getconvarray
         subroutine getcoordinates(cg,iblock,il,jl,kl,x) ! in :libcgns_utils:cgns_utilities.F90
             integer intent(in) :: cg
             integer intent(in) :: iblock
