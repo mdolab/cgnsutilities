@@ -678,7 +678,7 @@ class Grid(object):
 
                 dataSet = []
                 # Check if we have possible datasets specified
-                if len(aux) > 3:
+                if len(aux) > 4:
                     bocoSetName = aux[4]
                     bocoDataSetType = aux[5]
                     DirNeu = aux[6]
