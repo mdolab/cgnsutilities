@@ -138,6 +138,20 @@ information. Format is (one per line, 1-based blockID): blockID, \
 p_fam.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
+# ------------ Options for 'familysubface' mode --------------------
+p_fam = subparsers.add_parser(
+    'familysubface', help='Overwrite the family information on a subface \n \
+    ***NOTE*** It is highly recommended that an output file is specified \
+    as this method will overwrite existing boundary conditions on a face, and \
+    it is up to the user to supply subfaces which sufficiently replace it.')
+p_fam.add_argument('gridFile', help='Name of inputCGNS file')
+p_fam.add_argument('familyFile', help='file containing data for the new \
+families and face division. Format is 1st line: 1-based blockID, 2nd line: \
+{ilow, ihigh, etc}, subsequent lines, one per line: ptRange (as 6 \
+ ints seperated by commas-not spaces), newFamilyName')
+p_fam.add_argument('outFile', nargs='?', default=None,
+                   help='Optional output file')
+
 # ------------ Options for 'familycopy' mode --------------------
 p_fam = subparsers.add_parser(
     'familycopy', help='Copy family information from two otherwise identical grids')
@@ -657,6 +671,49 @@ class Grid(object):
 
         for fam in fams:
             self.blocks[fam[0]-1].overwriteFamily(fam[1], fam[2])
+
+    def writeSubfaceFamily(self, familyFile):
+        """Add a number of subface Bocos to replace one full-face boco"""
+        # Note that this function could easily be expanded to change 
+        # other information, like bcDataSets() on subfaces as well
+        f = open(familyFile,'r')
+        blockID = int(f.readline())-1
+        face = f.readline().lower()[:-1]
+        count = 0
+
+        # Locate the Boco we're replacing
+        boco = None
+        for i in range(len(self.blocks[blockID].bocos)):
+            r = self.blocks[blockID].bocos[i].ptRange # get the point range for existing boco
+            if ((r[0][0]==r[0][1]== 1 and face=='ilow') or
+                (r[0][0]==r[0][1]== self.blocks[blockID].dims[0] and face=='ihigh') or
+                (r[1][0]==r[1][1]== 1 and face=='jlow') or
+                (r[1][0]==r[1][1]== self.blocks[blockID].dims[1] and face=='jhigh') or
+                (r[2][0]==r[2][1]== 1 and face=='klow') or
+                (r[2][0]==r[2][1]== self.blocks[blockID].dims[2] and face=='khigh')):
+                boco = i
+                break
+
+        oldBoco = self.blocks[blockID].bocos[boco]
+
+        # Write the new bocos on the subfaces
+        for line in f:
+            # Parse out the familyFile info
+            aux = line.split()
+            if len(aux) == 2:
+                ptRanges = numpy.array(aux[0].split(','),dtype=float).reshape(3,2)
+                famName = aux[1]
+            else:
+                print("ERROR: familyFile is incorrectly formatted.")
+                exit()
+
+            self.blocks[blockID].addBoco(Boco(oldBoco.name+'_'+str(count),
+                                              oldBoco.type, ptRanges, famName,
+                                              bcDataSets=oldBoco.dataSets))
+            count = count + 1
+
+        self.blocks[blockID].bocos.remove(oldBoco)     
+        f.close()
 
     def copyFamilyInfo(self, otherGrid):
         """Copy family information out of another grid"""
@@ -3263,6 +3320,9 @@ elif args.mode == 'autobc':
 
 elif args.mode == 'family':
     curGrid.overwriteFamilies(args.familyFile)
+           
+elif args.mode == 'familysubface':
+    curGrid.writeSubfaceFamily(args.familyFile)
 
 elif args.mode == 'familycopy':
     sourceGrid = readGrid(args.sourceFile)
