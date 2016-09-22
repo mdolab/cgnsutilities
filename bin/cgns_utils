@@ -489,6 +489,14 @@ p_p2R.add_argument('angle', type=float, help='Rotation angle given in degrees. T
 p_p2R.add_argument('outFile', nargs='?', default=None,
                      help='Optional output CGNS file')
 
+# ------------ Options for 'testBlock' mode
+p_test = subparsers.add_parser(
+    'testBlock', help='Creates a single block mesh with specified dimensions. Used to quicky generate a test grid.')
+p_test.add_argument('nx', help='Number of nodes in x', type=int)                
+p_test.add_argument('ny', help='Number of nodes in y', type=int)
+p_test.add_argument('nz', help='Number of nodes in z', type=int)
+p_test.add_argument('outFile', help='Name of output file')
+
 # Finally get the arguments we need!
 args = parser.parse_args()
 
@@ -531,6 +539,31 @@ if args.mode == 'timecombine':
     libcgns_utils.time_combine(fileNames, outFile)
     sys.exit(0)
 
+if args.mode == 'testBlock':
+    nx = args.nx
+    ny = args.ny
+    nz = args.nz
+    X = numpy.zeros((nx, ny, nz, 3))
+    Xcart = []
+    Xcart.append(numpy.linspace(0,1,nx))
+    Xcart.append(numpy.linspace(0,1,ny))
+    Xcart.append(numpy.linspace(0,1,nz))
+    Xx, Xy, Xz = numpy.meshgrid(Xcart[0], Xcart[1], Xcart[2], indexing='ij')
+    X[:,:,:,0] = Xx
+    X[:,:,:,1] = Xy
+    X[:,:,:,2] = Xz
+    b = Block('domain.00001', [nx, ny, nz], X)
+    # Add bocos so we can run it:
+    b.addBoco(Boco('iMin', BC['bcfarfield'], [[1, 1], [1, ny], [1, nz]], 'far'))
+    b.addBoco(Boco('iMax', BC['bcfarfield'], [[nx, nx], [1, ny], [1, nz]], 'far'))
+    b.addBoco(Boco('jMin', BC['bcsymmetryplane'], [[1, nx], [1, 1], [1, nz]], 'sym'))
+    b.addBoco(Boco('jMax', BC['bcsymmetryplane'], [[1, nx], [ny, ny], [1, nz]], 'sym'))
+    b.addBoco(Boco('kMin', BC['bcwallviscous'], [[1, nx], [1, ny], [1, 1]], 'wall'))
+    b.addBoco(Boco('kMax', BC['bcfarfield'], [[1, nx], [1, ny], [nz, nz]], 'far'))
+    g = Grid()
+    g.addBlock(b)
+    g.writeToCGNS(args.outFile)
+    sys.exit(0)
 
 # The 'combine' function is done first sicne it is the only function
 # that reads multiple cgns files.
