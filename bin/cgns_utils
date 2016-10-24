@@ -485,7 +485,9 @@ p_p2R.add_argument('normalDirection', help='This is the direction in which the p
 p_p2R.add_argument('axis', help='Axis which to rotate about \
                     Example: If supplied data is in xz plane, you would give either x or z',
                   choices=['x', 'y', 'z'])
-p_p2R.add_argument('angle', type=float, help='Rotation angle given in degrees. Typically this is a small quantity.')
+p_p2R.add_argument('startAngle', type=float, help='Rotation starting angle given in degrees. Typically this is a small quantity.')
+p_p2R.add_argument('endAngle', type=float, help='Rotation ending angle given in degrees. Typically this is a small quantity.')
+p_p2R.add_argument('nThetas', type=int, help='number of angular locations to put points', default=2)
 p_p2R.add_argument('outFile', nargs='?', default=None,
                      help='Optional output CGNS file')
 
@@ -792,7 +794,7 @@ elif args.mode == 'revolve':
     if args.normalDirection == args.axis:
         print("ERROR: Normal direction and revolve axis cannot be the same. Exiting...")
         sys.exit(0)
-    curGrid.revolve(args.normalDirection, args.axis, args.angle)
+    curGrid.revolve(args.normalDirection, args.axis, args.startAngle, args.endAngle, args.nThetas)
 
 elif args.mode == 'extractConv':
     # extracts the convergence history contained in the CGNS file and saves it in a pickle file
