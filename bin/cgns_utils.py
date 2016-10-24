@@ -63,7 +63,6 @@ class Grid(object):
             totalCells += (blk.dims[0]-1)*(blk.dims[1]-1)*(blk.dims[2]-1)
             totalNodes += blk.dims[0]*blk.dims[1]*blk.dims[2]
 
-        print ('Grid Info: %s'%args.gridFile)
         print ('Total Zones:', len(self.blocks))
         print ('Total Cells:', totalCells)
         print ('Total Nodes:', totalNodes)
@@ -109,6 +108,7 @@ class Grid(object):
 
     def writeToCGNS(self, fileName):
         """Write what is in this grid tree to the fileName provided"""
+        self.renameBCs()
         outFile = libcgns_utils.openfile(fileName, CG_MODE_WRITE)
         for blk in self.blocks:
             blk.writeToCGNS(outFile)
@@ -487,7 +487,7 @@ class Grid(object):
             'N': nExtra,
             's0':numpy.average(dx),
             'marchDist':hExtra,
-            'cmax':5,
+            'cmax':3,
         }
 
         # Run pyHyp
