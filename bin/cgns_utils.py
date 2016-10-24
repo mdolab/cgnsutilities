@@ -1183,7 +1183,7 @@ class Grid(object):
         self.connect()
 
 
-    def revolve(self, normalDirection, axis, angle):
+    def revolve(self, normalDirection, axis, startAngle, endAngle, nThetas):
         """
         Takes a planar grid in 2D and revolves about specified axis to 
         make a 3D axisymmetric mesh. This routine maintains the BCs and
@@ -1192,11 +1192,12 @@ class Grid(object):
         normalDirection: "str" {x,y,z}
         axis: "str" {x,y,z}
         angle: "float" degrees
+        nThetas: "int" number of points in the theta direction
         """
         
         # Extrude all blocks
         for blk in self.blocks:
-            blk.revolve(normalDirection, axis, angle)
+            blk.revolve(normalDirection, axis, startAngle, endAngle, nThetas)
         
         # Rebuild B2B connectivity
         self.connect()
@@ -1410,7 +1411,7 @@ class Block(object):
 
 
 
-    def _extrudeGetDataOrderAndDIms(self, directionNormal):
+    def _extrudeGetDataOrderAndDIms(self, directionNormal, nSteps):
         """ This is a support function that member functions extrude and revolve call"""
         
         # Note that the self.dims always has data in the first and second
@@ -1420,15 +1421,15 @@ class Block(object):
         if directionNormal == "x":
             # Data given is in yz-plane
             order = [2, 0, 1]
-            newDims = [2, self.dims[0], self.dims[1], 3]
+            newDims = [nSteps, self.dims[0], self.dims[1], 3]
         elif directionNormal == "y":
             # Data given is in xz-plane
             order = [0, 2, 1]
-            newDims = [self.dims[0], 2, self.dims[1], 3]
+            newDims = [self.dims[0], nSteps, self.dims[1], 3]
         elif directionNormal == "z":
             # Data given is in xy-plane
             order = [0, 1, 2]
-            newDims = [self.dims[0], self.dims[1], 2, 3]
+            newDims = [self.dims[0], self.dims[1], nSteps, 3]
         else:
             print("ERROR direction normal <{0}> not supported...exit".format(directionNormal))
             exit()        
@@ -1436,37 +1437,62 @@ class Block(object):
         return order, newDims
 
 
-    def _extrudeBocoAndAddSymmBoco(self, order):
+    def _extrudeBocoAndAddSymmBoco(self, order, nSteps=2):
         """ This is a support function that member functions extrude and revolve call"""
         
         # Update current BCs
-        for boco in self.bocos:
-            for j in range(2):
-                # Find where we have zeros. That will indicate dimension that has not been updated
-                # We only need to check the last row of ptRange because the data actual data is always
-                # in the first two rows
-                if boco.ptRange[2, j] == 0:
-                    boco.ptRange[2, j] = j+1
+        for boco in self.bocos:            
+            # Find where we have zeros. That will indicate dimension that has not been updated
+            # We only need to check the last row of ptRange because the data actual data is always
+            # in the first two rows
+            if boco.ptRange[2, 0] == 0:
+                boco.ptRange[2, 0] = 1
+                boco.ptRange[2, 1] = nSteps
 
             # Sort based on which dimension we want to extrude in
-            boco.ptRange = boco.ptRange[order]        
+            boco.ptRange = boco.ptRange[order]
 
+        # for b2b in self.B2Bs: 
+        #     print(b2b.ptRange)
+        #     print(b2b.donorRange)
+        #     if b2b.ptRange[2, 0] == 0:
+        #           b2b.ptRange[2, 0] = 1
+        #           b2b.ptRange[2, 1] = nSteps
+        #           b2b.donorRange[2, 0] = 1
+        #           b2b.donorRange[2, 1] = nSteps
 
+        #     # Sort based on which dimension we want to extrude in
+        #     b2b.ptRange = b2b.ptRange[order]
+        #     b2b.donorRange = b2b.donorRange[order]
+
+        
         # Create 2 new SYMM BCs for this block (each side). This is the plane which the grid was created in
         bocoType = BC["bcsymmetryplane"]
         family = "sym"
-        for j in range(2):
-            bocoName = "SYMM-{0}".format(j)
-            ptRange = numpy.ones((3,2))
-            ptRange[0,1] = self.dims[0]
-            ptRange[1,1] = self.dims[1]
-            ptRange[2,:] = j+1
+        
+        bocoName = "SYMM-{0}".format(0)
+        ptRange = numpy.ones((3,2))
+        ptRange[0,1] = self.dims[0]
+        ptRange[1,1] = self.dims[1]
+        ptRange[2,:] = 1
 
-            # Sort based on which dimension we want to extrude in
-            ptRange = ptRange[order]
+        # Sort based on which dimension we want to extrude in
+        ptRange = ptRange[order]
 
-            # Create and add the BC
-            self.addBoco(Boco(bocoName, bocoType, ptRange, family))
+        # Create and add the BC
+        self.addBoco(Boco(bocoName, bocoType, ptRange, family))
+
+        bocoName = "SYMM-{0}".format(1)
+        ptRange = numpy.ones((3,2))
+        ptRange[0,1] = self.dims[0]
+        ptRange[1,1] = self.dims[1]
+        ptRange[2,:] = nSteps
+
+        # Sort based on which dimension we want to extrude in
+        ptRange = ptRange[order]
+
+        # Create and add the BC
+        self.addBoco(Boco(bocoName, bocoType, ptRange, family))
             
             
     def extrude(self, direction):
@@ -1511,13 +1537,18 @@ class Block(object):
         self.dims = newDims[:-1]
 
 
-    def revolve(self, normalDirection, rotationAxis, angle):
+    def revolve(self, normalDirection, rotationAxis, startAngle, endAngle, nThetas):
         """Revolves a 2D planar grid to create a 3D axisymmetric grid"""
 
-        angleRad = angle*numpy.pi/180.0
+        wedgeAngleRad = numpy.deg2rad(endAngle - startAngle)
+
+        startAngleRad = numpy.deg2rad(startAngle)
+        angleRadStep = wedgeAngleRad/(nThetas-1)
+        # print(startAngle, endAngle, numpy.rad2deg(angleRadStep))
+        # exit()
 
         # Get the data order and new dims
-        order, newDims =  self._extrudeGetDataOrderAndDIms(normalDirection)
+        order, newDims =  self._extrudeGetDataOrderAndDIms(normalDirection, nThetas)
 
         # Allocate memory for new coordinates
         newCoords = numpy.zeros(newDims)
@@ -1525,51 +1556,50 @@ class Block(object):
         # Now copy current coords into new coord array.
         for i in range(self.dims[0]):
             for j in range(self.dims[1]):
-                
-                tc = self.coords[i, j, 0, :].copy()
-                
-                if normalDirection == "x":
-                    if rotationAxis == "y":
-                        r = numpy.linalg.norm(tc[[0,2]])
-                        tc[0] = numpy.sin(angleRad) * r
-                        tc[2] = numpy.cos(angleRad) * r
-                    elif rotationAxis == "z":
-                        r = numpy.linalg.norm(tc[0:2])
-                        tc[0] = numpy.sin(angleRad) * r
-                        tc[1] = numpy.cos(angleRad) * r
-                        
-                    newCoords[0, i, j, :] = self.coords[i, j, 0, :]
-                    newCoords[1, i, j, :] = tc
-      
-                elif normalDirection == "y":   
-                    if rotationAxis == "x":
-                        r = numpy.linalg.norm(tc[1:])
-                        tc[1] = numpy.sin(angleRad) * r
-                        tc[2] = numpy.cos(angleRad) * r
-                    elif rotationAxis == "z":
-                        r = numpy.linalg.norm(tc[0:2])
-                        tc[0] = numpy.cos(angleRad) * r
-                        tc[1] = numpy.sin(angleRad) * r
-                        
-                    newCoords[i, 0, j, :] = self.coords[i, j, 0, :]
-                    newCoords[i, 1, j, :] = tc
+                for k in range(nThetas): 
+                    
+                    tc = self.coords[i, j, 0, :].copy()
+                    angleRad = startAngleRad + angleRadStep*k
+                    
+                    if normalDirection == "x":
+                        if rotationAxis == "y":
+                            r = numpy.linalg.norm(tc[[0,2]])
+                            tc[0] = numpy.sin(angleRad) * r
+                            tc[2] = numpy.cos(angleRad) * r
+                        elif rotationAxis == "z":
+                            r = numpy.linalg.norm(tc[0:2])
+                            tc[0] = numpy.sin(angleRad) * r
+                            tc[1] = numpy.cos(angleRad) * r
+                            
+                        newCoords[k, i, j, :] = tc
+          
+                    elif normalDirection == "y":   
+                        if rotationAxis == "x":
+                            r = numpy.linalg.norm(tc[1:])
+                            tc[1] = numpy.sin(angleRad) * r
+                            tc[2] = numpy.cos(angleRad) * r
+                        elif rotationAxis == "z":
+                            r = numpy.linalg.norm(tc[0:2])
+                            tc[0] = numpy.cos(angleRad) * r
+                            tc[1] = numpy.sin(angleRad) * r
+                            
+                        newCoords[i, k, j, :] = tc
 
-                elif normalDirection == "z":
-                    if rotationAxis == "x":
-                        tc[2] = numpy.sin(angleRad) * r
-                        tc[1] = numpy.cos(angleRad) * r
-                    elif rotationAxis == "y":
-                        tc[0] = numpy.sin(angleRad) * r
-                        tc[2] = numpy.cos(angleRad) * r
-                        
-                    newCoords[i, j, 0, :] = self.coords[i, j, 0, :]
-                    newCoords[i, j, 1, :] = tc
+                    elif normalDirection == "z":
+                        if rotationAxis == "x":
+                            tc[2] = numpy.sin(angleRad) * r
+                            tc[1] = numpy.cos(angleRad) * r
+                        elif rotationAxis == "y":
+                            tc[0] = numpy.sin(angleRad) * r
+                            tc[2] = numpy.cos(angleRad) * r
+                            
+                        newCoords[i, j, k, :] = tc
         
         # Update the coordinates
         self.coords = newCoords
         
         # Update current BCs
-        self._extrudeBocoAndAddSymmBoco(order)
+        self._extrudeBocoAndAddSymmBoco(order, nThetas)
             
         # Update the dims. This is done last since the original dims
         # are used above to simplify and reduce code
