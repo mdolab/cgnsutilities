@@ -1194,13 +1194,37 @@ class Grid(object):
         angle: "float" degrees
         nThetas: "int" number of points in the theta direction
         """
-        
-        # Extrude all blocks
+
+        newGrid = Grid() #need a dummy 1-cell wide grid to get the connectives from
+
+        # revolve the blocks
         for blk in self.blocks:
+            new_blk = copy.deepcopy(blk)
+            newGrid.addBlock(new_blk)
+
+            new_blk.revolve(normalDirection, axis, startAngle, endAngle, 2)
             blk.revolve(normalDirection, axis, startAngle, endAngle, nThetas)
-        
+
         # Rebuild B2B connectivity
-        self.connect()
+        newGrid.connect()
+        
+        for blk, new_blk in zip(self.blocks, newGrid.blocks):
+            # empty the connectivities from the current grid
+            blk.B2Bs = []
+
+            # grab the connectivities from the 1-cell wide, 
+            # modify them, then add them to the original grid
+
+            for b2b in new_blk.B2Bs: 
+                    pt_rng = b2b.ptRange
+                    pt_rng[pt_rng==2] = nThetas
+                    # print(b2b.ptRange) 
+
+                    dnr_rng = b2b.donorRange
+                    dnr_rng[dnr_rng==2] = nThetas 
+                    
+                    blk.addB2B(b2b)
+ 
 
     def addConvArray(self, arrayName, arrayData):
         # This method just appends a new array data to the convergence history dictionary
@@ -1434,7 +1458,7 @@ class Block(object):
             print("ERROR direction normal <{0}> not supported...exit".format(directionNormal))
             exit()        
 
-        return order, newDims
+        return order, numpy.array(newDims)
 
 
     def _extrudeBocoAndAddSymmBoco(self, order, nSteps=2):
@@ -1550,13 +1574,15 @@ class Block(object):
 
         # Allocate memory for new coordinates
         newCoords = numpy.zeros(newDims)
-        
+
+
         # Now copy current coords into new coord array.
         for i in range(self.dims[0]):
             for j in range(self.dims[1]):
                 for k in range(nThetas): 
                     
                     tc = self.coords[i, j, 0, :].copy()
+
                     angleRad = startAngleRad + angleRadStep*k
                     
                     if normalDirection == "x":
@@ -1596,6 +1622,8 @@ class Block(object):
                         newCoords[i, j, k, :] = tc
         
         # Update the coordinates
+        # newCoords_swap = newCoords[order]
+
         self.coords = newCoords
         
         # Update current BCs
@@ -1603,6 +1631,7 @@ class Block(object):
             
         # Update the dims. This is done last since the original dims
         # are used above to simplify and reduce code
+
         self.dims = newDims[:-1]
 
 
