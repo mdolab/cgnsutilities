@@ -1544,8 +1544,6 @@ class Block(object):
 
         startAngleRad = numpy.deg2rad(startAngle)
         angleRadStep = wedgeAngleRad/(nThetas-1)
-        # print(startAngle, endAngle, numpy.rad2deg(angleRadStep))
-        # exit()
 
         # Get the data order and new dims
         order, newDims =  self._extrudeGetDataOrderAndDIms(normalDirection, nThetas)
@@ -1587,9 +1585,11 @@ class Block(object):
 
                     elif normalDirection == "z":
                         if rotationAxis == "x":
+                            r = numpy.linalg.norm(tc[1:])
                             tc[2] = numpy.sin(angleRad) * r
                             tc[1] = numpy.cos(angleRad) * r
                         elif rotationAxis == "y":
+                            r = numpy.linalg.norm(tc[0,2])
                             tc[0] = numpy.sin(angleRad) * r
                             tc[2] = numpy.cos(angleRad) * r
                             
