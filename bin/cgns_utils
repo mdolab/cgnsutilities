@@ -162,6 +162,13 @@ p_fam.add_argument('sourceFile', help='Name of output CGNS file which contains f
 p_fam.add_argument('outFile', nargs='?', default=None,
                     help='Optional output file')
 
+# ------------ Options for 'removebc' mode --------------------
+p_rem = subparsers.add_parser(
+    'removebc', help='Remove all BC')
+p_rem.add_argument('gridFile', help='Name of input CGNS file')
+p_rem.add_argument('outFile', nargs='?', default=None,
+                    help='Optional output file')
+
 # ------------ Options for 'overwritebc' mode --------------------
 p_sub = subparsers.add_parser(
     'overwritebc', help='Overwrite boundary condition information', formatter_class=argparse.RawTextHelpFormatter)
@@ -178,7 +185,7 @@ family - the family name. \n\
 \n\
 Supported BC Typess are : bcfarfield, bcsymmetryplane bcwall, bcwallinviscid, bcwallviscous \n\
    bcwallviscousheatflux, bcwallviscousisothermal, bcoutflow, bcoutflowsubsonic \n\
-   bcinflowsubsonic \n\
+   bcinflow, bcinflowsubsonic, bcinflowsupersonic \n\
 \n\
 Optionally, additional datasets may be specified. These \n\
 can be used to set additional boundary condition data. \n\
@@ -418,7 +425,7 @@ p_fbc = subparsers.add_parser(
 p_fbc.add_argument('gridFile', help='Name of input CGNS file')
 p_fbc.add_argument('bocoType', help='Boundary condition type. Supported types are: \
 bcfarfield, bcsymmetryplane, bcwall, bcwallinviscid, bcwallviscous, bcwallviscousheatflux, \
-bcwallviscousisothermal, bcoutflow, bcoutflowsubsonic, bcoutflowsupersonic, bcinflowsubsonic, and bcoverset')
+bcwallviscousisothermal, bcoutflow, bcoutflowsubsonic, bcoutflowsupersonic, bcinflow, bcinflowsubsonic, bcinflowsupersonic and bcoverset')
 p_fbc.add_argument('famName', help='Family name for the new BCs.')
 p_fbc.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
@@ -662,6 +669,9 @@ elif args.mode == 'familycopy':
 
 elif args.mode == 'overwritebc':
     curGrid.overwriteBCs(args.bcFile)
+    
+elif args.mode == 'removebc':
+    curGrid.removeBCs()
 
 elif args.mode == 'rebunch':
     curGrid.rebunch(args.spacing, args.extraCells, args.nodes)

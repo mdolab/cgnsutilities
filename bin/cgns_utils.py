@@ -32,7 +32,9 @@ BC = {'bcfarfield':7,
       'bcoutflow':13,
       'bcoutflowsubsonic':14,
       'bcoutflowsupersonic':15,
+      'bcinflow':9,
       'bcinflowsubsonic':10,
+      'bcinflowssupersonic':11,
       'bcoverset':1} #The Overset BC will be considered as a CG_USERDEFINED option ()
 
 BCDATATYPE = {"Dirichlet" : 2,
@@ -251,7 +253,12 @@ class Grid(object):
         for i in range(len(self.blocks)):
             for j in range(len(self.blocks[i].bocos)):
                 self.blocks[i].bocos[j].family = otherGrid.blocks[i].bocos[j].family
-
+                
+    def removeBCs(self):
+        """Remove any BC's there may be"""        
+        for i in range(len(self.blocks)):
+            self.blocks[i].bocos = []
+        
     def overwriteBCs(self, bcFile):
         """Overwrite BCs with information given in the file"""
 
