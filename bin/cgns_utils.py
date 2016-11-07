@@ -463,12 +463,12 @@ class Grid(object):
         # Call the generic routine
         return simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile)
 
-    def simpleOCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile):
+    def simpleOCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile, comm=None):
         """Generates a cartesian mesh around the provided grid, surrounded by
         an O-Mesh"""
 
         # First run simpleCart with no extension:
-        X, dx = self.simpleCart(dh, 0.0, 0, sym, mgcycle, outFile)
+        X, dx = self.simpleCart(dh, 0.0, 0, sym, mgcycle, outFile=None)
 
         # Pull out the patches. Note that we have to pay attention to
         # the symmetry and the ordering of the patches to make sure
@@ -501,22 +501,28 @@ class Grid(object):
         from pyhyp import pyHyp
         hyp = pyHyp(options=hypOptions)
         hyp.run()
-        dirpath = tempfile.mkdtemp()
-        fName = os.path.join(dirpath, 'tmp.cgns')
-        hyp.writeCGNS(fName)
+                    
+        from mpi4py import MPI
+        fName = None
+        if MPI.COMM_WORLD.rank == 0:
+            dirpath = tempfile.mkdtemp()
+            fName = os.path.join(dirpath, 'tmp.cgns')
 
-        # Read the pyhyp mesh back in and add our additional "X" from above.
-        grid = readGrid(fName)
-        dims = X.shape[0:3]
-        grid.addBlock(Block('interiorBlock', dims, X))
-        grid.renameBlocks()
-        grid.connect()
-        grid.BCs = []
-        grid.autoFarfieldBC(sym)
-        grid.writeToCGNS(outFile)
+        hyp.writeCGNS(MPI.COMM_WORLD.bcast(fName))
 
-        # Delete the temp file
-        os.remove(fName)
+        if MPI.COMM_WORLD.rank == 0:
+            # Read the pyhyp mesh back in and add our additional "X" from above.
+            grid = readGrid(fName)
+            dims = X.shape[0:3]
+            grid.addBlock(Block('interiorBlock', dims, X))
+            grid.renameBlocks()
+            grid.connect()
+            grid.BCs = []
+            grid.autoFarfieldBC(sym)
+            grid.writeToCGNS(outFile)
+            
+            # Delete the temp file
+            os.remove(fName)
 
     def cartesian(self, cartFile, outFile):
         """Generates a cartesian mesh around the provided grid"""
@@ -2227,17 +2233,18 @@ def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
     X[:,:,:,1] = Xy
     X[:,:,:,2] = Xz
 
-    # Open a new CGNS file and write if necessary:
-    cg = libcgns_utils.openfile(outFile, CG_MODE_WRITE)
+    if outFile is not None:
+        # Open a new CGNS file and write if necessary:
+        cg = libcgns_utils.openfile(outFile, CG_MODE_WRITE)
+        
+        # Write a Zone to it
+        zoneID = libcgns_utils.writezone(cg, 'cartesian', shp)
 
-    # Write a Zone to it
-    zoneID = libcgns_utils.writezone(cg, 'cartesian', shp)
+        # Write mesh coordinates
+        libcgns_utils.writecoordinates(cg, zoneID, X)
 
-    # Write mesh coordinates
-    libcgns_utils.writecoordinates(cg, zoneID, X)
-
-    # CLose file
-    libcgns_utils.closefile(cg)
+        # CLose file
+        libcgns_utils.closefile(cg)
 
     return X, dx
 
