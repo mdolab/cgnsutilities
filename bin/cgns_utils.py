@@ -1179,6 +1179,41 @@ class Grid(object):
         for blk in self.blocks:
             blk.coords[:, :, :] += [dx, dy, dz]
 
+    def rotate(self, vx, vy, vz, theta):
+
+        '''
+        This rotates the grid around an axis that passes through the origin.
+        vx, vy, vz are the components of the rotation vector
+        theta is the rotation angle, in degrees.
+
+        Ney Secco 2016-11
+        '''
+
+        # Normalize the components of the rotation vector
+        normV = numpy.sqrt(vx**2 + vy**2 + vz**2)
+        uu = vx/normV
+        vv = vy/normV
+        ww = vz/normV
+
+        # Compute sines and cosines of the rotation angle
+        ss = numpy.sin(theta*numpy.pi/180.0)
+        cc = numpy.cos(theta*numpy.pi/180.0)
+
+        # Build rotation matrix
+        rotMat = numpy.zeros((3,3))
+        rotMat[0,0] = uu*uu + (1.0 - uu*uu)*cc
+        rotMat[0,1] = uu*vv*(1.0 - cc) - ww*ss
+        rotMat[0,2] = uu*ww*(1.0 - cc) + vv*ss
+        rotMat[1,0] = uu*vv*(1.0 - cc) + ww*ss
+        rotMat[1,1] = vv*vv + (1.0 - vv*vv)*cc
+        rotMat[1,2] = vv*ww*(1.0 - cc) - uu*ss
+        rotMat[2,0] = uu*ww*(1.0 - cc) - vv*ss
+        rotMat[2,1] = vv*ww*(1.0 - cc) + uu*ss
+        rotMat[2,2] = ww*ww + (1.0 - ww*ww)*cc
+
+        for blk in self.blocks:
+            blk.coords[:, :, :] = numpy.dot(blk.coords[:, :, :],rotMat)
+
     def extrude(self, direction):
         """
         Takes a planar grid in 2D and extrudes into the third 
