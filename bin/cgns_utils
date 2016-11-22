@@ -385,6 +385,17 @@ p_t.add_argument('dz', help='z-displacement', type=float)
 p_t.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
+# ------------ Options for 'rotate' mode  --------------------
+p_rot = subparsers.add_parser(
+    'rotate', help='Rotate a grid around a given direction.')
+p_rot.add_argument('gridFile', help='Name of input CGNS file')
+p_rot.add_argument('vx', help='x-component of the rotation axis', type=float)
+p_rot.add_argument('vy', help='y-component of the rotation axis', type=float)
+p_rot.add_argument('vz', help='z-component of the rotation axis', type=float)
+p_rot.add_argument('theta', help='rotation angle [deg]', type=float)
+p_rot.add_argument('outFile', nargs='?', default=None,
+                     help='Optional output file')
+
 # ------------ Options for 'autoOversetBC' mode
 p_obc = subparsers.add_parser(
     'autoOversetBC', help='Automatically generate connectivity and boundary conditions'
@@ -712,6 +723,9 @@ elif args.mode == 'simpleOCart':
 
 elif args.mode == 'translate':
     curGrid.translate(args.dx, args.dy, args.dz)
+
+elif args.mode == 'rotate':
+    curGrid.rotate(args.vx, args.vy, args.vz, args.theta)
 
 elif args.mode == 'autoOversetBC':
     curGrid.autoOversetBC(args.sym)
