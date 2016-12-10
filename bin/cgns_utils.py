@@ -32,7 +32,9 @@ BC = {'bcfarfield':7,
       'bcoutflow':13,
       'bcoutflowsubsonic':14,
       'bcoutflowsupersonic':15,
+      'bcinflow':9,
       'bcinflowsubsonic':10,
+      'bcinflowssupersonic':11,
       'bcoverset':1} #The Overset BC will be considered as a CG_USERDEFINED option ()
 
 BCDATATYPE = {"Dirichlet" : 2,
@@ -271,7 +273,12 @@ class Grid(object):
         for i in range(len(self.blocks)):
             for j in range(len(self.blocks[i].bocos)):
                 self.blocks[i].bocos[j].family = otherGrid.blocks[i].bocos[j].family
-
+                
+    def removeBCs(self):
+        """Remove any BC's there may be"""        
+        for i in range(len(self.blocks)):
+            self.blocks[i].bocos = []
+        
     def overwriteBCs(self, bcFile):
         """Overwrite BCs with information given in the file"""
 
@@ -476,12 +483,12 @@ class Grid(object):
         # Call the generic routine
         return simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile)
 
-    def simpleOCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile):
+    def simpleOCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile, comm=None):
         """Generates a cartesian mesh around the provided grid, surrounded by
         an O-Mesh"""
 
         # First run simpleCart with no extension:
-        X, dx = self.simpleCart(dh, 0.0, 0, sym, mgcycle, outFile)
+        X, dx = self.simpleCart(dh, 0.0, 0, sym, mgcycle, outFile=None)
 
         # Pull out the patches. Note that we have to pay attention to
         # the symmetry and the ordering of the patches to make sure
@@ -514,22 +521,28 @@ class Grid(object):
         from pyhyp import pyHyp
         hyp = pyHyp(options=hypOptions)
         hyp.run()
-        dirpath = tempfile.mkdtemp()
-        fName = os.path.join(dirpath, 'tmp.cgns')
-        hyp.writeCGNS(fName)
+                    
+        from mpi4py import MPI
+        fName = None
+        if MPI.COMM_WORLD.rank == 0:
+            dirpath = tempfile.mkdtemp()
+            fName = os.path.join(dirpath, 'tmp.cgns')
 
-        # Read the pyhyp mesh back in and add our additional "X" from above.
-        grid = readGrid(fName)
-        dims = X.shape[0:3]
-        grid.addBlock(Block('interiorBlock', dims, X))
-        grid.renameBlocks()
-        grid.connect()
-        grid.BCs = []
-        grid.autoFarfieldBC(sym)
-        grid.writeToCGNS(outFile)
+        hyp.writeCGNS(MPI.COMM_WORLD.bcast(fName))
 
-        # Delete the temp file
-        os.remove(fName)
+        if MPI.COMM_WORLD.rank == 0:
+            # Read the pyhyp mesh back in and add our additional "X" from above.
+            grid = readGrid(fName)
+            dims = X.shape[0:3]
+            grid.addBlock(Block('interiorBlock', dims, X))
+            grid.renameBlocks()
+            grid.connect()
+            grid.BCs = []
+            grid.autoFarfieldBC(sym)
+            grid.writeToCGNS(outFile)
+            
+            # Delete the temp file
+            os.remove(fName)
 
     def cartesian(self, cartFile, outFile):
         """Generates a cartesian mesh around the provided grid"""
@@ -1186,6 +1199,41 @@ class Grid(object):
         for blk in self.blocks:
             blk.coords[:, :, :] += [dx, dy, dz]
 
+    def rotate(self, vx, vy, vz, theta):
+
+        '''
+        This rotates the grid around an axis that passes through the origin.
+        vx, vy, vz are the components of the rotation vector
+        theta is the rotation angle, in degrees.
+
+        Ney Secco 2016-11
+        '''
+
+        # Normalize the components of the rotation vector
+        normV = numpy.sqrt(vx**2 + vy**2 + vz**2)
+        uu = vx/normV
+        vv = vy/normV
+        ww = vz/normV
+
+        # Compute sines and cosines of the rotation angle
+        ss = numpy.sin(theta*numpy.pi/180.0)
+        cc = numpy.cos(theta*numpy.pi/180.0)
+
+        # Build rotation matrix
+        rotMat = numpy.zeros((3,3))
+        rotMat[0,0] = uu*uu + (1.0 - uu*uu)*cc
+        rotMat[0,1] = uu*vv*(1.0 - cc) - ww*ss
+        rotMat[0,2] = uu*ww*(1.0 - cc) + vv*ss
+        rotMat[1,0] = uu*vv*(1.0 - cc) + ww*ss
+        rotMat[1,1] = vv*vv + (1.0 - vv*vv)*cc
+        rotMat[1,2] = vv*ww*(1.0 - cc) - uu*ss
+        rotMat[2,0] = uu*ww*(1.0 - cc) - vv*ss
+        rotMat[2,1] = vv*ww*(1.0 - cc) + uu*ss
+        rotMat[2,2] = ww*ww + (1.0 - ww*ww)*cc
+
+        for blk in self.blocks:
+            blk.coords[:, :, :] = numpy.dot(blk.coords[:, :, :],rotMat)
+
     def extrude(self, direction):
         """
         Takes a planar grid in 2D and extrudes into the third 
@@ -1203,7 +1251,7 @@ class Grid(object):
         self.connect()
 
 
-    def revolve(self, normalDirection, axis, angle):
+    def revolve(self, normalDirection, axis, startAngle, endAngle, nThetas):
         """
         Takes a planar grid in 2D and revolves about specified axis to 
         make a 3D axisymmetric mesh. This routine maintains the BCs and
@@ -1212,14 +1260,39 @@ class Grid(object):
         normalDirection: "str" {x,y,z}
         axis: "str" {x,y,z}
         angle: "float" degrees
+        nThetas: "int" number of points in the theta direction
         """
-        
-        # Extrude all blocks
+
+        newGrid = Grid() #need a dummy 1-cell wide grid to get the connectives from
+
+        # revolve the blocks
         for blk in self.blocks:
-            blk.revolve(normalDirection, axis, angle)
-        
+            new_blk = copy.deepcopy(blk)
+            newGrid.addBlock(new_blk)
+
+            new_blk.revolve(normalDirection, axis, startAngle, endAngle, 2)
+            blk.revolve(normalDirection, axis, startAngle, endAngle, nThetas)
+
         # Rebuild B2B connectivity
-        self.connect()
+        newGrid.connect()
+        
+        for blk, new_blk in zip(self.blocks, newGrid.blocks):
+            # empty the connectivities from the current grid
+            blk.B2Bs = []
+
+            # grab the connectivities from the 1-cell wide, 
+            # modify them, then add them to the original grid
+
+            for b2b in new_blk.B2Bs: 
+                    pt_rng = b2b.ptRange
+                    pt_rng[pt_rng==2] = nThetas
+                    # print(b2b.ptRange) 
+
+                    dnr_rng = b2b.donorRange
+                    dnr_rng[dnr_rng==2] = nThetas 
+                    
+                    blk.addB2B(b2b)
+ 
 
     def addConvArray(self, arrayName, arrayData):
         # This method just appends a new array data to the convergence history dictionary
@@ -1430,7 +1503,7 @@ class Block(object):
 
 
 
-    def _extrudeGetDataOrderAndDIms(self, directionNormal):
+    def _extrudeGetDataOrderAndDIms(self, directionNormal, nSteps):
         """ This is a support function that member functions extrude and revolve call"""
         
         # Note that the self.dims always has data in the first and second
@@ -1440,53 +1513,78 @@ class Block(object):
         if directionNormal == "x":
             # Data given is in yz-plane
             order = [2, 0, 1]
-            newDims = [2, self.dims[0], self.dims[1], 3]
+            newDims = [nSteps, self.dims[0], self.dims[1], 3]
         elif directionNormal == "y":
             # Data given is in xz-plane
             order = [0, 2, 1]
-            newDims = [self.dims[0], 2, self.dims[1], 3]
+            newDims = [self.dims[0], nSteps, self.dims[1], 3]
         elif directionNormal == "z":
             # Data given is in xy-plane
             order = [0, 1, 2]
-            newDims = [self.dims[0], self.dims[1], 2, 3]
+            newDims = [self.dims[0], self.dims[1], nSteps, 3]
         else:
             print("ERROR direction normal <{0}> not supported...exit".format(directionNormal))
             exit()        
 
-        return order, newDims
+        return order, numpy.array(newDims)
 
 
-    def _extrudeBocoAndAddSymmBoco(self, order):
+    def _extrudeBocoAndAddSymmBoco(self, order, nSteps=2):
         """ This is a support function that member functions extrude and revolve call"""
         
         # Update current BCs
-        for boco in self.bocos:
-            for j in range(2):
-                # Find where we have zeros. That will indicate dimension that has not been updated
-                # We only need to check the last row of ptRange because the data actual data is always
-                # in the first two rows
-                if boco.ptRange[2, j] == 0:
-                    boco.ptRange[2, j] = j+1
+        for boco in self.bocos:            
+            # Find where we have zeros. That will indicate dimension that has not been updated
+            # We only need to check the last row of ptRange because the data actual data is always
+            # in the first two rows
+            if boco.ptRange[2, 0] == 0:
+                boco.ptRange[2, 0] = 1
+                boco.ptRange[2, 1] = nSteps
 
             # Sort based on which dimension we want to extrude in
-            boco.ptRange = boco.ptRange[order]        
+            boco.ptRange = boco.ptRange[order]
 
+        # for b2b in self.B2Bs: 
+        #     print(b2b.ptRange)
+        #     print(b2b.donorRange)
+        #     if b2b.ptRange[2, 0] == 0:
+        #           b2b.ptRange[2, 0] = 1
+        #           b2b.ptRange[2, 1] = nSteps
+        #           b2b.donorRange[2, 0] = 1
+        #           b2b.donorRange[2, 1] = nSteps
 
+        #     # Sort based on which dimension we want to extrude in
+        #     b2b.ptRange = b2b.ptRange[order]
+        #     b2b.donorRange = b2b.donorRange[order]
+
+        
         # Create 2 new SYMM BCs for this block (each side). This is the plane which the grid was created in
         bocoType = BC["bcsymmetryplane"]
         family = "sym"
-        for j in range(2):
-            bocoName = "SYMM-{0}".format(j)
-            ptRange = numpy.ones((3,2))
-            ptRange[0,1] = self.dims[0]
-            ptRange[1,1] = self.dims[1]
-            ptRange[2,:] = j+1
+        
+        bocoName = "SYMM-{0}".format(0)
+        ptRange = numpy.ones((3,2))
+        ptRange[0,1] = self.dims[0]
+        ptRange[1,1] = self.dims[1]
+        ptRange[2,:] = 1
 
-            # Sort based on which dimension we want to extrude in
-            ptRange = ptRange[order]
+        # Sort based on which dimension we want to extrude in
+        ptRange = ptRange[order]
 
-            # Create and add the BC
-            self.addBoco(Boco(bocoName, bocoType, ptRange, family))
+        # Create and add the BC
+        self.addBoco(Boco(bocoName, bocoType, ptRange, family))
+
+        bocoName = "SYMM-{0}".format(1)
+        ptRange = numpy.ones((3,2))
+        ptRange[0,1] = self.dims[0]
+        ptRange[1,1] = self.dims[1]
+        ptRange[2,:] = nSteps
+
+        # Sort based on which dimension we want to extrude in
+        ptRange = ptRange[order]
+
+        # Create and add the BC
+        self.addBoco(Boco(bocoName, bocoType, ptRange, family))
             
             
     def extrude(self, direction):
@@ -1531,68 +1629,77 @@ class Block(object):
         self.dims = newDims[:-1]
 
 
-    def revolve(self, normalDirection, rotationAxis, angle):
+    def revolve(self, normalDirection, rotationAxis, startAngle, endAngle, nThetas):
         """Revolves a 2D planar grid to create a 3D axisymmetric grid"""
 
-        angleRad = angle*numpy.pi/180.0
+        wedgeAngleRad = numpy.deg2rad(endAngle - startAngle)
+
+        startAngleRad = numpy.deg2rad(startAngle)
+        angleRadStep = wedgeAngleRad/(nThetas-1)
 
         # Get the data order and new dims
-        order, newDims =  self._extrudeGetDataOrderAndDIms(normalDirection)
+        order, newDims =  self._extrudeGetDataOrderAndDIms(normalDirection, nThetas)
 
         # Allocate memory for new coordinates
         newCoords = numpy.zeros(newDims)
-        
+
+
         # Now copy current coords into new coord array.
         for i in range(self.dims[0]):
             for j in range(self.dims[1]):
-                
-                tc = self.coords[i, j, 0, :].copy()
-                
-                if normalDirection == "x":
-                    if rotationAxis == "y":
-                        r = numpy.linalg.norm(tc[[0,2]])
-                        tc[0] = numpy.sin(angleRad) * r
-                        tc[2] = numpy.cos(angleRad) * r
-                    elif rotationAxis == "z":
-                        r = numpy.linalg.norm(tc[0:2])
-                        tc[0] = numpy.sin(angleRad) * r
-                        tc[1] = numpy.cos(angleRad) * r
-                        
-                    newCoords[0, i, j, :] = self.coords[i, j, 0, :]
-                    newCoords[1, i, j, :] = tc
-      
-                elif normalDirection == "y":   
-                    if rotationAxis == "x":
-                        r = numpy.linalg.norm(tc[1:])
-                        tc[1] = numpy.sin(angleRad) * r
-                        tc[2] = numpy.cos(angleRad) * r
-                    elif rotationAxis == "z":
-                        r = numpy.linalg.norm(tc[0:2])
-                        tc[0] = numpy.cos(angleRad) * r
-                        tc[1] = numpy.sin(angleRad) * r
-                        
-                    newCoords[i, 0, j, :] = self.coords[i, j, 0, :]
-                    newCoords[i, 1, j, :] = tc
+                for k in range(nThetas): 
+                    
+                    tc = self.coords[i, j, 0, :].copy()
 
-                elif normalDirection == "z":
-                    if rotationAxis == "x":
-                        tc[2] = numpy.sin(angleRad) * r
-                        tc[1] = numpy.cos(angleRad) * r
-                    elif rotationAxis == "y":
-                        tc[0] = numpy.sin(angleRad) * r
-                        tc[2] = numpy.cos(angleRad) * r
-                        
-                    newCoords[i, j, 0, :] = self.coords[i, j, 0, :]
-                    newCoords[i, j, 1, :] = tc
+                    angleRad = startAngleRad + angleRadStep*k
+                    
+                    if normalDirection == "x":
+                        if rotationAxis == "y":
+                            r = numpy.linalg.norm(tc[[0,2]])
+                            tc[0] = numpy.sin(angleRad) * r
+                            tc[2] = numpy.cos(angleRad) * r
+                        elif rotationAxis == "z":
+                            r = numpy.linalg.norm(tc[0:2])
+                            tc[0] = numpy.sin(angleRad) * r
+                            tc[1] = numpy.cos(angleRad) * r
+                            
+                        newCoords[k, i, j, :] = tc
+          
+                    elif normalDirection == "y":   
+                        if rotationAxis == "x":
+                            r = numpy.linalg.norm(tc[1:])
+                            tc[1] = numpy.sin(angleRad) * r
+                            tc[2] = numpy.cos(angleRad) * r
+                        elif rotationAxis == "z":
+                            r = numpy.linalg.norm(tc[0:2])
+                            tc[0] = numpy.cos(angleRad) * r
+                            tc[1] = numpy.sin(angleRad) * r
+                            
+                        newCoords[i, k, j, :] = tc
+
+                    elif normalDirection == "z":
+                        if rotationAxis == "x":
+                            r = numpy.linalg.norm(tc[1:])
+                            tc[2] = numpy.sin(angleRad) * r
+                            tc[1] = numpy.cos(angleRad) * r
+                        elif rotationAxis == "y":
+                            r = numpy.linalg.norm(tc[0,2])
+                            tc[0] = numpy.sin(angleRad) * r
+                            tc[2] = numpy.cos(angleRad) * r
+                            
+                        newCoords[i, j, k, :] = tc
         
         # Update the coordinates
+        # newCoords_swap = newCoords[order]
+
         self.coords = newCoords
         
         # Update current BCs
-        self._extrudeBocoAndAddSymmBoco(order)
+        self._extrudeBocoAndAddSymmBoco(order, nThetas)
             
         # Update the dims. This is done last since the original dims
         # are used above to simplify and reduce code
+
         self.dims = newDims[:-1]
 
 
@@ -2181,17 +2288,18 @@ def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
     X[:,:,:,1] = Xy
     X[:,:,:,2] = Xz
 
-    # Open a new CGNS file and write if necessary:
-    cg = libcgns_utils.openfile(outFile, CG_MODE_WRITE)
+    if outFile is not None:
+        # Open a new CGNS file and write if necessary:
+        cg = libcgns_utils.openfile(outFile, CG_MODE_WRITE)
+        
+        # Write a Zone to it
+        zoneID = libcgns_utils.writezone(cg, 'cartesian', shp)
 
-    # Write a Zone to it
-    zoneID = libcgns_utils.writezone(cg, 'cartesian', shp)
+        # Write mesh coordinates
+        libcgns_utils.writecoordinates(cg, zoneID, X)
 
-    # Write mesh coordinates
-    libcgns_utils.writecoordinates(cg, zoneID, X)
-
-    # CLose file
-    libcgns_utils.closefile(cg)
+        # CLose file
+        libcgns_utils.closefile(cg)
 
     return X, dx
 
