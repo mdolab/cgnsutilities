@@ -162,6 +162,13 @@ p_fam.add_argument('sourceFile', help='Name of output CGNS file which contains f
 p_fam.add_argument('outFile', nargs='?', default=None,
                     help='Optional output file')
 
+# ------------ Options for 'removebc' mode --------------------
+p_rem = subparsers.add_parser(
+    'removebc', help='Remove all BC')
+p_rem.add_argument('gridFile', help='Name of input CGNS file')
+p_rem.add_argument('outFile', nargs='?', default=None,
+                    help='Optional output file')
+
 # ------------ Options for 'overwritebc' mode --------------------
 p_sub = subparsers.add_parser(
     'overwritebc', help='Overwrite boundary condition information', formatter_class=argparse.RawTextHelpFormatter)
@@ -178,7 +185,7 @@ family - the family name. \n\
 \n\
 Supported BC Typess are : bcfarfield, bcsymmetryplane bcwall, bcwallinviscid, bcwallviscous \n\
    bcwallviscousheatflux, bcwallviscousisothermal, bcoutflow, bcoutflowsubsonic \n\
-   bcinflowsubsonic \n\
+   bcinflow, bcinflowsubsonic, bcinflowsupersonic \n\
 \n\
 Optionally, additional datasets may be specified. These \n\
 can be used to set additional boundary condition data. \n\
@@ -378,6 +385,17 @@ p_t.add_argument('dz', help='z-displacement', type=float)
 p_t.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
+# ------------ Options for 'rotate' mode  --------------------
+p_rot = subparsers.add_parser(
+    'rotate', help='Rotate a grid around a given direction.')
+p_rot.add_argument('gridFile', help='Name of input CGNS file')
+p_rot.add_argument('vx', help='x-component of the rotation axis', type=float)
+p_rot.add_argument('vy', help='y-component of the rotation axis', type=float)
+p_rot.add_argument('vz', help='z-component of the rotation axis', type=float)
+p_rot.add_argument('theta', help='rotation angle [deg]', type=float)
+p_rot.add_argument('outFile', nargs='?', default=None,
+                     help='Optional output file')
+
 # ------------ Options for 'autoOversetBC' mode
 p_obc = subparsers.add_parser(
     'autoOversetBC', help='Automatically generate connectivity and boundary conditions'
@@ -418,7 +436,7 @@ p_fbc = subparsers.add_parser(
 p_fbc.add_argument('gridFile', help='Name of input CGNS file')
 p_fbc.add_argument('bocoType', help='Boundary condition type. Supported types are: \
 bcfarfield, bcsymmetryplane, bcwall, bcwallinviscid, bcwallviscous, bcwallviscousheatflux, \
-bcwallviscousisothermal, bcoutflow, bcoutflowsubsonic, bcoutflowsupersonic, bcinflowsubsonic, and bcoverset')
+bcwallviscousisothermal, bcoutflow, bcoutflowsubsonic, bcoutflowsupersonic, bcinflow, bcinflowsubsonic, bcinflowsupersonic and bcoverset')
 p_fbc.add_argument('famName', help='Family name for the new BCs.')
 p_fbc.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
@@ -485,7 +503,9 @@ p_p2R.add_argument('normalDirection', help='This is the direction in which the p
 p_p2R.add_argument('axis', help='Axis which to rotate about \
                     Example: If supplied data is in xz plane, you would give either x or z',
                   choices=['x', 'y', 'z'])
-p_p2R.add_argument('angle', type=float, help='Rotation angle given in degrees. Typically this is a small quantity.')
+p_p2R.add_argument('startAngle', type=float, help='Rotation starting angle given in degrees. Typically this is a small quantity.')
+p_p2R.add_argument('endAngle', type=float, help='Rotation ending angle given in degrees. Typically this is a small quantity.')
+p_p2R.add_argument('nThetas', type=int, help='number of angular locations to put points', default=2)
 p_p2R.add_argument('outFile', nargs='?', default=None,
                      help='Optional output CGNS file')
 
@@ -670,6 +690,9 @@ elif args.mode == 'familycopy':
 
 elif args.mode == 'overwritebc':
     curGrid.overwriteBCs(args.bcFile)
+    
+elif args.mode == 'removebc':
+    curGrid.removeBCs()
 
 elif args.mode == 'rebunch':
     curGrid.rebunch(args.spacing, args.extraCells, args.nodes)
@@ -710,6 +733,9 @@ elif args.mode == 'simpleOCart':
 
 elif args.mode == 'translate':
     curGrid.translate(args.dx, args.dy, args.dz)
+
+elif args.mode == 'rotate':
+    curGrid.rotate(args.vx, args.vy, args.vz, args.theta)
 
 elif args.mode == 'autoOversetBC':
     curGrid.autoOversetBC(args.sym)
@@ -802,7 +828,7 @@ elif args.mode == 'revolve':
     if args.normalDirection == args.axis:
         print("ERROR: Normal direction and revolve axis cannot be the same. Exiting...")
         sys.exit(0)
-    curGrid.revolve(args.normalDirection, args.axis, args.angle)
+    curGrid.revolve(args.normalDirection, args.axis, args.startAngle, args.endAngle, args.nThetas)
 
 elif args.mode == 'extractConv':
     # extracts the convergence history contained in the CGNS file and saves it in a pickle file
