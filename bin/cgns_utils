@@ -497,6 +497,12 @@ p_test.add_argument('ny', help='Number of nodes in y', type=int)
 p_test.add_argument('nz', help='Number of nodes in z', type=int)
 p_test.add_argument('outFile', help='Name of output file')
 
+# ------------- Options for 'blockSizes' mode --------------------
+p_blockSizes = subparsers.add_parser('blockSizes',
+                                  help='Print the sizes of each block in the mesh')
+p_blockSizes.add_argument('gridFile', help='Name of input CGNS file')
+
+
 # Finally get the arguments we need!
 args = parser.parse_args()
 
@@ -601,6 +607,10 @@ if args.mode == 'extract':
 
 if args.mode == 'cgns2plot3d':
     curGrid.writePlot3d(args.plot3dFile)
+    sys.exit(0)
+
+if args.mode == 'blockSizes':
+    curGrid.printBlockInfo()
     sys.exit(0)
 
 # Determine if we have an output file:

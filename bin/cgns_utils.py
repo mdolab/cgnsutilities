@@ -101,6 +101,26 @@ class Grid(object):
         print ('Wall Boundary Nodes:', boundaryNodes)
 
 
+    def printBlockInfo(self):
+        """Print some information on each block to screen.
+        This info can be helpful assessing overset meshes"""
+
+        totalCells = 0
+        totalNodes = 0
+        counter = 1
+        for blk in self.blocks:
+            nCells = (blk.dims[0]-1)*(blk.dims[1]-1)*(blk.dims[2]-1)
+            nNodes = blk.dims[0]*blk.dims[1]*blk.dims[2]
+            print ('Block Number:', counter)
+            print ('Number of Cells:', nCells)
+            print ('Number of Nodes:', nNodes)
+            totalCells += nCells
+            totalNodes += nNodes
+            counter +=1
+        print ('Total Zones:', len(self.blocks))
+        print ('Total Cells:', totalCells)
+        print ('Total Nodes:', totalNodes)
+
     def addBlock(self, blk):
 
         """Add a block to the grid"""
