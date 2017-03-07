@@ -2777,19 +2777,31 @@ def combineGrids(grids):
     block connectivities need to be updated based on the new zone names
     """
 
+    # Create a dictionary to contain grid objects with their names
+    # as the corresponding keys
+    gridDict = {}
+    for j, grid in enumerate(grids):
+
+        # Get the name of the grid
+        name = '.'.join(grid.name.split('.')[:-1])
+        gridDict[name] = grid
+
+    # Alphabetically sort the list of grid object names
+    nameList = list(sorted(gridDict.keys()))
+
     # First determine the total number of blocks
     newGrid = Grid()
 
-    for grid in grids:
+    # Loop through each name for the grid objects and add their blocks
+    # to the newGrid object
+    nBlock = 0
+    for name in nameList:
 
-        # Get the name of the grid
-        nameList = grid.name.split('.')[:-1]
-        name = '.'.join(nameList)
+        # Get the grid object corresponding to this name
+        grid = gridDict[name]
 
         # Mapping of the old names to the new names
         zoneMap = {}
-
-        nBlock = 0
 
         # Loop over the blocks and obtain the name mapping
         for blk in grid.blocks:
@@ -2871,7 +2883,7 @@ def explodeByZoneName(grid):
         name = '.'.join(name)
         gridDict[name].addBlock(blk)
 
-    # Loop over all keys and add the grid to teh output list
+    # Loop over all keys and add the grid to the output list
     for name in gridDict.keys():
 
         # Now rename the blocks, bcs and redo-connectivity, only if we have full mesh
@@ -2883,6 +2895,7 @@ def explodeByZoneName(grid):
         gridList.append(gridDict[name])
 
     # return list of grids
+    print(nameList)
     return gridList, nameList
 
 def write_tecplot_file(filename,title,variable_names,data_points):
