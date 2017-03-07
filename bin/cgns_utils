@@ -298,6 +298,12 @@ p_expkmin.add_argument('outFile', nargs='?', default=None, help='Optional refere
 An integer will be added to the end. \n\
 if none is given, the input filename will be used as reference.')
 
+# ------------ Options for 'explodeByZoneName' mode  --------------------
+p_expkmin = subparsers.add_parser(
+    'explodeByZoneName', help='Take one multiblock cgns file and explode it into multiple multiblock \n\
+    cgns files based on the zone name from the blocks.')
+p_expkmin.add_argument('gridFile', type=str, help='Name of input multiblock CGNS file')
+
 # ------------ Options for 'cartesian' mode --------------------
 p_cart = subparsers.add_parser(
     'cartesian', help='Generates a background cartesian mesh', formatter_class=argparse.RawTextHelpFormatter)
@@ -813,6 +819,19 @@ elif args.mode == 'explodeKmin':
     # Save each grid
     for index in range(len(gridList)):
         gridList[index].writePlot3d(fileNames[index])
+
+    # Finish execution
+    sys.exit(0)
+    
+elif args.mode == 'explodeByZoneName':
+    # Split original multiblock grid into a list of multiblock grids
+    # that correspond to each component based on zone names
+    gridList = explodeByZoneName(curGrid)
+
+    # Save each grid
+    for grid in gridList:
+        fileName = grid.name
+        grid.writeToCGNS(fileName + '.cgns')
 
     # Finish execution
     sys.exit(0)
