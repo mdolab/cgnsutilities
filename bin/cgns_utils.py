@@ -55,6 +55,7 @@ class Grid(object):
         self.blocks = []
         self.convArray = {}
         self.topo = None
+        self.name = 'domain'
 
     def printInfo(self):
         """Print some information on the mesh to screen. Specifically
@@ -174,12 +175,22 @@ class Grid(object):
         for blk in self.blocks:
             blk.refine()
 
-    def renameBlocks(self):
+    def renameBlocks(self, actualName=False):
         """Rename all blocks in a consistent fashion"""
         i = 1
         for blk in self.blocks:
-            blk.name = 'domain.%5.5d'% i
+
+            # If we the actualName flag is true, then we use the name stored
+            # in the block. Otherwise, we use 'domain' as the base of the name.
+            # This is to keep the behavior consistent with previous
+            # cgns_utils operations while allowing for different naming
+            # for use in pyWarpMulti.
+            if actualName:
+                blk.name = self.name + '.%5.5d'% i
+            else:
+                blk.name = 'domain.%5.5d'% i
             i += 1
+
     def renameBCs(self):
         """Rename all block boundary conditions in a consistent fashion"""
         i = 1
@@ -2331,6 +2342,7 @@ def readGrid(fileName):
     nIterations, nArrays = libcgns_utils.getconvinfo(inFile)
 
     newGrid = Grid()
+    newGrid.name = fileName
 
     for iBlock in range(1, nBlock+1):
         zoneName, dims, nBoco, nB2B = libcgns_utils.getblockinfo(inFile, iBlock)
@@ -2766,17 +2778,23 @@ def combineGrids(grids):
     """
 
     # First determine the total number of blocks
-    nBlock = 0
     newGrid = Grid()
 
     for grid in grids:
 
+        # Get the name of the grid
+        nameList = grid.name.split('.')[:-1]
+        name = '.'.join(nameList)
+
         # Mapping of the old names to the new names
         zoneMap = {}
 
+        nBlock = 0
+
+        # Loop over the blocks and obtain the name mapping
         for blk in grid.blocks:
             nBlock += 1
-            newName = 'domain.%5.5d'% nBlock
+            newName = name + '.%5.5d'% nBlock
             zoneMap[blk.name] = newName
             blk.name = newName
 
@@ -2818,6 +2836,51 @@ def explodeGrid(grid,kMin=False):
             newGrid.connect()
         # Append this new grid to the grids list
         gridList.append(newGrid)
+
+    # return list of grids
+    return gridList, nameList
+
+def explodeByZoneName(grid):
+    """ Method that takes one multiblock grid and returns a list of grids, each
+        containing all zones that have similar naming.
+    """
+
+    # Initialize list of grids
+    gridList = []
+    nameList = []
+
+    # Loop over each block in the input grid and obtain all zone names
+    for blk in grid.blocks:
+        name = blk.name.split('.')[:-1]
+        name = '.'.join(name)
+        nameList.append(name)
+
+    # Get only the unique zone names
+    nameList = list(set(nameList))
+
+    gridDict = {}
+
+    # Add keys corresponding to each name to the dict
+    for name in nameList:
+        gridDict[name] = Grid()
+        gridDict[name].name = '_' + name
+
+    # Add the blocks to the corresponding grid
+    for blk in grid.blocks:
+        name = blk.name.split('.')[:-1]
+        name = '.'.join(name)
+        gridDict[name].addBlock(blk)
+
+    # Loop over all keys and add the grid to teh output list
+    for name in gridDict.keys():
+
+        # Now rename the blocks, bcs and redo-connectivity, only if we have full mesh
+        gridDict[name].renameBlocks(actualName=True)
+        gridDict[name].renameBCs()
+        gridDict[name].connect()
+
+        # Append this new grid to the grids list
+        gridList.append(gridDict[name])
 
     # return list of grids
     return gridList
