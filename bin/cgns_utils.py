@@ -2883,7 +2883,7 @@ def explodeByZoneName(grid):
         gridList.append(gridDict[name])
 
     # return list of grids
-    return gridList
+    return gridList, nameList
 
 def write_tecplot_file(filename,title,variable_names,data_points):
 
