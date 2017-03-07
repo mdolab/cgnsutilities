@@ -826,7 +826,7 @@ elif args.mode == 'explodeKmin':
 elif args.mode == 'explodeByZoneName':
     # Split original multiblock grid into a list of multiblock grids
     # that correspond to each component based on zone names
-    gridList = explodeByZoneName(curGrid)
+    gridList, nameList = explodeByZoneName(curGrid)
 
     # Save each grid
     for grid in gridList:
