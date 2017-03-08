@@ -2884,7 +2884,7 @@ def explodeByZoneName(grid):
         nameList.append(name)
 
     # Get only the unique zone names
-    nameList = list(set(nameList))
+    nameList = list(sorted(set(nameList)))
 
     gridDict = {}
 
@@ -2900,7 +2900,7 @@ def explodeByZoneName(grid):
         gridDict[name].addBlock(blk)
 
     # Loop over all keys and add the grid to the output list
-    for name in gridDict.keys():
+    for name in nameList:
 
         # Now rename the blocks, bcs and redo-connectivity, only if we have full mesh
         gridDict[name].renameBlocks(actualName=True)
@@ -2911,7 +2911,6 @@ def explodeByZoneName(grid):
         gridList.append(gridDict[name])
 
     # return list of grids
-    print(nameList)
     return gridList, nameList
 
 def write_tecplot_file(filename,title,variable_names,data_points):
