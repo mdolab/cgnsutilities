@@ -129,6 +129,20 @@ class Grid(object):
         """Add a block to the grid"""
         self.blocks.append(blk)
 
+    def removeBlocks(self, blockIDs):
+
+        '''
+        This function will remove certain blocks from the grid.
+        The user should ensure that the final mesh is still valid
+        in terms of boundary conditions and connectivities.
+
+        ATTENTION: blockIDs should be 1-indexed
+        '''
+        
+        # Remove the blocks in reverse order
+        for ID in sorted(blockIDs, reverse=True):
+            del self.blocks[ID-1]
+
     def writeToCGNS(self, fileName):
         """Write what is in this grid tree to the fileName provided"""
         self.renameBCs()
@@ -2782,8 +2796,11 @@ def combineGrids(grids):
     gridDict = {}
     for j, grid in enumerate(grids):
 
+        # Remove directories from grid name
+        name = os.path.basename(grid.name)
+
         # Get the name of the grid
-        name = '.'.join(grid.name.split('.')[:-1])
+        name = '.'.join(name.split('.')[:-1])
         gridDict[name] = grid
 
     # Alphabetically sort the list of grid object names

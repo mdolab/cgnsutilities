@@ -279,6 +279,14 @@ p_dd = subparsers.add_parser(
 p_dd.add_argument('gridFiles', metavar='files', type=str, nargs='+', help='Name of CGNS files to combine')
 p_dd.add_argument('outFile', type=str, help='Output CGNS file name')
 
+# ------------ Options for 'remove' mode  --------------------
+p_rm = subparsers.add_parser(
+    'remove', help='Remove blocks from a cgns file. The user should ensure that the final mesh is still valid in terms of boundary conditions and connectivities.')
+p_rm.add_argument('gridFile', help='Name of input CGNS file')
+p_rm.add_argument('blockIDs', metavar='files', type=int, nargs='+', help='IDs (integers) of the blocks that will be removed.\n\
+The integers should be 1-indexed')
+p_rm.add_argument('outFile', type=str, help='Output CGNS file name')
+
 # ------------ Options for 'explode' mode  --------------------
 p_exp = subparsers.add_parser(
     'explode', help='Take one multiblock cgns file and explodes it into single-block cgns files.')
@@ -714,6 +722,9 @@ elif args.mode == 'symmzero':
 
 elif args.mode == 'double2d':
     curGrid.double2D()
+
+elif args.mode == 'remove':
+    curGrid.removeBlocks(args.blockIDs)
 
 elif args.mode == 'cartesian':
     found_overset = False

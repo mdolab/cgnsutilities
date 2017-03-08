@@ -7,6 +7,10 @@
 subroutine openFile(fileName, mode, cg)
   ! This routine opens a file and returns the handle such that it can
   ! be used in other routines. 
+  !
+  ! The available modes are:
+  ! CG_MODE_READ = 0
+  ! CG_MODE_WRITE = 1
 
   implicit none
   include 'cgnslib_f.h'
