@@ -2356,7 +2356,10 @@ def readGrid(fileName):
     nIterations, nArrays = libcgns_utils.getconvinfo(inFile)
 
     newGrid = Grid()
-    newGrid.name = fileName
+
+    # Assign the fileName as the grid name. We need to remove that path
+    # and the file extension.
+    newGrid.name = os.path.splitext(os.path.basename(fileName))[0]
 
     for iBlock in range(1, nBlock+1):
         zoneName, dims, nBoco, nB2B = libcgns_utils.getblockinfo(inFile, iBlock)
@@ -2796,12 +2799,8 @@ def combineGrids(grids):
     gridDict = {}
     for j, grid in enumerate(grids):
 
-        # Remove directories from grid name
-        name = os.path.basename(grid.name)
-
         # Get the name of the grid
-        name = '.'.join(name.split('.')[:-1])
-        gridDict[name] = grid
+        gridDict[grid.name] = grid
 
     # Alphabetically sort the list of grid object names
     nameList = list(sorted(gridDict.keys()))
