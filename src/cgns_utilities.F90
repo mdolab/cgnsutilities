@@ -4,7 +4,7 @@
 ! written in python. This interface just facilities actually reading
 ! and writing the file. 
 
-subroutine openFile(fileName, mode, cg)
+subroutine openFile(fileName, mode, cellDim, cg)
   ! This routine opens a file and returns the handle such that it can
   ! be used in other routines. 
   !
@@ -17,7 +17,7 @@ subroutine openFile(fileName, mode, cg)
 
   ! Input/Output
   character*(*), intent(in) :: fileName
-  integer, intent(in) :: mode
+  integer, intent(in) :: mode, cellDim
   integer, intent(out) :: cg
 
   ! Working 
@@ -31,7 +31,7 @@ subroutine openFile(fileName, mode, cg)
      if (ier .eq. CG_ERROR) call cg_error_exit_f
 
      ! Create the base 
-     call cg_base_write_f(cg, "BASE#1", 3, 3, base, ier)
+     call cg_base_write_f(cg, "BASE#1", cellDim, 3, base, ier)
      if (ier .eq. CG_ERROR) call cg_error_exit_f
   else
      print *,'Error: Mode must be 0 for READ or 1 for WRITE!'
@@ -474,12 +474,24 @@ subroutine writeZone(cg, zoneName, dims, zoneID)
 
   base = 1
   sizes(:) = 0
-  sizes(1) = dims(1)
-  sizes(2) = dims(2)
-  sizes(3) = dims(3)
-  sizes(4) = dims(1)-1
-  sizes(5) = dims(2)-1
-  sizes(6) = dims(3)-1
+
+  if (dims(3) .ne. 1) then
+
+     sizes(1) = dims(1)
+     sizes(2) = dims(2)
+     sizes(3) = dims(3)
+     sizes(4) = dims(1)-1
+     sizes(5) = dims(2)-1
+     sizes(6) = dims(3)-1
+     
+  else
+
+     sizes(1) = dims(1)
+     sizes(2) = dims(2)
+     sizes(3) = dims(1)-1
+     sizes(4) = dims(2)-1
+
+  end if
 
   call cg_zone_write_f(cg, base, zoneName, sizes, Structured, zoneID, ier)
   if (ier .eq. CG_ERROR) call cg_error_exit_f

@@ -3,9 +3,10 @@
 
 python module libcgns_utils ! in 
     interface  ! in :libcgns_utils
-        subroutine openfile(filename,mode,cg) ! in :libcgns_utils:cgns_utilities.F90
+        subroutine openfile(filename,mode,cellDim,cg) ! in :libcgns_utils:cgns_utilities.F90
             character*(*) intent(in) :: filename
             integer intent(in) :: mode
+            integer intent(in) :: cellDim
             integer intent(out) :: cg
         end subroutine openfile
         subroutine closefile(cg) ! in :libcgns_utils:cgns_utilities.F90
