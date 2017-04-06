@@ -56,6 +56,7 @@ class Grid(object):
         self.convArray = {}
         self.topo = None
         self.name = 'domain'
+        self.cellDim = 3
 
     def printInfo(self):
         """Print some information on the mesh to screen. Specifically
@@ -146,14 +147,14 @@ class Grid(object):
     def writeToCGNS(self, fileName):
         """Write what is in this grid tree to the fileName provided"""
         self.renameBCs()
-        outFile = libcgns_utils.openfile(fileName, CG_MODE_WRITE)
+        outFile = libcgns_utils.openfile(fileName, CG_MODE_WRITE, self.cellDim)
         for blk in self.blocks:
             blk.writeToCGNS(outFile)
         libcgns_utils.closefile(outFile)
 
     def writeToCGNSSelected(self, fileName, toWrite):
         """Write what is in this grid tree to the fileName provided"""
-        outFile = libcgns_utils.openfile(fileName, CG_MODE_WRITE)
+        outFile = libcgns_utils.openfile(fileName, CG_MODE_WRITE, self.cellDim)
         for iblk in toWrite:
             self.blocks[iblk-1].writeToCGNS(outFile)
         libcgns_utils.closefile(outFile)
@@ -519,9 +520,12 @@ class Grid(object):
         # the symmetry and the ordering of the patches to make sure
         # that all the normals are pointing out.
         patches = []
+
+        # First take patches that are opposite from the origin planes
         patches.append(X[-1, :, :, :])
         patches.append(X[:, -1, :, :][::-1, :, :])
         patches.append(X[:, :, -1, :])
+
         if sym != 'x':
             patches.append(X[0, :, :, :][::-1, :, :])
         if sym != 'y':
@@ -925,7 +929,7 @@ class Grid(object):
         X[:,:,:,2] = Xz
 
         # Open a new CGNS file
-        cg = libcgns_utils.openfile(outFile, CG_MODE_WRITE)
+        cg = libcgns_utils.openfile(outFile, CG_MODE_WRITE, 3)
 
         # Write a Zone to it
         zoneID = libcgns_utils.writezone(cg, 'cartesian', nNodes)
@@ -1348,10 +1352,8 @@ class Block(object):
 
     def writeToCGNS(self, cg):
         """ Write all information in this block to the cg file handle"""
-
         zoneID = libcgns_utils.writezone(cg, self.name, self.dims)
         libcgns_utils.writecoordinates(cg, zoneID, self.coords)
-
         for boco in self.bocos:
             iBC = libcgns_utils.writebc(cg, zoneID, boco.name, boco.family,
                                         boco.ptRange, boco.type)
@@ -1373,7 +1375,6 @@ class Block(object):
                                           neuArr.name, neuArr.dataType, neuArr.nDimensions, neuArr.dataDimensions,
                                           neuArr.dataArr, neuArr.dataArr.shape)
                     writeBCDataHeader = False
-
 
         for b2b in self.B2Bs:
             libcgns_utils.writeb2b(cg, zoneID, b2b.name, b2b.donorName,
@@ -2315,7 +2316,7 @@ def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
 
     if outFile is not None:
         # Open a new CGNS file and write if necessary:
-        cg = libcgns_utils.openfile(outFile, CG_MODE_WRITE)
+        cg = libcgns_utils.openfile(outFile, CG_MODE_WRITE, 3)
         
         # Write a Zone to it
         zoneID = libcgns_utils.writezone(cg, 'cartesian', shp)
@@ -2350,7 +2351,7 @@ def readGrid(fileName):
     """Internal routine to return a 'grid' object that contains all
     the information that is in the file 'fileName'"""
 
-    inFile = libcgns_utils.openfile(fileName, CG_MODE_READ)
+    inFile = libcgns_utils.openfile(fileName, CG_MODE_READ, 3)
     cellDim = libcgns_utils.getgriddimension(inFile)
     nBlock = libcgns_utils.getnblocks(inFile)
     nIterations, nArrays = libcgns_utils.getconvinfo(inFile)
@@ -2449,6 +2450,9 @@ def readGrid(fileName):
             newGrid.addConvArray(arrayName, arrayData)
 
     libcgns_utils.closefile(inFile)
+
+    # Store grid dimension
+    newGrid.cellDim = cellDim
 
     return newGrid
 
