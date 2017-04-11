@@ -33,7 +33,7 @@ default:
 #       f2py -m  --overwrite-signature libcgns_utils -h cgns_utils.pyf cgns_utilities.F90
 
 # Generate wrapper file:
-	f2py cgns_utils.pyf
+	$(F2PY) cgns_utils.pyf
 
 # Compile c wrapper
 	$(CC) $(CFLAGS) $(PYTHON_INCLUDES) -I$(NUMPY_INCLUDES) \
@@ -45,5 +45,5 @@ default:
 
 # Final Link:
 	$(FC) -shared $(PYTHON_OBJECTS) cgns_utilities.o tecio.a $(CGNS_LINKER_FLAGS) -lstdc++ -o libcgns_utils.so
-	python importTest.py
+	$(PYTHON) importTest.py
 	mv libcgns_utils.so ../bin
