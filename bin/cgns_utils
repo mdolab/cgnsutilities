@@ -73,6 +73,7 @@ p_mirror = subparsers.add_parser('mirror',
 p_mirror.add_argument('gridFile', help='Name of input CGNS file')
 p_mirror.add_argument('axis',
                       help="Mirror about plane defined by axis: 'x', 'y', 'z'")
+p_mirror.add_argument('tol', nargs='?', default=1e-12, help='Tolerance for node merge')
 p_mirror.add_argument('outFile', nargs='?', default=None,
                       help='Optional output file')
 
@@ -102,6 +103,7 @@ p_connect = subparsers.add_parser(
     'connect', help='Determine the block-to-block connectivity information \
     for a point-matched grid')
 p_connect.add_argument('gridFile', help='Name of input CGNS file')
+p_connect.add_argument('tol', nargs='?', default=1e-12, help='Tolerance for node merge')
 p_connect.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
@@ -429,7 +431,7 @@ p_anf = subparsers.add_parser(
     'for an overset near field mesh with possible symmetry plane.')
 p_anf.add_argument('gridFile', help='Name of input CGNS file')
 p_anf.add_argument('sym', help='Normal for possible symmetry plane.',
-                  choices=['x', 'y', 'z'])
+                  choices=['x', 'y', 'z', 'none'])
 p_anf.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
@@ -668,7 +670,7 @@ elif args.mode == 'scale':
     curGrid.scale(args.scale)
 
 elif args.mode == 'mirror':
-    curGrid = mirrorGrid(curGrid, args.axis)
+    curGrid = mirrorGrid(curGrid, args.axis, args.tol)
 
 elif args.mode == 'coarsen':
     curGrid.coarsen()
@@ -683,7 +685,7 @@ elif args.mode == 'merge':
     curGrid = mergeGrid(curGrid)
 
 elif args.mode == 'connect':
-    curGrid.connect()
+    curGrid.connect(args.tol)
 
 elif args.mode == 'divide':
     curGrid = divideGrid(curGrid)
