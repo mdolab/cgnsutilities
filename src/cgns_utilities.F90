@@ -1279,7 +1279,7 @@ subroutine interpolate(cell_data,cell_shape,node_data,inode,jnode,knode)
 
 end subroutine interpolate
 
-subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock)
+subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock, tol)
 
   ! This routine will compute all bock to block connections as well as
   ! identify the subfaces with boundary conditions. 
@@ -1394,7 +1394,7 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock)
   real(kind=8), dimension(3*nCoords), intent(in):: inCoords
   integer, intent(in) :: nCoords, nBlock
   integer, dimension(3, nBlock), intent(in) :: sizes
-
+  real(kind=8), intent(in) :: tol
   ! Working
   integer :: i, j, k, ii, jj, iDim, iBlock, faceCount, iFace, oFace, faceIndex
   integer :: masterCount
@@ -1552,7 +1552,7 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock)
         do while (.not. complete) 
 
            call otherInfo(iStart, jStart, curOtherBlock, curOtherFace, &
-                curOtherI, curOtherJ, curOtherk)
+                curOtherI, curOtherJ, curOtherk, tol)
 
            begin2 = (/curOtherI, curOtherJ, curOtherk/)
            iDirIndex = 0
@@ -1563,7 +1563,7 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock)
               iEnd = iEnd + 1
 
               call otherInfo(iEnd, jStart, nextOtherBlock, nextOtherFace, &
-                   nextOtherI, nextOtherJ, nextOtherk)
+                   nextOtherI, nextOtherJ, nextOtherk, tol)
 
               delI = abs(nextOtherI - curOtherI)
               delJ = abs(nextOtherJ - curOtherJ)
@@ -1604,7 +1604,7 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock)
            end do iLoop
            
            call otherInfo(iEnd, jStart, curOtherBlock, curOtherFace, &
-                curOtherI, curOtherJ, curOtherk)
+                curOtherI, curOtherJ, curOtherk, tol)
 
            ! Find out how far we can go in the J-direction
            jDirIndex = 0
@@ -1613,7 +1613,7 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock)
               jEnd = jEnd + 1
               
               call otherInfo(iEnd, jend, nextOtherBlock, nextOtherFace, &
-                   nextOtherI, nextOtherJ, nextOtherk)
+                   nextOtherI, nextOtherJ, nextOtherk, tol)
 
               delI = abs(nextOtherI - curOtherI)
               delJ = abs(nextOtherJ - curOtherJ)
@@ -1991,7 +1991,7 @@ contains
     end if
   end function del
   
-  subroutine otherInfo(i, j, otherBlock, otherFace, otherI, otherJ, otherK)
+  subroutine otherInfo(i, j, otherBlock, otherFace, otherI, otherJ, otherK, tol)
     implicit none
     
     integer, intent(in) :: i, j
@@ -1999,7 +1999,7 @@ contains
     integer :: faceIndex
     real(kind=8) :: qv(3)
     type(kdtree2_result) :: results(2)
-    real(kind=8), parameter :: tol=1e-12
+    real(kind=8), intent(in) :: tol
 
     ! Reconstruct the index
     faceIndex = faceCount + (j-1)*il + i

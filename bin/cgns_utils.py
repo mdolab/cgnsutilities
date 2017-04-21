@@ -1007,7 +1007,7 @@ class Grid(object):
                     # block, dimension and index
                     self._addSplit(newBlock, abs_idim, index_new, mapping)
 
-    def connect(self):
+    def connect(self, tol=1e-12):
         """Generate block-to-block connectivity information for a grid. It
         does not need to be face matched, only point matched"""
         isize = 0
@@ -1030,7 +1030,7 @@ class Grid(object):
         sizes  = numpy.vstack(sizes)
 
         # Run the fortran code to generate all the connectivities
-        libcgns_utils.computeconnectivity(coords, sizes.T)
+        libcgns_utils.computeconnectivity(coords, sizes.T, tol)
         nPatches = libcgns_utils.getnpatches()
         types, pointRanges, myIDs, pointRangeDonors, \
             transforms, donorIDs, faceAvgs, faceNormals = \
@@ -1918,6 +1918,10 @@ class Block(object):
             ptRange = [[1, 1, 1], [d[0], d[1], 1]]
         elif faceStr == 'khigh':
             ptRange = [[1, 1, d[2]], [d[0], d[1], d[2]]]
+        else:
+            print("ERROR: faceStr must be one of iLow, iHigh, jLow, jHigh, kLow or kHigh")
+            exit()
+
         ptRange = numpy.array(ptRange).T
         newBoco = Boco("boco_%d"%self.bocoCounter, BC[bcType.lower()],
                        ptRange, family, dataSet)
@@ -2456,7 +2460,7 @@ def readGrid(fileName):
 
     return newGrid
 
-def mirrorGrid(grid, axis):
+def mirrorGrid(grid, axis, tol):
     """Method that takes a grid and mirrors about the axis. Boundary
     condition information is retained if possible"""
 
@@ -2477,7 +2481,7 @@ def mirrorGrid(grid, axis):
     # Now rename the blocks and redo-connectivity
     newGrid.renameBlocks()
     newGrid.renameBCs()
-    newGrid.connect()
+    newGrid.connect(tol)
 
     return newGrid
 
@@ -2870,7 +2874,7 @@ def explodeGrid(grid,kMin=False):
         gridList.append(newGrid)
 
     # return list of grids
-    return gridList, nameList
+    return gridList
 
 def explodeByZoneName(grid):
     """ Method that takes one multiblock grid and returns a list of grids, each

@@ -178,11 +178,12 @@ python module libcgns_utils ! in
             integer, optional,check(shape(filenames,0)==nfiles),depend(filenames) :: nfiles=shape(filenames,0)
 	    character*256 :: outputfile
         end subroutine time_combine
-        subroutine computeconnectivity(coords,ncoords,sizes,nblock) ! in :test:cgns_utilities.F90
+        subroutine computeconnectivity(coords,ncoords,sizes,nblock,tol) ! in :test:cgns_utilities.F90
             real(kind=8), target,dimension(3 * ncoords),intent(in) :: coords
             integer, optional,intent(in),check((len(coords))/(3)>=ncoords),depend(coords) :: ncoords=(len(coords))/(3)
             integer dimension(3,nblock),intent(in) :: sizes
             integer, optional,intent(in),check(shape(sizes,1)==nblock),depend(sizes) :: nblock=shape(sizes,1)
+            real(kind=8), intent(in) :: tol
         end subroutine computeconnectivity
         subroutine getnpatches(n)
           integer, intent(out) :: n
