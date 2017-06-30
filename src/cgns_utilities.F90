@@ -2554,3 +2554,61 @@ subroutine calcGridRatio(N, s0, S, ratio)
   ratio = c
 
 end subroutine calcGridRatio
+
+
+subroutine convertPlot3d(pFile, cFile)
+
+  implicit none
+  include 'cgnslib_f.h'
+
+  ! Input/Output
+  character*(*), intent(in) :: pFile
+  character*(*), intent(in) :: cFile
+
+  ! Working
+  integer(kind=4) :: nZones, i, j, k, cg, dims(9), zoneID, ierr, Cx, Cy, Cz, iZone
+  integer(kind=4), dimension(:, :), allocatable :: sizes
+  real(kind=8), dimension(:, :, :), allocatable :: coorX, coorY, coorZ
+  character*12 :: zoneName
+
+  ! We will be assuming multiblock, unformatted without iblank array. 
+  open (unit=50, form='unformatted', file=pFile)
+
+  ! Read total number of zones and allocate the zone derived type
+  read(50) nZones
+  
+  ! Allocate space for the size array and read. 
+  allocate(sizes(3, nZones))
+  read(50) ( sizes(1, i), sizes(2, i), sizes(3, i), i=1, nZones)
+
+  ! Now setup the CGNS File
+  call openFile(cFile, CG_MODE_WRITE, 3, cg)
+
+  ! Loop over zones
+  zoneLoop: do iZone=1, nZones
+
+     ! Write the zone itself. 
+     write(zoneName, "((a) (I5))")  'Domain.', izone
+     dims(1:3) = sizes(:, iZone)
+     call writeZone(cg, zoneName, dims, zoneID)
+     
+     allocate(coorX(dims(1), dims(2), dims(3)), &
+          coorY(dims(1), dims(2), dims(3)), &
+          coorZ(dims(1), dims(2), dims(3)))
+     
+     ! Actual read command
+     read(50) & 
+          ((( coorX(i, j, k), i=1,dims(1)), j=1,dims(2)), k=1,dims(3)), & 
+          ((( coorY(i, j, k), i=1,dims(1)), j=1,dims(2)), k=1,dims(3)), & 
+          ((( coorZ(i, j, k), i=1,dims(1)), j=1,dims(2)), k=1,dims(3))
+
+     ! Now write the actual data into the CGNS File
+     call cg_coord_write_f(cg, 1, iZone, RealDouble, "CoordinateX", coorX, Cx, ierr)
+     call cg_coord_write_f(cg, 1, iZone, RealDouble, "CoordinateY", coorY, Cy, ierr)
+     call cg_coord_write_f(cg, 1, iZone, RealDouble, "CoordinateZ", coorZ, Cz, ierr)
+     deallocate(coorX, coorY, coorZ)
+  end do zoneLoop
+
+  call closeFile(cg)
+  deallocate(sizes)
+end subroutine convertPlot3d

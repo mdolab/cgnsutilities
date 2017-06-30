@@ -230,6 +230,10 @@ python module libcgns_utils ! in
             real(kind=8) intent(in) :: s
             real(kind=8) intent(out) :: ratio
         end subroutine calcgridratio
+        subroutine convertplot3d(pfile, cfile)
+            character*(*) intent(in) :: pfile
+            character*(*) intent(in) :: cfile
+          end subroutine convertplot3d
 
     end interface 
 end python module libcgns_utils

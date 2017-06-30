@@ -2460,6 +2460,14 @@ def readGrid(fileName):
 
     return newGrid
 
+def convertPlot3d(plot3dFile, cgnsFile):
+    """Read a multiblock, fortran big endiend unformatted plot3d. This
+    routine is necessary becuase the supplied plot3d_to_cgns converter
+    from the cgnslib doesn't always work properly. 
+    """
+    # Full conversion is done in fortran.
+    libcgns_utils.convertplot3d(plot3dFile, cgnsFile)
+    
 def mirrorGrid(grid, axis, tol):
     """Method that takes a grid and mirrors about the axis. Boundary
     condition information is retained if possible"""
