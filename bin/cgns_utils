@@ -229,6 +229,14 @@ p3d = subparsers.add_parser(
 p3d.add_argument('gridFile', help='Name of input CGNS file')
 p3d.add_argument('plot3dFile', help='Name of output plot3d file')
 
+# ------------ Options for 'plot3dtocgns' mode --------------------
+p3dtoc = subparsers.add_parser( 
+    'plot3d2cgns',  help='Convert a multiblock, unformatted fortran, big-endian, multiblock plot3d file to a plain \
+    cgns file. This specific format is widely used at NASA and Boeing.')
+p3dtoc.add_argument('plot3dFile', help='Name of input plot3d file') 
+p3dtoc.add_argument('gridFile', help='Name of output CGNS file')
+
+
 # ------------ Options for 'randomize' mode --------------------
 p_ran = subparsers.add_parser(
     'randomize', help='Randomize the block orientation and order. Useful for testing.')
@@ -631,6 +639,11 @@ if args.mode == 'explicitCart':
 
     sys.exit(0)
 
+if args.mode == 'plot3d2cgns':
+    # This doesn't read a cgns file so do this first too. 
+    convertPlot3d(args.plot3dFile, args.gridFile)
+    sys.exit(0)
+    
 # Get the current working grid 'curGrid' by reading the input
 curGrid = readGrid(args.gridFile)
 
