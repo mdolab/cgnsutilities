@@ -262,12 +262,24 @@ p_reorder.add_argument('outFile', nargs='?', default=None,
 
 # ------------ Options for 'symmzero' mode --------------------
 p_sym = subparsers.add_parser(
-    'symmzero', help='Hard-zero any nodes within a given tolerance. Used for ensuring planar symmetry planes.')
+    'symmzero', help='Hard-zero any nodes on symmetry plane BCs.')
 p_sym.add_argument('gridFile', help='Name of input CGNS file')
 p_sym.add_argument('sym', help='Normal for possible symmetry plane.',
                   choices=['x', 'y', 'z'])
 p_sym.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
+
+# ------------ Options for 'symmzeronobc' mode --------------------
+p_symnobc = subparsers.add_parser(
+    'symmzeronobc', help='Hard-zero any nodes within a given tolerance of the symmetry plane. BCs are not taken into account.')
+p_symnobc.add_argument('gridFile', help='Name of input CGNS file')
+p_symnobc.add_argument('sym', help='Normal for possible symmetry plane.',
+                       choices=['x', 'y', 'z'])
+p_symnobc.add_argument('--tol', help="Distance tolerance to bring nodes to symmetry plane.\n\
+                                      Default is 1.0e-5.",
+                       type=float, default=1.0e-5)
+p_symnobc.add_argument('outFile', nargs='?', default=None,
+                       help='Optional output file')
 
 # ------------ Options for 'timecombine' mode  --------------------
 p_tc = subparsers.add_parser(
@@ -734,6 +746,9 @@ elif args.mode == 'reorder':
 
 elif args.mode == 'symmzero':
     curGrid.symmZero(args.sym)
+
+elif args.mode == 'symmzeronobc':
+    curGrid.symmZeroNoBC(args.sym, args.tol)
 
 elif args.mode == 'double2d':
     curGrid.double2D()
