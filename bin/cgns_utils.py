@@ -1224,6 +1224,17 @@ class Grid(object):
         for blk in self.blocks:
             blk.symmZero(idir)
 
+    def symmZeroNoBC(self, sym, tol):
+        """Zero nodes below tol distance from symmetry plane"""
+        if sym == 'x':
+            idir = 0
+        elif sym == 'y':
+            idir = 1
+        elif sym == 'z':
+            idir = 2
+        for blk in self.blocks:
+            blk.symmZeroNoBC(idir, tol)
+
     def translate(self, dx, dy, dz):
         for blk in self.blocks:
             blk.coords[:, :, :] += [dx, dy, dz]
@@ -2028,6 +2039,14 @@ class Block(object):
                 self.coords[r[0,0]-1:r[0,1],
                             r[1,0]-1:r[1,1],
                             r[2,0]-1:r[2,1], idir] = 0.0
+
+    def symmZeroNoBC(self, idir, tol):
+
+        # Find which nodes are closer than the tolerance from the symmetry plane
+        nodeIDs = numpy.where(self.coords[:,:,:,idir] < tol)
+
+        # Zero those nodes
+        self.coords[:,:,:,idir][nodeIDs] = 0.0
 
     def getFaceCoords(self, blockID):
         """Return the list of coordinates on the face as well as its index info"""
