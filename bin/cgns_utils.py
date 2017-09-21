@@ -139,7 +139,7 @@ class Grid(object):
 
         ATTENTION: blockIDs should be 1-indexed
         '''
-        
+
         # Remove the blocks in reverse order
         for ID in sorted(blockIDs, reverse=True):
             del self.blocks[ID-1]
@@ -253,7 +253,7 @@ class Grid(object):
 
     def writeSubfaceFamily(self, familyFile):
         """Add a number of subface Bocos to replace one full-face boco"""
-        # Note that this function could easily be expanded to change 
+        # Note that this function could easily be expanded to change
         # other information, like bcDataSets() on subfaces as well
         f = open(familyFile,'r')
         blockID = int(f.readline())-1
@@ -291,7 +291,7 @@ class Grid(object):
                                               bcDataSets=oldBoco.dataSets))
             count = count + 1
 
-        self.blocks[blockID].bocos.remove(oldBoco)     
+        self.blocks[blockID].bocos.remove(oldBoco)
         f.close()
 
     def copyFamilyInfo(self, otherGrid):
@@ -299,12 +299,12 @@ class Grid(object):
         for i in range(len(self.blocks)):
             for j in range(len(self.blocks[i].bocos)):
                 self.blocks[i].bocos[j].family = otherGrid.blocks[i].bocos[j].family
-                
+
     def removeBCs(self):
-        """Remove any BC's there may be"""        
+        """Remove any BC's there may be"""
         for i in range(len(self.blocks)):
             self.blocks[i].bocos = []
-        
+
     def overwriteBCs(self, bcFile):
         """Overwrite BCs with information given in the file"""
 
@@ -372,7 +372,7 @@ class Grid(object):
         # Loop over all subfaces and deal with the BCs
         for i in range(len(types)):
             blockID = myIDs[i] - 1
-            
+
             if types[i] == 0: # Boco
                 coor_check = abs(faceAvg[symAxis, i]) < 1e-3
                 dp_check = abs(numpy.dot(faceNormal[:, i], symNormal)) > 0.98
@@ -467,7 +467,7 @@ class Grid(object):
         # Loop over all subfaces and deal with the BCs
         for i in range(len(types)):
             blockID = myIDs[i] - 1
-            
+
             if types[i] == 0: # Boco
                 coor_check = abs(faceAvg[symAxis, i]) < 1e-3
                 dp_check = abs(numpy.dot(faceNormal[:, i], symNormal)) > 0.98
@@ -550,7 +550,7 @@ class Grid(object):
         from pyhyp import pyHyp
         hyp = pyHyp(options=hypOptions)
         hyp.run()
-                    
+
         from mpi4py import MPI
         fName = None
         if MPI.COMM_WORLD.rank == 0:
@@ -569,7 +569,7 @@ class Grid(object):
             grid.BCs = []
             grid.autoFarfieldBC(sym)
             grid.writeToCGNS(outFile)
-            
+
             # Delete the temp file
             os.remove(fName)
 
@@ -1108,7 +1108,7 @@ class Grid(object):
                 # Now simply add the boco
                 self.blocks[blockID].addBoco(Boco(
                     'dummy', bocoType, pointRanges[:, :, i], famName))
- 
+
         # Lastly rename the BCs to be consistent
         self.renameBCs()
 
@@ -1122,14 +1122,14 @@ class Grid(object):
 
         # Do the b2b by running connect:
         types, pointRanges, myIDs, faceAvg, faceNormal = self.connect()
-        
+
         # Loop over all subfaces and deal with the BCs
         for i in range(len(types)):
             # Get reference to block
             blockID = myIDs[i] - 1
-            
+
             if types[i] == 0: # Boco
-                
+
                 # Check if face already has a BC
                 has_bc = False
                 for boco in self.blocks[blockID].bocos:
@@ -1143,7 +1143,7 @@ class Grid(object):
                 if not has_bc:
                     self.blocks[blockID].addBoco(Boco(
                         'dummy', bocoType, pointRanges[:, :, i], famName))
- 
+
         # Lastly rename the BCs to be consistent
         self.renameBCs()
 
@@ -1265,27 +1265,27 @@ class Grid(object):
 
     def extrude(self, direction):
         """
-        Takes a planar grid in 2D and extrudes into the third 
-        dimension making a 3D that is single cell wide. This routine 
-        maintains the BCs and creates 2 new symm BCs for each side. 
-        
+        Takes a planar grid in 2D and extrudes into the third
+        dimension making a 3D that is single cell wide. This routine
+        maintains the BCs and creates 2 new symm BCs for each side.
+
         direction: "str" {x,y,z}
         """
 
         # Extrude all blocks
         for blk in self.blocks:
             blk.extrude(direction)
-        
+
         # Rebuild B2B connectivity
         self.connect()
 
 
     def revolve(self, normalDirection, axis, startAngle, endAngle, nThetas):
         """
-        Takes a planar grid in 2D and revolves about specified axis to 
+        Takes a planar grid in 2D and revolves about specified axis to
         make a 3D axisymmetric mesh. This routine maintains the BCs and
-        creates 2 new symm BCs for each side. 
-        
+        creates 2 new symm BCs for each side.
+
         normalDirection: "str" {x,y,z}
         axis: "str" {x,y,z}
         angle: "float" degrees
@@ -1304,24 +1304,24 @@ class Grid(object):
 
         # Rebuild B2B connectivity
         newGrid.connect()
-        
+
         for blk, new_blk in zip(self.blocks, newGrid.blocks):
             # empty the connectivities from the current grid
             blk.B2Bs = []
 
-            # grab the connectivities from the 1-cell wide, 
+            # grab the connectivities from the 1-cell wide,
             # modify them, then add them to the original grid
 
-            for b2b in new_blk.B2Bs: 
+            for b2b in new_blk.B2Bs:
                     pt_rng = b2b.ptRange
                     pt_rng[pt_rng==2] = nThetas
-                    # print(b2b.ptRange) 
+                    # print(b2b.ptRange)
 
                     dnr_rng = b2b.donorRange
-                    dnr_rng[dnr_rng==2] = nThetas 
-                    
+                    dnr_rng[dnr_rng==2] = nThetas
+
                     blk.addB2B(b2b)
- 
+
 
     def addConvArray(self, arrayName, arrayData):
         # This method just appends a new array data to the convergence history dictionary
@@ -1427,7 +1427,7 @@ class Block(object):
     def coarsen(self):
         """Coarsen the block uniformly. We will update the boundary
         conditions and B2B if necessary"""
-        
+
         # We will coarsen one direction at a time. We do this to check if the block
         # is already 1-cell wide, which can't be coarsened any further
         if self.dims[0] != 2:
@@ -1531,7 +1531,7 @@ class Block(object):
 
     def _extrudeGetDataOrderAndDIms(self, directionNormal, nSteps):
         """ This is a support function that member functions extrude and revolve call"""
-        
+
         # Note that the self.dims always has data in the first and second
         # slot like it is a xy plane dataset. The third slot always has ones
         # set in readgrid() function. This will we updated.
@@ -1550,16 +1550,16 @@ class Block(object):
             newDims = [self.dims[0], self.dims[1], nSteps, 3]
         else:
             print("ERROR direction normal <{0}> not supported...exit".format(directionNormal))
-            exit()        
+            exit()
 
         return order, numpy.array(newDims)
 
 
     def _extrudeBocoAndAddSymmBoco(self, order, nSteps=2):
         """ This is a support function that member functions extrude and revolve call"""
-        
+
         # Update current BCs
-        for boco in self.bocos:            
+        for boco in self.bocos:
             # Find where we have zeros. That will indicate dimension that has not been updated
             # We only need to check the last row of ptRange because the data actual data is always
             # in the first two rows
@@ -1570,7 +1570,7 @@ class Block(object):
             # Sort based on which dimension we want to extrude in
             boco.ptRange = boco.ptRange[order]
 
-        # for b2b in self.B2Bs: 
+        # for b2b in self.B2Bs:
         #     print(b2b.ptRange)
         #     print(b2b.donorRange)
         #     if b2b.ptRange[2, 0] == 0:
@@ -1583,11 +1583,11 @@ class Block(object):
         #     b2b.ptRange = b2b.ptRange[order]
         #     b2b.donorRange = b2b.donorRange[order]
 
-        
+
         # Create 2 new SYMM BCs for this block (each side). This is the plane which the grid was created in
         bocoType = BC["bcsymmetryplane"]
         family = "sym"
-        
+
         bocoName = "SYMM-{0}".format(0)
         ptRange = numpy.ones((3,2))
         ptRange[0,1] = self.dims[0]
@@ -1611,21 +1611,21 @@ class Block(object):
 
         # Create and add the BC
         self.addBoco(Boco(bocoName, bocoType, ptRange, family))
-            
-            
+
+
     def extrude(self, direction):
         """Extrudes from 2D panar grid to 3D"""
-    
+
         # Get the data order and new dims
         order, newDims =  self._extrudeGetDataOrderAndDIms(direction)
-            
+
         # Allocate memory for new coordinates
         newCoords = numpy.zeros(newDims)
-        
+
         # Now copy current coords into new coord array.
-        
+
         # As for the dims above the coordinates have only data in the first two slots i,j.
-        # The actual coordinates stored however are given in the plane specified by the user they are 
+        # The actual coordinates stored however are given in the plane specified by the user they are
         # therefore not updated/changed.
         for i in range(self.dims[0]):
             for j in range(self.dims[1]):
@@ -1633,8 +1633,8 @@ class Block(object):
                     newCoords[0, i, j, :] = self.coords[i, j, 0, :]
                     newCoords[1, i, j, :] = self.coords[i, j, 0, :]
                     # Update the x-dimension coord with unit length
-                    newCoords[1, i, j, 0] = 1.0                        
-                elif direction == "y":     
+                    newCoords[1, i, j, 0] = 1.0
+                elif direction == "y":
                     newCoords[i, 0, j, :] = self.coords[i, j, 0, :]
                     newCoords[i, 1, j, :] = self.coords[i, j, 0, :]
                     # Update the y-dimension coord with unit length
@@ -1643,14 +1643,14 @@ class Block(object):
                     newCoords[i, j, 0, :] = self.coords[i, j, 0, :]
                     newCoords[i, j, 1, :] = self.coords[i, j, 0, :]
                     # Update the z-dimension coord with unit length
-                    newCoords[i, j, 1, 2] = 1.0                        
-        
+                    newCoords[i, j, 1, 2] = 1.0
+
         # Update the coordinates
         self.coords = newCoords
-        
+
         # Update current BCs
         self._extrudeBocoAndAddSymmBoco(order)
-            
+
         # Update the dims. This is done last since the original dims are used above to simplify and reduce code
         self.dims = newDims[:-1]
 
@@ -1673,12 +1673,12 @@ class Block(object):
         # Now copy current coords into new coord array.
         for i in range(self.dims[0]):
             for j in range(self.dims[1]):
-                for k in range(nThetas): 
-                    
+                for k in range(nThetas):
+
                     tc = self.coords[i, j, 0, :].copy()
 
                     angleRad = startAngleRad + angleRadStep*k
-                    
+
                     if normalDirection == "x":
                         if rotationAxis == "y":
                             r = numpy.linalg.norm(tc[[0,2]])
@@ -1688,10 +1688,10 @@ class Block(object):
                             r = numpy.linalg.norm(tc[0:2])
                             tc[0] = numpy.sin(angleRad) * r
                             tc[1] = numpy.cos(angleRad) * r
-                            
+
                         newCoords[k, i, j, :] = tc
-          
-                    elif normalDirection == "y":   
+
+                    elif normalDirection == "y":
                         if rotationAxis == "x":
                             r = numpy.linalg.norm(tc[1:])
                             tc[1] = numpy.sin(angleRad) * r
@@ -1700,7 +1700,7 @@ class Block(object):
                             r = numpy.linalg.norm(tc[0:2])
                             tc[0] = numpy.cos(angleRad) * r
                             tc[1] = numpy.sin(angleRad) * r
-                            
+
                         newCoords[i, k, j, :] = tc
 
                     elif normalDirection == "z":
@@ -1712,17 +1712,17 @@ class Block(object):
                             r = numpy.linalg.norm(tc[0,2])
                             tc[0] = numpy.sin(angleRad) * r
                             tc[2] = numpy.cos(angleRad) * r
-                            
+
                         newCoords[i, j, k, :] = tc
-        
+
         # Update the coordinates
         # newCoords_swap = newCoords[order]
 
         self.coords = newCoords
-        
+
         # Update current BCs
         self._extrudeBocoAndAddSymmBoco(order, nThetas)
-            
+
         # Update the dims. This is done last since the original dims
         # are used above to simplify and reduce code
 
@@ -2321,7 +2321,7 @@ def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
     if outFile is not None:
         # Open a new CGNS file and write if necessary:
         cg = libcgns_utils.openfile(outFile, CG_MODE_WRITE, 3)
-        
+
         # Write a Zone to it
         zoneID = libcgns_utils.writezone(cg, 'cartesian', shp)
 
@@ -2438,7 +2438,7 @@ def readGrid(fileName):
                          libcgns_utils.getb2binfo(inFile, iBlock, iB2B)
             blk.addB2B(B2B(connectName, donorName, ptRange, donorRange,
                            transform))
-       
+
         newGrid.addBlock(blk)
 
     # Read convergence history if available
@@ -2463,11 +2463,11 @@ def readGrid(fileName):
 def convertPlot3d(plot3dFile, cgnsFile):
     """Read a multiblock, fortran big endiend unformatted plot3d. This
     routine is necessary becuase the supplied plot3d_to_cgns converter
-    from the cgnslib doesn't always work properly. 
+    from the cgnslib doesn't always work properly.
     """
     # Full conversion is done in fortran.
     libcgns_utils.convertplot3d(plot3dFile, cgnsFile)
-    
+
 def mirrorGrid(grid, axis, tol):
     """Method that takes a grid and mirrors about the axis. Boundary
     condition information is retained if possible"""
@@ -2937,7 +2937,7 @@ def write_tecplot_file(filename,title,variable_names,data_points):
 
     # Open the data file
     fid = open(filename,'w')
-    
+
     # Write the title
     fid.write('title = '+title+'\n')
 
@@ -2956,6 +2956,6 @@ def write_tecplot_file(filename,title,variable_names,data_points):
             str_points = [str(x) for x in data_points[index,:]]
             str_points = ' '.join(str_points) # Merge all entries in a single string separated by whitespace
             fid.write(str_points+'\n') # Write to file
-    
+
     # Close file
     fid.close()
