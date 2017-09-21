@@ -1,12 +1,11 @@
-
 ! This file contains all the Fortran-back-end functions for working
 ! with CGNS files. The intent is all high-level functions are actually
 ! written in python. This interface just facilities actually reading
-! and writing the file. 
+! and writing the file.
 
 subroutine openFile(fileName, mode, cellDim, cg)
   ! This routine opens a file and returns the handle such that it can
-  ! be used in other routines. 
+  ! be used in other routines.
   !
   ! The available modes are:
   ! CG_MODE_READ = 0
@@ -20,7 +19,7 @@ subroutine openFile(fileName, mode, cellDim, cg)
   integer, intent(in) :: mode, cellDim
   integer, intent(out) :: cg
 
-  ! Working 
+  ! Working
   integer :: ier, base
 
   ! Map our "mode" to the CG_MODE
@@ -30,7 +29,7 @@ subroutine openFile(fileName, mode, cellDim, cg)
      call cg_open_f(fileName, CG_MODE_WRITE, cg, ier)
      if (ier .eq. CG_ERROR) call cg_error_exit_f
 
-     ! Create the base 
+     ! Create the base
      call cg_base_write_f(cg, "BASE#1", cellDim, 3, base, ier)
      if (ier .eq. CG_ERROR) call cg_error_exit_f
   else
@@ -101,7 +100,7 @@ subroutine getBlockInfo(cg, iBlock, zoneName, dims, nBoco, nB2B)
   ! Determine the critical meta information of the block, iBlock. We
   ! return dims -- the nodal size of the block, nBocos the number of
   ! boundary conditions and nB2B the number of block-to-block
-  ! connection information. 
+  ! connection information.
 
   implicit none
   include 'cgnslib_f.h'
@@ -136,10 +135,10 @@ end subroutine getBlockInfo
 subroutine getBCInfo(cg, iBlock, iBC, cellDim, bocoName, bocoType, ptRange, family, nDataSet)
   ! Get the BCInfor for 'iBC' condition on block 'iBlock' We determine
   ! the bocoName, the botoType, and pointRange which is sufficient to
-  ! reproduce the boundary condition. 
+  ! reproduce the boundary condition.
 
   ! Note that ptRange can be a 2D i.e. (2,2) but we force it 3D (3,2)
-  ! tmpPtRange contains the actual size 
+  ! tmpPtRange contains the actual size
 
   implicit none
   include 'cgnslib_f.h'
@@ -170,8 +169,8 @@ subroutine getBCInfo(cg, iBlock, iBC, cellDim, bocoName, bocoType, ptRange, fami
      ptRange(1:2,1:2) = tmpPtRange(1:2,1:2)
   else
      ptRange = tmpPtRange
-  end if 
-  
+  end if
+
   call cg_goto_f(cg, base, ier, "Zone_t", iBlock, "ZoneBC_t",1, "BC_t", iBC, "end")
   if (ier == 0) then ! Node exits
 
@@ -190,16 +189,16 @@ subroutine getBCInfo(cg, iBlock, iBC, cellDim, bocoName, bocoType, ptRange, fami
         ! Read user defined data
         call cg_user_data_read_f(i, name, ier)
         if (ier .eq. CG_ERROR) call cg_error_exit_f
-        
+
      end do
   end if
-  
+
 end subroutine getBCInfo
 
 subroutine getBCDataSetInfo(cg, iBlock, iBC, iBCDataSet, bocoDatasetName, &
         bocoType, nDirichletArrays, nNeumannArrays)
-  
-  ! This subroutine returns information about any BC datasets 
+
+  ! This subroutine returns information about any BC datasets
   ! that might be associated to this BC and the number of each type.
 
   implicit none
@@ -218,7 +217,7 @@ subroutine getBCDataSetInfo(cg, iBlock, iBC, iBCDataSet, bocoDatasetName, &
   call cg_dataset_read_f(cg, base, iBlock, iBC, iBCDataSet, &
        bocoDatasetName, bocoType, DirichletFlag, NeumannFlag, ier)
   if (ier .eq. CG_ERROR) call cg_error_exit_f
-  
+
   if (DirichletFlag == 1) then
     call cg_goto_f(cg, base, ier, 'Zone_t', iBlock, 'ZoneBC_t', 1, 'BC_t', &
           iBC, 'BCDataSet_t', iBCDataSet, 'BCData_t', Dirichlet, 'end')
@@ -227,7 +226,7 @@ subroutine getBCDataSetInfo(cg, iBlock, iBC, iBCDataSet, bocoDatasetName, &
     ! Read number of variables specified here.
     call cg_narrays_f(nDirichletArrays, ier)
   end if
-  
+
   if (NeumannFlag == 1) then
     call cg_goto_f(cg, base, ier, 'Zone_t', iBlock, 'ZoneBC_t', 1, 'BC_t', &
           iBC, 'BCDataSet_t', iBCDataSet, 'BCData_t', Neumann, 'end')
@@ -236,7 +235,7 @@ subroutine getBCDataSetInfo(cg, iBlock, iBC, iBCDataSet, bocoDatasetName, &
     ! Read number of variables specified here.
     call cg_narrays_f(nNeumannArrays, ier)
   end if
-  
+
 end subroutine getBCDataSetInfo
 
 
@@ -257,37 +256,37 @@ subroutine getBCDataArrayInfo(cg, iBlock, iBC, iBCDataSet, iDataArr, &
 
   ! Working
   integer :: ier, base, i
-  
+
   ! Initialize from zeros to ones to make sure nothing bad happens
   ! when we get the total number of elements
   dataDimensionVector = 1
 
-  base = 1  
+  base = 1
   call cg_goto_f(cg, base, ier, 'Zone_t', iBlock, 'ZoneBC_t', 1, 'BC_t', &
         iBC, 'BCDataSet_t', iBCDataSet, 'BCData_t', flagDirNeu, 'end')
   if (ier .eq. CG_ERROR) call cg_error_exit_f
-  
+
   call cg_array_info_f(iDataArr, &
         dataArrayName, dataType, nDataDimensions, dataDimensionVector, ier)
   if (ier .eq. CG_ERROR) call cg_error_exit_f
-  
+
 end subroutine getBCDataArrayInfo
 
 subroutine getBCDataArray(cg, iBlock, iBC, iBCDataSet, iDataArr, flagDirNeu, dataArr, nDataArr)
   ! This subroutine retrieves and returns BC dataset array
-  
+
   implicit none
   include 'cgnslib_f.h'
 
   ! Input/Output
-  integer, intent(in) :: cg, iBlock, iBC, iBCDataSet, iDataArr, flagDirNeu, nDataArr  
+  integer, intent(in) :: cg, iBlock, iBC, iBCDataSet, iDataArr, flagDirNeu, nDataArr
   real(kind=8), intent(inout), dimension(nDataArr) :: dataArr
 
   ! Working
   integer :: ier, base
-  
+
   ! Call the goto to make sure we are at the right location in the tree
-  base = 1  
+  base = 1
   call cg_goto_f(cg, base, ier, 'Zone_t', iBlock, 'ZoneBC_t', 1, 'BC_t', &
         iBC, 'BCDataSet_t', iBCDataSet, 'BCData_t', flagDirNeu, 'end')
   if (ier .eq. CG_ERROR) call cg_error_exit_f
@@ -301,7 +300,7 @@ end subroutine getBCDataArray
 subroutine getB2BInfo(cg, iBlock, iB2B, connectName, donorName, ptRange, donorRange, transform)
   ! Get the block to block connection information for 'iB2B' condition
   ! on block 'iBlock'. We return sufficient information to recreate
-  ! this boundary condition. 
+  ! this boundary condition.
 
   implicit none
   include 'cgnslib_f.h'
@@ -461,7 +460,7 @@ end subroutine getCoordinates
 subroutine writeZone(cg, zoneName, dims, zoneID)
 
   ! This function writes a zone to the open file name of size
-  ! "dims". Note that the cg file must have been open in write mode. 
+  ! "dims". Note that the cg file must have been open in write mode.
   implicit none
   include 'cgnslib_f.h'
 
@@ -483,7 +482,7 @@ subroutine writeZone(cg, zoneName, dims, zoneID)
      sizes(4) = dims(1)-1
      sizes(5) = dims(2)-1
      sizes(6) = dims(3)-1
-     
+
   else
 
      sizes(1) = dims(1)
@@ -577,12 +576,12 @@ subroutine writeBCDataHeader(cg, iBlock, bcType, iBC, datasetName, iDataSet)
   integer,intent(in) :: cg, iBlock, bcType, iBC
   character*(*),  intent(in) :: datasetName
   integer,intent(out) :: iDataSet
-  
+
   ! Working
   integer :: ier, base
 
   base = 1
-  
+
   call cg_dataset_write_f(cg, base, iBlock, iBC, datasetName, bcType, iDataSet, ier)
   if (ier .eq. CG_ERROR) call cg_error_exit_f
 
@@ -595,7 +594,7 @@ subroutine writeBCData(cg, iBlock, iBC, iDataSet, flagDirNeu, writeBCDataHeader,
            dataArr, nDataArr)
 
   ! This function writes actual BCData. The writeBCDataHeader must
-  ! have already been called. 
+  ! have already been called.
   implicit none
   include 'cgnslib_f.h'
 
@@ -606,13 +605,13 @@ subroutine writeBCData(cg, iBlock, iBC, iDataSet, flagDirNeu, writeBCDataHeader,
   character*(*),  intent(in) :: dataArrayName
   integer, intent(in), dimension(3) :: dataDimensionVector
   real(kind=8), intent(in), dimension(nDataArr) :: dataArr
-  
+
   ! Working
   integer :: ier, base
 
   base = 1
 
-  if (writeBCDataHeader) then 
+  if (writeBCDataHeader) then
      call cg_bcdata_write_f(cg, base, iBlock, iBC, iDataSet, flagDirNeu, ier)
      if (ier .eq. CG_ERROR) call cg_error_exit_f
   end if
@@ -621,7 +620,7 @@ subroutine writeBCData(cg, iBlock, iBC, iDataSet, flagDirNeu, writeBCDataHeader,
        "BC_t", iBC, "BCDataSet_t", idataSet, "BCData_t", flagDirNeu, "end")
   if (ier .eq. CG_ERROR) call cg_error_exit_f
 
-  ! Note that dataType is ignored here since the data is stored 
+  ! Note that dataType is ignored here since the data is stored
   ! as RealDouble in python. Everything is thus written as double.
   call cg_array_write_f(trim(dataArrayName), RealDouble, nDataDimensions, &
         dataDimensionVector, dataArr, ier)
@@ -656,7 +655,7 @@ subroutine refine(Xin, Xout, il, jl, kl)
   ! 3) to form block Xout of size ((il-1)*2+1, (jl-1)*2+1, (kl-1)*2+1,
   ! 3). It uses a local cubic interpolation that attemps to respect
   ! spacing ratios of the original grid. Note that this routine does
-  ! not use anything from the cgns library 
+  ! not use anything from the cgns library
 
   implicit none
 
@@ -665,9 +664,9 @@ subroutine refine(Xin, Xout, il, jl, kl)
   integer, intent(in) :: il, jl ,kl
   real(kind=8), intent(out), dimension((il-1)*2+1, (jl-1)*2+1, (kl-1)*2+1, 3) :: Xout
 
-  ! Working 
+  ! Working
   integer :: i, j, k, ii, jj, kk, idim, ill, jll, kll
-  real(kind=8) :: fact26, pt(3) 
+  real(kind=8) :: fact26, pt(3)
 
   ill = (il-1)*2 + 1
   jll = (jl-1)*2 + 1
@@ -754,7 +753,7 @@ end subroutine refine
 subroutine interpEdge(Xcoarse, Xfine, il)
 
   ! This routine generically interpolates an edge of length il from
-  ! Xcoarse to Xfine. 
+  ! Xcoarse to Xfine.
 
   implicit none
 
@@ -763,7 +762,7 @@ subroutine interpEdge(Xcoarse, Xfine, il)
   integer, intent(in) :: il
   real(kind=8), intent(inout), dimension((il-1)*2+1, 3) ::Xfine
 
-  ! Working 
+  ! Working
   integer :: i, ii
 
   ! We we really want to do this higher order, but do it linear now:
@@ -778,7 +777,7 @@ subroutine interpFace(Xcoarse, Xfine, il, jl)
 
   ! This routine generically interpolates an face of size il, jl from
   ! Xcoarse to Xfine. We assume we already have computed where the
-  ! edges of the face are: XCoarse is actually unused. 
+  ! edges of the face are: XCoarse is actually unused.
 
   implicit none
 
@@ -787,10 +786,10 @@ subroutine interpFace(Xcoarse, Xfine, il, jl)
   integer, intent(in) :: il, jl
   real(kind=8), intent(inout), dimension((il-1)*2+1, (jl-1)*2+1, 3) ::Xfine
 
-  ! Working 
+  ! Working
   integer :: i, j, ill, jll
 
-  ! Average the 8 nodes we already have. 
+  ! Average the 8 nodes we already have.
   ill = (il-1)*2 + 1
   jll = (jl-1)*2 + 1
 
@@ -814,7 +813,7 @@ module dataTypes
 
   ! This module stores data associated with a single zone and with n_time instances
   implicit none
-  save 
+  save
 
   integer, parameter :: iMin=1
   integer, parameter :: iMax=2
@@ -839,7 +838,7 @@ module dataTypes
      ! condition or block to block information for a given mesh. Since
      ! we don't know how many patches will be on a given multiblock
      ! mesh before we start, we use a (singly) linked list to
-     ! incrementally add patches as we progress through the grid blocks. 
+     ! incrementally add patches as we progress through the grid blocks.
 
      ! One of BC or B2B
      integer :: type
@@ -938,11 +937,11 @@ subroutine time_combine(fileNames, nFiles, outputFile)
   integer :: dummy_int
 
   ! Tecplot Data Stuff
-  ! Working 
+  ! Working
   ! These Never Change
   integer VIsDouble                /1/
   integer debug                    /0/
-  integer FileType                 /0/ 
+  integer FileType                 /0/
   INTEGER ZoneType                 /0/
   INTEGER TECINI112,tecdat112,teczne112,tecend112
 
@@ -981,7 +980,7 @@ subroutine time_combine(fileNames, nFiles, outputFile)
   current_base = 1
   unsteady_base = 1
 
-  ! Get the cell and phys dim 
+  ! Get the cell and phys dim
   call cg_base_read_f(cg_current, current_base, basename, &
        CellDim, PhysDim, ier)
   if (ier .eq. CG_ERROR) call cg_error_exit_f
@@ -1092,7 +1091,7 @@ subroutine time_combine(fileNames, nFiles, outputFile)
              PassiveVarList, valueLocation, ShareVarFromZone,ShrConn)
 
         !-------------------------------------------------------------
-        !                         Grid Coodinates 
+        !                         Grid Coodinates
         !-------------------------------------------------------------
 
         ! Load the grid coordinates
@@ -1183,7 +1182,7 @@ subroutine time_combine(fileNames, nFiles, outputFile)
   ! Close Tecplot File
   ier = TECEND112()
   ! Deallocate data and quit
-  deallocate(zone)  
+  deallocate(zone)
   deallocate(fieldNames,var_Names,valueLocation)
   deallocate(passiveVarList,ShareVarFromZone)
   deallocate(zoneNames)
@@ -1282,15 +1281,15 @@ end subroutine interpolate
 subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock, tol)
 
   ! This routine will compute all bock to block connections as well as
-  ! identify the subfaces with boundary conditions. 
-  ! 
+  ! identify the subfaces with boundary conditions.
+  !
   ! The basic outline of the routine is as follows: We are given a
   ! flattened list of coordinates containing all coordinates in all
   ! blocks along with the sizes of each blocks. Using the size
   ! information (and the total number of blocks) we can go through
   ! inCoords and temporarily reconstruct the coordinates of each block
   ! to be a 3d array (actually 4D due to the face there are three
-  ! x-y-z coordinates). 
+  ! x-y-z coordinates).
   !
   ! The key observation is that it is easier to deal with connection
   ! *faces* instead of nodes. The reason is that every face (a side of
@@ -1305,7 +1304,7 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock, tol)
   ! coordinates we also record the block index, the faceID and the
   ! index of the face into the 'info' array (size 5xN).  Once we have
   ! these two arrays, we create a KD-tree using the spatial
-  ! coordinates.  This enables fast spatial searchs. 
+  ! coordinates.  This enables fast spatial searchs.
 
   ! The main part of the algorithm begins at the lowest face index of
   ! a given block (iBlock (1->nBlocks)) and face (iFace (i->6)). We
@@ -1329,12 +1328,12 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock, tol)
   ! in blockID/faceID, we stop. That now has determined the range of
   ! my subface. Also, when we are tracing out the I and J-directions
   ! we determine which index has changed in the other block. This is
-  ! necessary to form the cgns "transform" array. 
+  ! necessary to form the cgns "transform" array.
 
   ! Once we have identified the sub-patch on my block, and determined
   ! two of the three values of hte transform array, the third value
   ! can be determine by considering the faceID's of the two connected
-  ! blocks. 
+  ! blocks.
 
   ! The information for a B2B or boundary is then saved in a singely
   ! linked list of patch information. An auxilary array called
@@ -1383,7 +1382,7 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock, tol)
   ! in the J direction until again we hit a change in
   ! blockID/faceID. SubPatch 2 is then found next becuase (iStart,
   ! iEnd) is the lowest index that has not been consumed. Likewise,
-  ! the remaining patches are found in the order labelled. 
+  ! the remaining patches are found in the order labelled.
 
 
   use kdtree2_module
@@ -1538,9 +1537,9 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock, tol)
         end select
 
         ! Allocate space for the information for my face, and the
-        ! faces we are potentially connected to. 
+        ! faces we are potentially connected to.
         allocate(faceConsumed(il, jl))
-        faceConsumed = .False. 
+        faceConsumed = .False.
         masterCount = 0
 
         ! Initialize the ranges
@@ -1549,7 +1548,7 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock, tol)
         iEnd = iStart
         jEnd = jStart
         complete = .False.
-        do while (.not. complete) 
+        do while (.not. complete)
 
            call otherInfo(iStart, jStart, curOtherBlock, curOtherFace, &
                 curOtherI, curOtherJ, curOtherk, tol)
@@ -1568,22 +1567,22 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock, tol)
               delI = abs(nextOtherI - curOtherI)
               delJ = abs(nextOtherJ - curOtherJ)
               delK = abs(nextOtherK - curOtherK)
-              
+
               if (  (nextOtherBlock == curOtherBlock  .and. &
                    nextOtherBlock == -1)  .or.  & ! BC
-                   
-                   (nextOtherBlock == curOtherBlock .and. & 
+
+                   (nextOtherBlock == curOtherBlock .and. &
                     nextOtherFace  == curOtherFace .and. &
                    (delI == 1 .or. delJ == 1 .or. delK == 1))) then  ! B2B
-                 
+
                  ! Determine iDirIndex if not done so already
 
-                 if (iDirIndex == 0 .and. nextOtherBlock /= -1) then 
-                    if (delI == 1) then 
+                 if (iDirIndex == 0 .and. nextOtherBlock /= -1) then
+                    if (delI == 1) then
                        iDirIndex = sign(1, nextOtherI - curOtherI)
-                    else if (delJ == 1) then 
+                    else if (delJ == 1) then
                        iDirIndex = sign(2, nextOtherJ - curOtherJ)
-                    else if (delK == 1) then 
+                    else if (delK == 1) then
                        iDirIndex = sign(3, nextOtherK - curOtherk)
                     else
                        print *,'Something is screwed up 1...'
@@ -1595,23 +1594,23 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock, tol)
                  curOtherI = nextOtherI
                  curOtherJ = nextOtherJ
                  curOtherK = nextOtherK
-                
+
               else
                  ! we've stepped to far so back off one.
                  iEnd = iEnd - 1
-                 exit 
+                 exit
               end if
            end do iLoop
-           
+
            call otherInfo(iEnd, jStart, curOtherBlock, curOtherFace, &
                 curOtherI, curOtherJ, curOtherk, tol)
 
            ! Find out how far we can go in the J-direction
            jDirIndex = 0
-           
+
            jLoop: do while (jEnd < jl)
               jEnd = jEnd + 1
-              
+
               call otherInfo(iEnd, jend, nextOtherBlock, nextOtherFace, &
                    nextOtherI, nextOtherJ, nextOtherk, tol)
 
@@ -1621,18 +1620,18 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock, tol)
 
               if (  (nextOtherBlock == curOtherBlock  .and. &
                    nextOtherBlock == -1)  .or.  & ! BC
-                   
-                   (nextOtherBlock == curOtherBlock .and. & 
+
+                   (nextOtherBlock == curOtherBlock .and. &
                     nextOtherFace == curOtherFace .and. &
                    (delI == 1 .or. delJ == 1 .or. delK == 1))) then  ! B2B
-                 
+
                  ! Determine jDirIndex if not done so already
                  if (jDirIndex == 0 .and. nextOtherBlock /= -1) then
-                    if (delI == 1) then 
+                    if (delI == 1) then
                        jDirIndex = sign(1, nextOtherI - curOtherI)
-                    else if (delJ == 1) then 
+                    else if (delJ == 1) then
                        jDirIndex = sign(2, nextOtherJ - curOtherJ)
-                    else if (delK == 1) then 
+                    else if (delK == 1) then
                        jDirIndex = sign(3, nextOtherK - curOtherK)
                     else
                        print *,'Something is screwed up 2...'
@@ -1648,16 +1647,16 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock, tol)
               else
                  ! We've stepped too far so back off 1
                  jEnd = jEnd - 1
-                 exit 
+                 exit
               end if
            end do jLoop
-           
+
            ! Now the range of the patch we just found is simply
            ! iStart->iEnd, jStart->jEnd. We need to check the faceID to
            ! determine the other index
-           
+
            ! First allocation
-           if (.not. associated(patches)) then 
+           if (.not. associated(patches)) then
               allocate(patches)
               patches%next => patches
               curPatch => patches
@@ -1670,7 +1669,7 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock, tol)
            nPatches = nPatches + 1
 
            select case (iFace)
-              
+
            case (iMin)
               curPatch%pointRange = reshape(&
                    (/1, iStart, jStart, 1, iEnd+1, jEnd+1/), (/3,2/))
@@ -1690,19 +1689,19 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock, tol)
               curPatch%pointRange = reshape(&
                    (/iStart, jStart, sizes(3, iBlock), iEnd+1, jEnd+1, sizes(3, iBlock)/), (/3,2/))
            end select
-           
+
            ! Default type to BC
            curPatch%type = BC
            curPatch%myID = iBlock
 
-           if (curOtherBlock /= -1) then 
+           if (curOtherBlock /= -1) then
 
               oFace = curOtherFace
-              
+
               ! This is a B2B patch so we need a bit more info
               curPatch%type = B2B
               curPatch%donorID = curOtherBlock
-              
+
               ! The first two if blocks here are for the special case
               ! when there is only once face in teh i, j, or i and j
               ! directions. Becuase of these we couldn't determine the
@@ -1710,12 +1709,12 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock, tol)
               ! only one choise that is left and we arbitrarily make
               ! it positive. When both are missing, it is simplier, we
               ! just assume the positve indices based on the faceID of
-              ! the other face. 
+              ! the other face.
 
-              if (iDirIndex == 0 .and. jDirIndex /= 0) then 
+              if (iDirIndex == 0 .and. jDirIndex /= 0) then
                  select case(oFace)
                  case (iMin, iMax)
-                    if (abs(jDirIndex) == 2) then 
+                    if (abs(jDirIndex) == 2) then
                        iDirIndex = 3
                     else
                        iDirIndex = 2
@@ -1726,19 +1725,19 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock, tol)
                     else
                        iDirIndex = 1
                     end if
-                    
+
                  case (kMin, kMax)
-                    if (abs(jDirIndex) == 1) then 
+                    if (abs(jDirIndex) == 1) then
                        iDirIndex = 2
                     else
                        iDirIndex = 1
                     end if
                  end select
-                 
-              else if (iDirIndex /=0 .and. jDirIndex == 0) then 
+
+              else if (iDirIndex /=0 .and. jDirIndex == 0) then
                  select case(oFace)
                  case (iMin, iMax)
-                    if (abs(iDirIndex) == 2) then 
+                    if (abs(iDirIndex) == 2) then
                        jDirIndex = 3
                     else
                        jDirIndex = 2
@@ -1751,13 +1750,13 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock, tol)
                     end if
 
                  case (kMin, kMax)
-                    if (abs(iDirIndex) == 1) then 
+                    if (abs(iDirIndex) == 1) then
                        jDirIndex = 2
                     else
                        jDirIndex = 1
                     end if
                  end select
-              else if (iDirIndex == 0 .or. jDirIndex == 0) then 
+              else if (iDirIndex == 0 .or. jDirIndex == 0) then
 
                  ! The ordering of iDirIndex and jDirIndex doesn't matter
                  select case(oFace)
@@ -1772,7 +1771,7 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock, tol)
                     jDirIndex = 2
                  end select
               end if
-              
+
               ! We need to compute the stupid transform array. Once we
               ! know the transform array, we can use that to correctly
               ! determine the donorPointRange.
@@ -1788,14 +1787,14 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock, tol)
                  transform(1) = iDirIndex
                  transform(2) = jDirIndex
               end select
-              
+
               ! Do the final normal face transformation
               call setNormalTransform(transform, iFace, oFace)
-              
+
               curPatch%transform = transform
 
               ! According to the cgns documentation once T is known,
-              ! the following holds: 
+              ! the following holds:
 
               ! index2 = T.(index1 - beging1) + begin2
 
@@ -1827,24 +1826,24 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock, tol)
               ! is a way around it since you don't know at the
               ! beginnign if begin2 will be a lower bound or an upper
               ! bound.
-              
+
               redo = .False.
               do idim=1,3
-                 if (index2(idim) < begin2(idim)) then 
+                 if (index2(idim) < begin2(idim)) then
                     begin2(idim) = begin2(idim) + 1
                     redo = .True.
                  end if
               end do
-              
+
               ! Update the upper range (index2) for the donor
-              if (redo) then 
+              if (redo) then
                  index2 = matmul(T, (index1 - begin1)) + begin2
               end if
 
               curPatch%pointRangeDonor(:, 1) = begin2
               curPatch%pointRangeDonor(:, 2) = index2
            end if
-       
+
            ! Before we're completely done with this patch, extract the
            ! coordinates of the faces at the start and end:
 
@@ -1888,9 +1887,9 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock, tol)
               i = mod(masterCount-1, il) + 1
               j = (masterCount-1)/il + 1
 
-              if (.not. faceConsumed(i, j) ) then 
+              if (.not. faceConsumed(i, j) ) then
 
-                 ! Set the ranges for the next face. 
+                 ! Set the ranges for the next face.
                  iStart = i
                  jStart = j
                  iEnd = iStart
@@ -1899,7 +1898,7 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock, tol)
               end if
            end do
 
-           if (masterCount == il*jl) then 
+           if (masterCount == il*jl) then
               ! We're done with the face
               complete = .True.
            end if
@@ -1914,7 +1913,7 @@ subroutine computeConnectivity(inCoords, nCoords, sizes, nBlock, tol)
      end do faceLoop
   end do blockLoop
 
-contains 
+contains
 
   subroutine setNormalTransform(transform, iFace, oFace)
     implicit none
@@ -1931,10 +1930,10 @@ contains
     ! index must be negative (opposite direction). Summing and
     ! min+min ID or max+max ID must be position. Thefore for a
     ! min attached to a max has an odd sum and the sign of the
-    ! transform is positive. 
+    ! transform is positive.
 
     normalIndexSign = 1
-    if (mod( iFace + oFace, 2) == 0) then 
+    if (mod( iFace + oFace, 2) == 0) then
        normalIndexSign = -1
     end if
 
@@ -1945,7 +1944,7 @@ contains
           transform(1) = 1*normalIndexSign
        case(jMin, jMax)
           transform(1) = 2*normalIndexSign
-       case (kMin, kMax) 
+       case (kMin, kMax)
           transform(1) = 3*normalIndexSign
        end select
 
@@ -1955,7 +1954,7 @@ contains
           transform(2) = 1*normalIndexSign
        case(jMin, jMax)
           transform(2) = 2*normalIndexSign
-       case (kMin, kMax) 
+       case (kMin, kMax)
           transform(2) = 3*normalIndexSign
        end select
 
@@ -1965,16 +1964,16 @@ contains
           transform(3) = 1*normalIndexSign
        case(jMin, jMax)
           transform(3) = 2*normalIndexSign
-       case (kMin, kMax) 
+       case (kMin, kMax)
           transform(3) = 3*normalIndexSign
        end select
     end select
   end subroutine setNormalTransform
-  
+
   function sgn(x)
     implicit none
     integer :: sgn, x
-    if (x >= 0) then 
+    if (x >= 0) then
        sgn = 1
     else
        sgn = -1
@@ -1984,16 +1983,16 @@ contains
   function del(x, y)
     implicit none
     integer :: del, x,y
-    if (abs(x) == abs(y)) then 
+    if (abs(x) == abs(y)) then
        del = 1
     else
        del = 0
     end if
   end function del
-  
+
   subroutine otherInfo(i, j, otherBlock, otherFace, otherI, otherJ, otherK, tol)
     implicit none
-    
+
     integer, intent(in) :: i, j
     integer, intent(out) :: otherBlock, otherFace, otherI, otherJ, otherK
     integer :: faceIndex
@@ -2003,16 +2002,16 @@ contains
 
     ! Reconstruct the index
     faceIndex = faceCount + (j-1)*il + i
-    
+
     ! Now search for a neighbour:
     qv = coords(:, faceIndex)
     call kdtree2_n_nearest(tree, qv, 2, results)
-    
+
     ! Check the distances
     if (sqrt(results(1)%dis) < tol .and. sqrt(results(2)%dis) < tol) then
        ! We found a match: Now determine if it was the first
        ! or second one that isn't myself:
-       
+
        if (results(1)%idx == faceIndex) then  ! Must be the second one
           otherBlock = info(1, results(2)%idx)
           otherFace  = info(2, results(2)%idx)
@@ -2056,7 +2055,7 @@ subroutine getPatchInfo(n, types, pointRanges, myIDs, pointRangeDonors, &
   type(patch), pointer :: curPatch
   integer :: i
 
-  i = 0 
+  i = 0
   curPatch => patches
   do while (i < n)
      i = i + 1
@@ -2084,7 +2083,7 @@ subroutine deallocpatches()
   implicit none
   integer :: i
   type(patch), pointer :: curPatch, tmp
-  
+
   ! Deallocate all the memory associated with the list of patches
 
   curPatch => patches
@@ -2112,9 +2111,9 @@ subroutine findBounds(x, xBounds, il, jl, kl)
   ! coordinates in this block:
   ! xBounds = ((xmin, ymin, zmin),
   !            (xmax, ymax, zmax))
-  
+
   implicit none
-  
+
   ! Subroutine inputs
   real(kind=8), dimension(il,jl,kl,3), intent(in) :: x
   integer, intent(in) :: il, jl, kl
@@ -2128,7 +2127,7 @@ subroutine findBounds(x, xBounds, il, jl, kl)
 
   ! Find the maximum bounds in each face of the block. xBounds will
   ! be updated within each call
-  
+
   ! Face imin
   call checkBounds(1,1,1,jl,1,kl,x,xBounds)
   ! Face imax
@@ -2141,40 +2140,40 @@ subroutine findBounds(x, xBounds, il, jl, kl)
   call checkBounds(1,il,1,jl,1,1,x,xBounds)
   ! Face kmax
   call checkBounds(1,il,1,jl,kl,kl,x,xBounds)
-  
+
   ! xBounds was updated and will be returned by this subroutine
-  
+
 contains
-  
+
   !        ================================================================
-  
+
   subroutine checkBounds(imin,imax,jmin,jmax,kmin,kmax,x,xBounds)
-    
+
     ! This function will compute the maximum values within the bounds
     ! specified by imin, imax, jmin, jmax, kmin, kmax.
     ! This is useful when we want to loop over each surface.
     ! xBounds will be updated
-    
+
     implicit none
-    
+
     ! Subroutine Inputs
     integer, intent(in) :: imin, imax, jmin, jmax, kmin, kmax
     real(kind=8), dimension(:,:,:,:), intent(in) :: x
-    
+
     ! Subroutine Outputs
     real(kind=8), dimension(2,3), intent(inout) :: xBounds
-    
+
     ! Working variables
     integer :: i, j, k
-    
+
     !
     ! BEGIN EXECUTION
     !
-    
+
     do k=kmin, kmax
        do j=jmin, jmax
           do i=imin, imax
-             
+
              ! Check the coordinates bounds
              if (x(i,j,k,1) < xBounds(1,1)) xBounds(1,1) = x(i,j,k,1)
              if (x(i,j,k,2) < xBounds(1,2)) xBounds(1,2) = x(i,j,k,2)
@@ -2182,11 +2181,11 @@ contains
              if (x(i,j,k,1) > xBounds(2,1)) xBounds(2,1) = x(i,j,k,1)
              if (x(i,j,k,2) > xBounds(2,2)) xBounds(2,2) = x(i,j,k,2)
              if (x(i,j,k,3) > xBounds(2,3)) xBounds(2,3) = x(i,j,k,3)
-             
+
           end do
        end do
     end do
-    
+
   end subroutine checkBounds
 
 end subroutine findBounds
@@ -2231,7 +2230,7 @@ subroutine computeVolumes(x, xBounds, binVolX, binVolY, binVolZ, &
   ! Now that we have information about the total bounds, we can
   ! compute the volumes of the cells and assign them to their
   ! respective bins. maxVol will be updated after each call
-  
+
   ! DOING PER FACE
   ! Face imin
   !call checkVol(2,2,2,jl,2,kl,x,xBounds,maxVol)
@@ -2252,7 +2251,7 @@ subroutine computeVolumes(x, xBounds, binVolX, binVolY, binVolZ, &
        nBinX, nBinY, nBinZ)
 
 contains
-  
+
   !        ================================================================
 
   subroutine checkVol(imin, imax, jmin, jmax, kmin, kmax, x, xBounds, &
@@ -2263,7 +2262,7 @@ contains
     ! specified by imin, imax, jmin, jmax, kmin, kmax and assign to the correct bin.
     ! This is useful when we want to loop over each surface.
     ! binVol and binCells will be updated
-    
+
     implicit none
 
     ! Subroutine Inputs
@@ -2294,15 +2293,15 @@ contains
 
     do k=kmin, kmax
        n = k -1
-       
+
        do j=jmin, jmax
           m = j -1
-          
+
           do i=imin, imax
              l = i -1
 
              ! Compute the coordinates of the center of gravity.
-             
+
              eighth = 1.0/8.0
 
              xp = eighth*(x(i,j,k,1) + x(i,m,k,1) &
@@ -2317,45 +2316,45 @@ contains
                   +         x(i,m,n,3) + x(i,j,n,3) &
                   +         x(l,j,k,3) + x(l,m,k,3) &
                   +         x(l,m,n,3) + x(l,j,n,3))
-             
+
              ! Compute the volumes of the 6 sub pyramids. The
              ! arguments of volpym must be such that for a (regular)
              ! right handed hexahedron all volumes are positive.
-             
+
              vp1 = volpym(x(i,j,k,1), x(i,j,k,2), x(i,j,k,3), &
                   x(i,j,n,1), x(i,j,n,2), x(i,j,n,3), &
                   x(i,m,n,1), x(i,m,n,2), x(i,m,n,3), &
                   x(i,m,k,1), x(i,m,k,2), x(i,m,k,3),xp,yp,zp)
-             
+
              vp2 = volpym(x(l,j,k,1), x(l,j,k,2), x(l,j,k,3), &
                   x(l,m,k,1), x(l,m,k,2), x(l,m,k,3), &
                   x(l,m,n,1), x(l,m,n,2), x(l,m,n,3), &
                   x(l,j,n,1), x(l,j,n,2), x(l,j,n,3),xp,yp,zp)
-               
+
              vp3 = volpym(x(i,j,k,1), x(i,j,k,2), x(i,j,k,3), &
                   x(l,j,k,1), x(l,j,k,2), x(l,j,k,3), &
                   x(l,j,n,1), x(l,j,n,2), x(l,j,n,3), &
                   x(i,j,n,1), x(i,j,n,2), x(i,j,n,3),xp,yp,zp)
-               
+
              vp4 = volpym(x(i,m,k,1), x(i,m,k,2), x(i,m,k,3), &
                   x(i,m,n,1), x(i,m,n,2), x(i,m,n,3), &
                   x(l,m,n,1), x(l,m,n,2), x(l,m,n,3), &
                   x(l,m,k,1), x(l,m,k,2), x(l,m,k,3),xp,yp,zp)
-             
+
              vp5 = volpym(x(i,j,k,1), x(i,j,k,2), x(i,j,k,3), &
                   x(i,m,k,1), x(i,m,k,2), x(i,m,k,3), &
                   x(l,m,k,1), x(l,m,k,2), x(l,m,k,3), &
                   x(l,j,k,1), x(l,j,k,2), x(l,j,k,3),xp,yp,zp)
-             
+
              vp6 = volpym(x(i,j,n,1), x(i,j,n,2), x(i,j,n,3), &
                   x(l,j,n,1), x(l,j,n,2), x(l,j,n,3), &
                   x(l,m,n,1), x(l,m,n,2), x(l,m,n,3), &
                   x(i,m,n,1), x(i,m,n,2), x(i,m,n,3),xp,yp,zp)
-             
+
              ! Set the volume to 1/6 of the sum of the volumes of the
              ! pyramid. Remember that volpym computes 6 times the
              ! volume.
-             
+
              ! Avoid negative volumes
              vp1 = abs(vp1)
              vp2 = abs(vp2)
@@ -2373,7 +2372,7 @@ contains
              jBin = findBin(xBounds(1,2), xBounds(2,2), nBinY, yp)
              ! z coordinate
              kBin = findBin(xBounds(1,3), xBounds(2,3), nBinZ, zp)
-             
+
              ! Increment the cells counter of the bins
              binCellsX(iBin) = binCellsX(iBin) + 1
              binCellsY(jBin) = binCellsY(jBin) + 1
@@ -2383,17 +2382,17 @@ contains
              binVolX(iBin) = ((binCellsX(iBin)-1)*binVolX(iBin) + vol)/binCellsX(iBin)
              binVolY(jBin) = ((binCellsY(jBin)-1)*binVolY(jBin) + vol)/binCellsY(jBin)
              binVolZ(kBin) = ((binCellsZ(kBin)-1)*binVolZ(kBin) + vol)/binCellsZ(kBin)
-             
+
           end do
        end do
     end do
-    
+
   end subroutine checkVol
-             
+
   !        ================================================================
-  
+
   !        ================================================================
-  
+
   function volpym(xa,ya,za,xb,yb,zb,xc,yc,zc,xd,yd,zd,xp,yp,zp)
     !
     !        ****************************************************************
@@ -2432,7 +2431,7 @@ contains
     !        *                                                              *
     !        ****************************************************************
     !
-    
+
     fourth = 1.0/4.0
 
     volpym = (xp - fourth*(xa + xb  + xc + xd))              &
@@ -2445,38 +2444,38 @@ contains
   end function volpym
 
   !        ================================================================
-  
+
   !        ================================================================
 
   function findBin(xmin,xmax,numBins,x)
-    
+
     ! This function returns the bin index where the coordinate x
     ! belongs when the interval [xmin,xmax] is split in numBins bins
-    
+
     implicit none
-    
+
     ! Function type
     integer :: findBin
-    
+
     ! Function inputs
     real(kind=8), intent(in) :: xmin, xmax, x
     integer, intent(in) :: numBins
-    
+
     ! Working variables
     real(kind=8) :: dx
-    
+
     !
     ! BEGIN EXECUTION
     !
-    
+
     ! Find the bin size
     dx = (xmax - xmin)/numBins
-    
+
     ! Find the bin index
     findBin = floor((x-xmin)/dx) + 1
-    
+
   end function findBin
-  
+
 end subroutine computeVolumes
 
 
@@ -2504,7 +2503,7 @@ subroutine calcGridRatio(N, s0, S, ratio)
   !         The initial grid spacing
   !     S : real
   !         The total integrated length
-  !     
+  !
   !     Returns
   !     -------
   !     ratio : real
@@ -2525,7 +2524,7 @@ subroutine calcGridRatio(N, s0, S, ratio)
   real(kind=8) ::  r, a,b, c, f, fa, fb
 
   ! function 'f' is S - s0*(1-r^n)/(1-r) where S is total length, s0 is
-  ! initial ratio and r is the grid ratio. 
+  ! initial ratio and r is the grid ratio.
 
   M = N-1
 
@@ -2543,7 +2542,7 @@ subroutine calcGridRatio(N, s0, S, ratio)
         exit
      end if
 
-     if (f * fa > 0) then 
+     if (f * fa > 0) then
         a = c
      else
         b = c
@@ -2571,13 +2570,13 @@ subroutine convertPlot3d(pFile, cFile)
   real(kind=8), dimension(:, :, :), allocatable :: coorX, coorY, coorZ
   character*12 :: zoneName
 
-  ! We will be assuming multiblock, unformatted without iblank array. 
+  ! We will be assuming multiblock, unformatted without iblank array.
   open (unit=50, form='unformatted', file=pFile)
 
   ! Read total number of zones and allocate the zone derived type
   read(50) nZones
-  
-  ! Allocate space for the size array and read. 
+
+  ! Allocate space for the size array and read.
   allocate(sizes(3, nZones))
   read(50) ( sizes(1, i), sizes(2, i), sizes(3, i), i=1, nZones)
 
@@ -2587,19 +2586,19 @@ subroutine convertPlot3d(pFile, cFile)
   ! Loop over zones
   zoneLoop: do iZone=1, nZones
 
-     ! Write the zone itself. 
+     ! Write the zone itself.
      write(zoneName, "((a) (I5))")  'Domain.', izone
      dims(1:3) = sizes(:, iZone)
      call writeZone(cg, zoneName, dims, zoneID)
-     
+
      allocate(coorX(dims(1), dims(2), dims(3)), &
           coorY(dims(1), dims(2), dims(3)), &
           coorZ(dims(1), dims(2), dims(3)))
-     
+
      ! Actual read command
-     read(50) & 
-          ((( coorX(i, j, k), i=1,dims(1)), j=1,dims(2)), k=1,dims(3)), & 
-          ((( coorY(i, j, k), i=1,dims(1)), j=1,dims(2)), k=1,dims(3)), & 
+     read(50) &
+          ((( coorX(i, j, k), i=1,dims(1)), j=1,dims(2)), k=1,dims(3)), &
+          ((( coorY(i, j, k), i=1,dims(1)), j=1,dims(2)), k=1,dims(3)), &
           ((( coorZ(i, j, k), i=1,dims(1)), j=1,dims(2)), k=1,dims(3))
 
      ! Now write the actual data into the CGNS File
