@@ -2826,7 +2826,7 @@ def combineGrids(grids):
 
     # Loop through each name for the grid objects and add their blocks
     # to the newGrid object
-    nBlock = 0
+
     for name in nameList:
 
         # Get the grid object corresponding to this name
@@ -2835,6 +2835,7 @@ def combineGrids(grids):
         # Mapping of the old names to the new names
         zoneMap = {}
 
+        nBlock = 0
         # Loop over the blocks and obtain the name mapping
         for blk in grid.blocks:
             nBlock += 1
