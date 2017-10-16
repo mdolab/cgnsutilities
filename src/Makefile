@@ -3,6 +3,7 @@ include ../config.mk
 PYTHON_OBJECTS = fortranobject.o \
 		 kd_tree.o \
 		 libcgns_utilsmodule.o \
+		 libcgns_utils-f2pywrappers2.o
 
 
 default:
@@ -38,6 +39,9 @@ default:
 # Compile c wrapper
 	$(CC) $(CFLAGS) $(PYTHON_INCLUDES) -I$(NUMPY_INCLUDES) \
 	-I$(F2PY_ROOT)/src -c libcgns_utilsmodule.c
+
+# Compile the module warapper
+	$(FC) $(FFLAGS) -I./ -c libcgns_utils-f2pywrappers2.f90
 
 # Compile fortranobject needed by all f2py modules
 	$(CC) $(CFLAGS) $(PYTHON_INCLUDES) -I$(NUMPY_INCLUDES) \
