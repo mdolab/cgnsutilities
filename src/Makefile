@@ -41,7 +41,7 @@ default:
 	-I$(F2PY_ROOT)/src -c libcgns_utilsmodule.c
 
 # Compile the module warapper
-	$(FC) $(FFLAGS) -I./ -c libcgns_utils-f2pywrappers2.f90
+	$(FC) $(FFLAGS) $(CGNS_INCLUDE_FLAGS) -I./ -c libcgns_utils-f2pywrappers2.f90
 
 # Compile fortranobject needed by all f2py modules
 	$(CC) $(CFLAGS) $(PYTHON_INCLUDES) -I$(NUMPY_INCLUDES) \

@@ -20,7 +20,7 @@ CGNS_LINKER_FLAGS=-L$(HOME)/packages/cgnslib_3.2.1/src -lcgns
 # CC = gcc
 # CFLAGS = -O2 -fPIC
 # FC = ifort
-# FFLAGS = -O2 -r8 -g -fPIC
+# FFLAGS = -O2 -r8 -g -fPIC ${CGNS_VERSION_FLAG}
 
 # Gfortran compiler
 CC = gcc
