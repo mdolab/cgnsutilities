@@ -138,7 +138,12 @@ p_fam = subparsers.add_parser(
 p_fam.add_argument('gridFile', help='Name of input CGNS file')
 p_fam.add_argument('familyFile', help='File containing additional family \
 information. Format is (one per line, 1-based blockID): blockID, \
-{iLow, iHigh etc}, newFamilyName')
+{iLow, iHigh etc}, newFamilyName <genI_start genI_end genJ_start genJ_end> \
+genI_start means generalized I start etc. That is once the face is identified, these \
+are the two remaining indices. If it is a I face, they are (j,k), J face they are (i, k) \
+and for a K face (i, j). These are optional and if given must be in 1 based ordering. Also \
+-1 is acceptable for the end index.'
+)
 p_fam.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
@@ -598,7 +603,7 @@ if args.mode == 'timecombine':
     for i in range(len(files)):
         fileNames[i, 0:len(files[i])] = files[i]
 
-    libcgns_utils.time_combine(fileNames, outFile)
+    libcgns_utils.utils.time_combine(fileNames, outFile)
     sys.exit(0)
 
 if args.mode == 'testBlock':

@@ -147,17 +147,17 @@ class Grid(object):
     def writeToCGNS(self, fileName):
         """Write what is in this grid tree to the fileName provided"""
         self.renameBCs()
-        outFile = libcgns_utils.openfile(fileName, CG_MODE_WRITE, self.cellDim)
+        outFile = libcgns_utils.utils.openfile(fileName, CG_MODE_WRITE, self.cellDim)
         for blk in self.blocks:
             blk.writeToCGNS(outFile)
-        libcgns_utils.closefile(outFile)
+        libcgns_utils.utils.closefile(outFile)
 
     def writeToCGNSSelected(self, fileName, toWrite):
         """Write what is in this grid tree to the fileName provided"""
-        outFile = libcgns_utils.openfile(fileName, CG_MODE_WRITE, self.cellDim)
+        outFile = libcgns_utils.utils.openfile(fileName, CG_MODE_WRITE, self.cellDim)
         for iblk in toWrite:
             self.blocks[iblk-1].writeToCGNS(outFile)
-        libcgns_utils.closefile(outFile)
+        libcgns_utils.utils.closefile(outFile)
 
     def writePlot3d(self, fileName):
         """Write what is in this grid tree to the plot3d filename
@@ -665,7 +665,7 @@ class Grid(object):
                         kmin = max(self.blocks[index].dims[2]-inLayer, 0)
                         kmax = self.blocks[index].dims[2]
                     # Use the range to compute average volume
-                    libcgns_utils.findbounds(self.blocks[index].coords[imin:imax, jmin:jmax, kmin:kmax, :], xBounds)
+                    libcgns_utils.utils.findbounds(self.blocks[index].coords[imin:imax, jmin:jmax, kmin:kmax, :], xBounds)
 
         # Loop over all blocks to find the bin volumes
         for index in range(len(self.blocks)):
@@ -718,7 +718,7 @@ class Grid(object):
                         kmin = max(self.blocks[index].dims[2]-inLayer, 0)
                         kmax = self.blocks[index].dims[2]
                     # Use the range to compute average volume
-                    libcgns_utils.computevolumes(self.blocks[index].coords[imin:imax, jmin:jmax, kmin:kmax, :], xBounds, \
+                    libcgns_utils.utils.computevolumes(self.blocks[index].coords[imin:imax, jmin:jmax, kmin:kmax, :], xBounds, \
                                                  binVolX, binVolY, binVolZ, binCellsX, binCellsY, binCellsZ)
 
         # DEFINE UNIDIMENSIONAL GRID GENERATION ROUTINES
@@ -929,16 +929,16 @@ class Grid(object):
         X[:,:,:,2] = Xz
 
         # Open a new CGNS file
-        cg = libcgns_utils.openfile(outFile, CG_MODE_WRITE, 3)
+        cg = libcgns_utils.utils.openfile(outFile, CG_MODE_WRITE, 3)
 
         # Write a Zone to it
-        zoneID = libcgns_utils.writezone(cg, 'cartesian', nNodes)
+        zoneID = libcgns_utils.utils.writezone(cg, 'cartesian', nNodes)
 
         # Write mesh coordinates
-        libcgns_utils.writecoordinates(cg, zoneID, X)
+        libcgns_utils.utils.writecoordinates(cg, zoneID, X)
 
         # CLose file
-        libcgns_utils.closefile(cg)
+        libcgns_utils.utils.closefile(cg)
 
         # Print
         print ('Mesh successfully generated and stored in: '+outFile)
@@ -1030,12 +1030,12 @@ class Grid(object):
         sizes  = numpy.vstack(sizes)
 
         # Run the fortran code to generate all the connectivities
-        libcgns_utils.computeconnectivity(coords, sizes.T, tol)
-        nPatches = libcgns_utils.getnpatches()
+        libcgns_utils.utils.computeconnectivity(coords, sizes.T, tol)
+        nPatches = libcgns_utils.utils.getnpatches()
         types, pointRanges, myIDs, pointRangeDonors, \
             transforms, donorIDs, faceAvgs, faceNormals = \
-            libcgns_utils.getpatchinfo(nPatches)
-        libcgns_utils.deallocpatches()
+            libcgns_utils.utils.getpatchinfo(nPatches)
+        libcgns_utils.utils.deallocpatches()
 
         # Remove all existing B2B info
         for blk in self.blocks:
@@ -1363,32 +1363,32 @@ class Block(object):
 
     def writeToCGNS(self, cg):
         """ Write all information in this block to the cg file handle"""
-        zoneID = libcgns_utils.writezone(cg, self.name, self.dims)
-        libcgns_utils.writecoordinates(cg, zoneID, self.coords)
+        zoneID = libcgns_utils.utils.writezone(cg, self.name, self.dims)
+        libcgns_utils.utils.writecoordinates(cg, zoneID, self.coords)
         for boco in self.bocos:
-            iBC = libcgns_utils.writebc(cg, zoneID, boco.name, boco.family,
+            iBC = libcgns_utils.utils.writebc(cg, zoneID, boco.name, boco.family,
                                         boco.ptRange, boco.type)
             for dataSet in boco.dataSets:
                 # Write the header for the BCDataSet
-                iDataSet = libcgns_utils.writebcdataheader(cg, zoneID, dataSet.type, iBC, dataSet.name)
+                iDataSet = libcgns_utils.utils.writebcdataheader(cg, zoneID, dataSet.type, iBC, dataSet.name)
 
                 # Loop over all Dirichlet and Neumann sets
                 writeBCDataHeader = True
                 for dirArr in dataSet.dirichletArrays:
-                    libcgns_utils.writebcdata(cg, zoneID, iBC, iDataSet, BCDATATYPE["Dirichlet"], writeBCDataHeader,
+                    libcgns_utils.utils.writebcdata(cg, zoneID, iBC, iDataSet, BCDATATYPE["Dirichlet"], writeBCDataHeader,
                                           dirArr.name, dirArr.dataType, dirArr.nDimensions, dirArr.dataDimensions,
                                           dirArr.dataArr, dirArr.dataArr.shape)
                     writeBCDataHeader = False
 
                 writeBCDataHeader = True
                 for neuArr in dataSet.neumannArrays:
-                    libcgns_utils.writebcdata(cg, zoneID, iBC, iDataSet, BCDATATYPE["Neumann"], writeBCDataHeader,
+                    libcgns_utils.utils.writebcdata(cg, zoneID, iBC, iDataSet, BCDATATYPE["Neumann"], writeBCDataHeader,
                                           neuArr.name, neuArr.dataType, neuArr.nDimensions, neuArr.dataDimensions,
                                           neuArr.dataArr, neuArr.dataArr.shape)
                     writeBCDataHeader = False
 
         for b2b in self.B2Bs:
-            libcgns_utils.writeb2b(cg, zoneID, b2b.name, b2b.donorName,
+            libcgns_utils.utils.writeb2b(cg, zoneID, b2b.name, b2b.donorName,
                                    b2b.ptRange, b2b.donorRange,
                                    b2b.transform)
 
@@ -1473,7 +1473,7 @@ class Block(object):
     def refine(self):
         """Refine the block uniformly. We will also update the
         boundary conditions and B2Bs if necessary"""
-        self.coords = libcgns_utils.refine(self.coords)
+        self.coords = libcgns_utils.utils.refine(self.coords)
         self.dims[0] = self.coords.shape[0]
         self.dims[1] = self.coords.shape[1]
         self.dims[2] = self.coords.shape[2]
@@ -2056,7 +2056,7 @@ class Block(object):
         kl = self.dims[2]
         nFace = 2*(  (il-1)*(jl-1) + (il-1)*(kl-1) + (jl-1)*(kl-1))
 
-        return libcgns_utils.computefacecoords(self.coords, nFace, blockID)
+        return libcgns_utils.utils.computefacecoords(self.coords, nFace, blockID)
 
 class Boco(object):
 
@@ -2279,7 +2279,7 @@ def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
 
         # Next we need to find the grid stretch ratios for each
         # direction to satify our requested extra distance.
-        r[iDim] = libcgns_utils.calcgridratio(nExtra, dx[iDim], hExtra)
+        r[iDim] = libcgns_utils.utils.calcgridratio(nExtra, dx[iDim], hExtra)
 
         # Determine if this direction should have a sym plane:
         pos = True
@@ -2339,16 +2339,16 @@ def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
 
     if outFile is not None:
         # Open a new CGNS file and write if necessary:
-        cg = libcgns_utils.openfile(outFile, CG_MODE_WRITE, 3)
+        cg = libcgns_utils.utils.openfile(outFile, CG_MODE_WRITE, 3)
 
         # Write a Zone to it
-        zoneID = libcgns_utils.writezone(cg, 'cartesian', shp)
+        zoneID = libcgns_utils.utils.writezone(cg, 'cartesian', shp)
 
         # Write mesh coordinates
-        libcgns_utils.writecoordinates(cg, zoneID, X)
+        libcgns_utils.utils.writecoordinates(cg, zoneID, X)
 
         # CLose file
-        libcgns_utils.closefile(cg)
+        libcgns_utils.utils.closefile(cg)
 
     return X, dx
 
@@ -2374,10 +2374,10 @@ def readGrid(fileName):
     """Internal routine to return a 'grid' object that contains all
     the information that is in the file 'fileName'"""
 
-    inFile = libcgns_utils.openfile(fileName, CG_MODE_READ, 3)
-    cellDim = libcgns_utils.getgriddimension(inFile)
-    nBlock = libcgns_utils.getnblocks(inFile)
-    nIterations, nArrays = libcgns_utils.getconvinfo(inFile)
+    inFile = libcgns_utils.utils.openfile(fileName, CG_MODE_READ, 3)
+    cellDim = libcgns_utils.utils.getgriddimension(inFile)
+    nBlock = libcgns_utils.utils.getnblocks(inFile)
+    nIterations, nArrays = libcgns_utils.utils.getconvinfo(inFile)
 
     newGrid = Grid()
 
@@ -2386,17 +2386,17 @@ def readGrid(fileName):
     newGrid.name = os.path.splitext(os.path.basename(fileName))[0]
 
     for iBlock in range(1, nBlock+1):
-        zoneName, dims, nBoco, nB2B = libcgns_utils.getblockinfo(inFile, iBlock)
+        zoneName, dims, nBoco, nB2B = libcgns_utils.utils.getblockinfo(inFile, iBlock)
 
         if cellDim == 2:
             dims[2] = 1
-        coords = libcgns_utils.getcoordinates(inFile, iBlock,
+        coords = libcgns_utils.utils.getcoordinates(inFile, iBlock,
                                               dims[0], dims[1], dims[2])
         blk = Block(zoneName, dims, coords)
 
         for iBoco in range(1, nBoco+1):
             # Get the BCs
-            bocoName, bocoType, ptRange, family, nDataSets = libcgns_utils.getbcinfo(
+            bocoName, bocoType, ptRange, family, nDataSets = libcgns_utils.utils.getbcinfo(
                 inFile, iBlock, iBoco, cellDim)
             bc = Boco(bocoName, bocoType, ptRange, family)
 
@@ -2405,12 +2405,12 @@ def readGrid(fileName):
                 # Loop over all the datasets for this BC
                 for iBocoDataSet in range(1, nDataSets+1):
 
-                    bocoDatasetName, bocoDataSetType, nDirichletArrays, nNeumannArrays = libcgns_utils.getbcdatasetinfo(inFile, iBlock, iBoco, iBocoDataSet)
+                    bocoDatasetName, bocoDataSetType, nDirichletArrays, nNeumannArrays = libcgns_utils.utils.getbcdatasetinfo(inFile, iBlock, iBoco, iBocoDataSet)
                     bcDSet = BocoDataSet(bocoDatasetName, bocoType)
 
                     def getBocoDataSetArray(flagDirNeu):
                          # Get data information
-                        dataArrayName, dataType, nDimensions, dataDimensionVector = libcgns_utils.getbcdataarrayinfo(inFile, iBlock, iBoco, iBocoDataSet, iDir, flagDirNeu)
+                        dataArrayName, dataType, nDimensions, dataDimensionVector = libcgns_utils.utils.getbcdataarrayinfo(inFile, iBlock, iBoco, iBocoDataSet, iDir, flagDirNeu)
 
                         # Create a flat array for the data
                         # Note we make it float64 although it can contain integers.
@@ -2418,7 +2418,7 @@ def readGrid(fileName):
                         dataArr = numpy.zeros(nDataArr, dtype=numpy.float64, order="F")
 
                         # Get the data. Note the dataArr is populated when the routine exits
-                        libcgns_utils.getbcdataarray(inFile, iBlock, iBoco, iBocoDataSet, iDir, flagDirNeu, dataArr, nDataArr)
+                        libcgns_utils.utils.getbcdataarray(inFile, iBlock, iBoco, iBocoDataSet, iDir, flagDirNeu, dataArr, nDataArr)
 
                         # Create a BocoDataSetArray object and return
                         return  BocoDataSetArray(dataArrayName, dataType, nDimensions, dataDimensionVector, dataArr)
@@ -2454,7 +2454,7 @@ def readGrid(fileName):
 
         for iB2B in range(1, nB2B+1):
             connectName, donorName, ptRange, donorRange, transform = \
-                         libcgns_utils.getb2binfo(inFile, iBlock, iB2B)
+                         libcgns_utils.utils.getb2binfo(inFile, iBlock, iB2B)
             blk.addB2B(B2B(connectName, donorName, ptRange, donorRange,
                            transform))
 
@@ -2464,7 +2464,7 @@ def readGrid(fileName):
     if nIterations > 0:
         for arrayID in range(nArrays):
             # Read array
-            arrayName, arrayData = libcgns_utils.getconvarray(inFile, nIterations, arrayID+1)
+            arrayName, arrayData = libcgns_utils.utils.getconvarray(inFile, nIterations, arrayID+1)
 
             # Remove blank spaces
             arrayName = arrayName.strip()
@@ -2472,7 +2472,7 @@ def readGrid(fileName):
             # Store results in the newGrid.convArray dictionary
             newGrid.addConvArray(arrayName, arrayData)
 
-    libcgns_utils.closefile(inFile)
+    libcgns_utils.utils.closefile(inFile)
 
     # Store grid dimension
     newGrid.cellDim = cellDim
@@ -2485,7 +2485,7 @@ def convertPlot3d(plot3dFile, cgnsFile):
     from the cgnslib doesn't always work properly.
     """
     # Full conversion is done in fortran.
-    libcgns_utils.convertplot3d(plot3dFile, cgnsFile)
+    libcgns_utils.utils.convertplot3d(plot3dFile, cgnsFile)
 
 def mirrorGrid(grid, axis, tol):
     """Method that takes a grid and mirrors about the axis. Boundary
