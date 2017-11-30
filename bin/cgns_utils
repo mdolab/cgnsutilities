@@ -86,6 +86,7 @@ p_mirror = subparsers.add_parser('mirror',
 p_mirror.add_argument('gridFile', help='Name of input CGNS file')
 p_mirror.add_argument('axis',
                       help="Mirror about plane defined by axis: 'x', 'y', 'z'")
+p_mirror.add_argument('tol', nargs='?', default=1e-12, help='Tolerance for node merge')
 p_mirror.add_argument('outFile', nargs='?', default=None,
                       help='Optional output file')
 
@@ -115,6 +116,7 @@ p_connect = subparsers.add_parser(
     'connect', help='Determine the block-to-block connectivity information \
     for a point-matched grid')
 p_connect.add_argument('gridFile', help='Name of input CGNS file')
+p_connect.add_argument('tol', nargs='?', default=1e-12, help='Tolerance for node merge')
 p_connect.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
@@ -149,7 +151,12 @@ p_fam = subparsers.add_parser(
 p_fam.add_argument('gridFile', help='Name of input CGNS file')
 p_fam.add_argument('familyFile', help='File containing additional family \
 information. Format is (one per line, 1-based blockID): blockID, \
-{iLow, iHigh etc}, newFamilyName')
+{iLow, iHigh etc}, newFamilyName <genI_start genI_end genJ_start genJ_end> \
+genI_start means generalized I start etc. That is once the face is identified, these \
+are the two remaining indices. If it is a I face, they are (j,k), J face they are (i, k) \
+and for a K face (i, j). These are optional and if given must be in 1 based ordering. Also \
+-1 is acceptable for the end index.'
+)
 p_fam.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
@@ -240,6 +247,14 @@ p3d = subparsers.add_parser(
 p3d.add_argument('gridFile', help='Name of input CGNS file')
 p3d.add_argument('plot3dFile', help='Name of output plot3d file')
 
+# ------------ Options for 'plot3dtocgns' mode --------------------
+p3dtoc = subparsers.add_parser(
+    'plot3d2cgns',  help='Convert a multiblock, unformatted fortran, big-endian, multiblock plot3d file to a plain \
+    cgns file. This specific format is widely used at NASA and Boeing.')
+p3dtoc.add_argument('plot3dFile', help='Name of input plot3d file')
+p3dtoc.add_argument('gridFile', help='Name of output CGNS file')
+
+
 # ------------ Options for 'randomize' mode --------------------
 p_ran = subparsers.add_parser(
     'randomize', help='Randomize the block orientation and order. Useful for testing.')
@@ -265,12 +280,24 @@ p_reorder.add_argument('outFile', nargs='?', default=None,
 
 # ------------ Options for 'symmzero' mode --------------------
 p_sym = subparsers.add_parser(
-    'symmzero', help='Hard-zero any nodes within a given tolerance. Used for ensuring planar symmetry planes.')
+    'symmzero', help='Hard-zero any nodes on symmetry plane BCs.')
 p_sym.add_argument('gridFile', help='Name of input CGNS file')
 p_sym.add_argument('sym', help='Normal for possible symmetry plane.',
                   choices=['x', 'y', 'z'])
 p_sym.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
+
+# ------------ Options for 'symmzeronobc' mode --------------------
+p_symnobc = subparsers.add_parser(
+    'symmzeronobc', help='Hard-zero any nodes within a given tolerance of the symmetry plane. BCs are not taken into account.')
+p_symnobc.add_argument('gridFile', help='Name of input CGNS file')
+p_symnobc.add_argument('sym', help='Normal for possible symmetry plane.',
+                       choices=['x', 'y', 'z'])
+p_symnobc.add_argument('--tol', help="Distance tolerance to bring nodes to symmetry plane.\n\
+                                      Default is 1.0e-5.",
+                       type=float, default=1.0e-5)
+p_symnobc.add_argument('outFile', nargs='?', default=None,
+                       help='Optional output file')
 
 # ------------ Options for 'timecombine' mode  --------------------
 p_tc = subparsers.add_parser(
@@ -292,6 +319,14 @@ p_dd = subparsers.add_parser(
 p_dd.add_argument('gridFiles', metavar='files', type=str, nargs='+', help='Name of CGNS files to combine')
 p_dd.add_argument('outFile', type=str, help='Output CGNS file name')
 
+# ------------ Options for 'remove' mode  --------------------
+p_rm = subparsers.add_parser(
+    'remove', help='Remove blocks from a cgns file. The user should ensure that the final mesh is still valid in terms of boundary conditions and connectivities.')
+p_rm.add_argument('gridFile', help='Name of input CGNS file')
+p_rm.add_argument('blockIDs', metavar='files', type=int, nargs='+', help='IDs (integers) of the blocks that will be removed.\n\
+The integers should be 1-indexed')
+p_rm.add_argument('outFile', type=str, help='Output CGNS file name')
+
 # ------------ Options for 'explode' mode  --------------------
 p_exp = subparsers.add_parser(
     'explode', help='Take one multiblock cgns file and explodes it into single-block cgns files.')
@@ -310,6 +345,12 @@ p_expkmin.add_argument('gridFile', type=str, help='Name of input multiblock CGNS
 p_expkmin.add_argument('outFile', nargs='?', default=None, help='Optional reference to name output files. \n\
 An integer will be added to the end. \n\
 if none is given, the input filename will be used as reference.')
+
+# ------------ Options for 'explodeByZoneName' mode  --------------------
+p_expkmin = subparsers.add_parser(
+    'explodeByZoneName', help='Take one multiblock cgns file and explode it into multiple multiblock \n\
+    cgns files based on the zone name from the blocks.')
+p_expkmin.add_argument('gridFile', type=str, help='Name of input multiblock CGNS file')
 
 # ------------ Options for 'cartesian' mode --------------------
 p_cart = subparsers.add_parser(
@@ -428,7 +469,7 @@ p_anf = subparsers.add_parser(
     'for an overset near field mesh with possible symmetry plane.')
 p_anf.add_argument('gridFile', help='Name of input CGNS file')
 p_anf.add_argument('sym', help='Normal for possible symmetry plane.',
-                  choices=['x', 'y', 'z'])
+                  choices=['x', 'y', 'z', 'none'])
 p_anf.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
@@ -525,7 +566,7 @@ p_p2R.add_argument('outFile', nargs='?', default=None,
 # ------------ Options for 'testBlock' mode
 p_test = subparsers.add_parser(
     'testBlock', help='Creates a single block mesh with specified dimensions. Used to quicky generate a test grid.')
-p_test.add_argument('nx', help='Number of nodes in x', type=int)                
+p_test.add_argument('nx', help='Number of nodes in x', type=int)
 p_test.add_argument('ny', help='Number of nodes in y', type=int)
 p_test.add_argument('nz', help='Number of nodes in z', type=int)
 p_test.add_argument('outFile', help='Name of output file')
@@ -575,7 +616,7 @@ if args.mode == 'timecombine':
     for i in range(len(files)):
         fileNames[i, 0:len(files[i])] = files[i]
 
-    libcgns_utils.time_combine(fileNames, outFile)
+    libcgns_utils.utils.time_combine(fileNames, outFile)
     sys.exit(0)
 
 if args.mode == 'testBlock':
@@ -628,6 +669,11 @@ if args.mode == 'explicitCart':
 
     sys.exit(0)
 
+if args.mode == 'plot3d2cgns':
+    # This doesn't read a cgns file so do this first too.
+    convertPlot3d(args.plot3dFile, args.gridFile)
+    sys.exit(0)
+
 # Get the current working grid 'curGrid' by reading the input
 curGrid = readGrid(args.gridFile)
 
@@ -671,7 +717,7 @@ elif args.mode == 'scale':
     curGrid.scale(args.scale)
 
 elif args.mode == 'mirror':
-    curGrid = mirrorGrid(curGrid, args.axis)
+    curGrid = mirrorGrid(curGrid, args.axis, args.tol)
 
 elif args.mode == 'coarsen':
     curGrid.coarsen()
@@ -686,7 +732,7 @@ elif args.mode == 'merge':
     curGrid = mergeGrid(curGrid)
 
 elif args.mode == 'connect':
-    curGrid.connect()
+    curGrid.connect(args.tol)
 
 elif args.mode == 'divide':
     curGrid = divideGrid(curGrid)
@@ -697,7 +743,7 @@ elif args.mode == 'autobc':
 
 elif args.mode == 'family':
     curGrid.overwriteFamilies(args.familyFile)
-           
+
 elif args.mode == 'familysubface':
     curGrid.writeSubfaceFamily(args.familyFile)
 
@@ -707,7 +753,7 @@ elif args.mode == 'familycopy':
 
 elif args.mode == 'overwritebc':
     curGrid.overwriteBCs(args.bcFile)
-    
+
 elif args.mode == 'removebc':
     curGrid.removeBCs()
 
@@ -723,8 +769,14 @@ elif args.mode == 'reorder':
 elif args.mode == 'symmzero':
     curGrid.symmZero(args.sym)
 
+elif args.mode == 'symmzeronobc':
+    curGrid.symmZeroNoBC(args.sym, args.tol)
+
 elif args.mode == 'double2d':
     curGrid.double2D()
+
+elif args.mode == 'remove':
+    curGrid.removeBlocks(args.blockIDs)
 
 elif args.mode == 'cartesian':
     found_overset = False
@@ -834,6 +886,19 @@ elif args.mode == 'explodeKmin':
     # Finish execution
     sys.exit(0)
 
+elif args.mode == 'explodeByZoneName':
+    # Split original multiblock grid into a list of multiblock grids
+    # that correspond to each component based on zone names
+    gridList, nameList = explodeByZoneName(curGrid)
+
+    # Save each grid
+    for grid in gridList:
+        fileName = grid.name
+        grid.writeToCGNS(fileName + '.cgns')
+
+    # Finish execution
+    sys.exit(0)
+
 elif args.mode == 'info':
     curGrid.printInfo()
     sys.exit(0)
@@ -885,10 +950,10 @@ elif args.mode == 'extractConv':
 
         for entry in curGrid.convArray.keys():
             data.append(curGrid.convArray[entry])
-            
+
         # Convert data to array
         data = numpy.array(data).T
-        
+
         # Write tecplot results
         write_tecplot_file(outFile,'Convergence',
                            ['Iteration']+curGrid.convArray.keys(),data)
