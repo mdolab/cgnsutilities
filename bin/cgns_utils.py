@@ -211,6 +211,29 @@ class Grid(object):
         else:
             print ('Warning: No wall surfaces found!')
 
+    def extractSpecifiedSurface(self, fileName,blkid,imin,imax,jmin,jmax,kmin,kmax):
+        """ Extract Specified surfaces and write to plot3d file"""
+        patches = []
+        blk = self.blocks[int(blkid)]
+        patches.extend(blk.extractSpecifiedSurfaces(int(imin),int(imax),int(jmin),int(jmax),int(kmin),int(kmax)))
+        if len(patches) > 0:
+            f = open(fileName, 'w')
+            f.write('%d\n' % len(patches))
+            for i in range(len(patches)):
+
+                f.write('%d %d 1\n' %(patches[i].shape[0],
+                                      patches[i].shape[1]))
+            for i in range(len(patches)):
+                patches[i][:, :, 0].flatten(1).tofile(f, sep='\n', format='%20.15g')
+                f.write('\n')
+                patches[i][:, :, 1].flatten(1).tofile(f, sep='\n', format='%20.15g')
+                f.write('\n')
+                patches[i][:, :, 2].flatten(1).tofile(f, sep='\n', format='%20.15g')
+                f.write('\n')
+            f.close()
+        else:
+            print ('Warning: No surfaces found!')
+
     def overwriteFamilies(self, familyFile):
         """Overwrite families of BC with information given in the
         family file"""
@@ -1834,6 +1857,54 @@ class Block(object):
                     (ptRange[2, 0] == ptRange[2, 1] and
                      ptRange[2, 0]+1 == self.dims[2])):
                     patches[-1] = patches[-1][::-1, :, :]
+
+        return patches
+
+    def extractSpecifiedSurfaces(self,imin,imax,jmin,jmax,kmin,kmax):
+        """Return patches for slices at the six specified indices"""
+
+        # check the indices against the block dimensions and cap as neccessary
+        if imin<0:
+            imin = 0
+        if jmin<0:
+            jmin = 0
+        if kmin<0:
+            kmin = 0
+        if imax>self.dims[0]-1:
+            imax = self.dims[0]-1
+        if jmax>self.dims[1]-1:
+            jmax = self.dims[1]-1
+        if kmax>self.dims[2]-1:
+            kmax = self.dims[2]-1    
+        
+        patches = []
+        #Setup the slice dimensions
+        ptRanges = [numpy.array([[imin,imin],[jmin, jmax], [kmin,kmax]]),
+                    numpy.array([[imax,imax],[jmin, jmax], [kmin,kmax]]),
+                    numpy.array([[imin,imax],[jmin, jmin], [kmin,kmax]]),
+                    numpy.array([[imin,imax],[jmax, jmax], [kmin,kmax]]),
+                    numpy.array([[imin,imax],[jmin, jmax], [kmin,kmin]]),
+                    numpy.array([[imin,imax],[jmin, jmax], [kmax,kmax]])  ]
+
+        for i in range(len(ptRanges)):
+            ptRange = ptRanges[i]
+
+            patches.append(self.coords[
+                ptRange[0, 0]:ptRange[0, 1]+1,
+                ptRange[1, 0]:ptRange[1, 1]+1,
+                ptRange[2, 0]:ptRange[2, 1]+1, :].squeeze())
+
+            # Make sure the patch is correctly orientated since we
+            # might have left-handed faces. Essentially we have to
+            # flip an index on any "high" boundary condition:
+
+            if ((ptRange[0, 0] == ptRange[0, 1] and
+                 ptRange[0, 0]+1 == self.dims[0]) or
+                (ptRange[1, 0] == ptRange[1, 1] and
+                 ptRange[1, 0]+1 == 1) or
+                (ptRange[2, 0] == ptRange[2, 1] and
+                 ptRange[2, 0]+1 == self.dims[2])):
+                patches[-1] = patches[-1][::-1, :, :]
 
         return patches
 
