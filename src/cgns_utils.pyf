@@ -1,11 +1,13 @@
 !    -*- f90 -*-
 ! Note: the context of this file is case sensitive.
 
-python module libcgns_utils ! in 
+python module libcgns_utils ! in
     interface  ! in :libcgns_utils
-        subroutine openfile(filename,mode,cg) ! in :libcgns_utils:cgns_utilities.F90
+       module utils
+        subroutine openfile(filename,mode,cellDim,cg) ! in :libcgns_utils:cgns_utilities.F90
             character*(*) intent(in) :: filename
             integer intent(in) :: mode
+            integer intent(in) :: cellDim
             integer intent(out) :: cg
         end subroutine openfile
         subroutine closefile(cg) ! in :libcgns_utils:cgns_utilities.F90
@@ -128,8 +130,8 @@ python module libcgns_utils ! in
             integer intent(in) :: ibc
             character*(*) intent(in) :: datasetname
             integer intent(out) :: idataset
-        end subroutine writebcdataheader        
-        subroutine writebcdata(cg,iblock,ibc,idataset,flagdirneu,writeheader,dataarrayname,datatype,ndatadimensions,datadimensionvector,dataarr,ndataarr) ! in :libcgns_utils:cgns_utilities.F90        
+        end subroutine writebcdataheader
+        subroutine writebcdata(cg,iblock,ibc,idataset,flagdirneu,writeheader,dataarrayname,datatype,ndatadimensions,datadimensionvector,dataarr,ndataarr) ! in :libcgns_utils:cgns_utilities.F90
             integer intent(in) :: cg
             integer intent(in) :: iblock
             integer intent(in) :: ibc
@@ -138,11 +140,11 @@ python module libcgns_utils ! in
             logical intent(in) :: writebcdataheader
             character*(*) intent(in) :: dataarrayname
             integer intent(in) :: datatype
-            integer intent(in) :: ndatadimensions            
+            integer intent(in) :: ndatadimensions
             real(kind=8) intent(in) :: datavalue
             integer, intent(in), dimension(3) :: datadimensionvector
             real(kind=8), intent(in), dimension(ndataarr) :: dataarr
-            integer intent(in) :: ndataarr          
+            integer intent(in) :: ndataarr
         end subroutine writebcdata
         subroutine writeb2b(cg,iblock,connectname,donorname,pts,ptsdonor,transform) ! in :libcgns_utils:cgns_utilities.F90
             integer intent(in) :: cg
@@ -171,17 +173,18 @@ python module libcgns_utils ! in
             integer, optional,intent(in),check(shape(xcoarse,0)==il),depend(xcoarse) :: il=shape(xcoarse,0)
             integer, optional,intent(in),check(shape(xcoarse,1)==jl),depend(xcoarse) :: jl=shape(xcoarse,1)
         end subroutine interpface
-        subroutine time_combine(filenames,nfiles,outputfile) ! in :test:cgns_utilities.F90
-            use zone_vars
-            character dimension(nfiles,256),intent(c) :: filenames
-            integer, optional,check(shape(filenames,0)==nfiles),depend(filenames) :: nfiles=shape(filenames,0)
-	    character*256 :: outputfile
-        end subroutine time_combine
-        subroutine computeconnectivity(coords,ncoords,sizes,nblock) ! in :test:cgns_utilities.F90
+        ! subroutine time_combine(filenames,nfiles,outputfile) ! in :test:cgns_utilities.F90
+        !     use zone_vars
+        !     character dimension(nfiles,256),intent(c) :: filenames
+        !     integer, optional,check(shape(filenames,0)==nfiles),depend(filenames) :: nfiles=shape(filenames,0)
+	!     character*256 :: outputfile
+        ! end subroutine time_combine
+        subroutine computeconnectivity(coords,ncoords,sizes,nblock,tol) ! in :test:cgns_utilities.F90
             real(kind=8), target,dimension(3 * ncoords),intent(in) :: coords
             integer, optional,intent(in),check((len(coords))/(3)>=ncoords),depend(coords) :: ncoords=(len(coords))/(3)
             integer dimension(3,nblock),intent(in) :: sizes
             integer, optional,intent(in),check(shape(sizes,1)==nblock),depend(sizes) :: nblock=shape(sizes,1)
+            real(kind=8), intent(in) :: tol
         end subroutine computeconnectivity
         subroutine getnpatches(n)
           integer, intent(out) :: n
@@ -228,8 +231,12 @@ python module libcgns_utils ! in
             real(kind=8) intent(in) :: s
             real(kind=8) intent(out) :: ratio
         end subroutine calcgridratio
-
-    end interface 
+        subroutine convertplot3d(pfile, cfile)
+            character*(*) intent(in) :: pfile
+            character*(*) intent(in) :: cfile
+          end subroutine convertplot3d
+        end module utils
+    end interface
 end python module libcgns_utils
 
 ! This file was auto-generated with f2py (version:2).

@@ -3,6 +3,7 @@ include ../config.mk
 PYTHON_OBJECTS = fortranobject.o \
 		 kd_tree.o \
 		 libcgns_utilsmodule.o \
+		 libcgns_utils-f2pywrappers2.o
 
 
 default:
@@ -18,7 +19,7 @@ default:
 	 @echo "#------------------------------------------------------#"
 
 # Generate Numpy include directory
-	$(eval NUMPY_INCLUDES = $(shell $(PYTHON) -c 'import numpy; print numpy.get_include()'))
+	$(eval NUMPY_INCLUDES = $(shell $(PYTHON) -c 'from __future__ import print_function; import numpy; print(numpy.get_include())'))
 	@echo "#------------------------------------------------------#"
 	@echo Numpy Include Directory: $(NUMPY_INCLUDES)
 	@echo "#------------------------------------------------------#"
@@ -33,11 +34,14 @@ default:
 #       f2py -m  --overwrite-signature libcgns_utils -h cgns_utils.pyf cgns_utilities.F90
 
 # Generate wrapper file:
-	f2py cgns_utils.pyf
+	$(F2PY) cgns_utils.pyf
 
 # Compile c wrapper
 	$(CC) $(CFLAGS) $(PYTHON_INCLUDES) -I$(NUMPY_INCLUDES) \
 	-I$(F2PY_ROOT)/src -c libcgns_utilsmodule.c
+
+# Compile the module warapper
+	$(FC) $(FFLAGS) $(CGNS_INCLUDE_FLAGS) -I./ -c libcgns_utils-f2pywrappers2.f90
 
 # Compile fortranobject needed by all f2py modules
 	$(CC) $(CFLAGS) $(PYTHON_INCLUDES) -I$(NUMPY_INCLUDES) \
@@ -45,5 +49,5 @@ default:
 
 # Final Link:
 	$(FC) -shared $(PYTHON_OBJECTS) cgns_utilities.o tecio.a $(CGNS_LINKER_FLAGS) -lstdc++ -o libcgns_utils.so
-	python importTest.py
+	$(PYTHON) importTest.py
 	mv libcgns_utils.so ../bin
