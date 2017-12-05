@@ -1936,13 +1936,13 @@ class Block(object):
             # flip an index on any "high" boundary condition:
 
             if ((ptRange[0, 0] == ptRange[0, 1] and
-                 ptRange[0, 0]+1 == self.dims[0]) or
+                 ptRange[0, 0] == imax) or
                 (ptRange[1, 0] == ptRange[1, 1] and
-                 ptRange[1, 0]+1 == 1) or
+                 ptRange[1, 0] == jmin) or
                 (ptRange[2, 0] == ptRange[2, 1] and
-                 ptRange[2, 0]+1 == self.dims[2])):
+                 ptRange[2, 0] == kmax)):
                 patches[-1] = patches[-1][::-1, :, :]
-
+                
         return patches
 
     def overwriteFamily(self, faceStr, family):
