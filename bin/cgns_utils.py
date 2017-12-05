@@ -1942,6 +1942,9 @@ class Block(object):
                 (ptRange[2, 0] == ptRange[2, 1] and
                  ptRange[2, 0] == kmax)):
                 patches[-1] = patches[-1][::-1, :, :]
+
+            #Flip all the normals
+            patches[-1] = patches[-1][::-1, :, :]
                 
         return patches
 
