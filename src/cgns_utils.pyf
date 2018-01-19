@@ -137,7 +137,7 @@ python module libcgns_utils ! in
             integer intent(in) :: ibc
             integer intent(in) :: idataset
             integer intent(in) :: flagdirneu
-            logical intent(in) :: writebcdataheader
+            logical intent(in) :: writeheader
             character*(*) intent(in) :: dataarrayname
             integer intent(in) :: datatype
             integer intent(in) :: ndatadimensions
