@@ -66,6 +66,19 @@ p_extract = subparsers.add_parser('extract',
 p_extract.add_argument('gridFile', help='Name of input CGNS file')
 p_extract.add_argument('surfFile', help='Name of plot3d surface file')
 
+# ------------- Options for 'extractSpecified' mode --------------------
+p_extract_spec = subparsers.add_parser('extractSpecified',
+                                  help='Extract a surface from a specified set of layers in a cgns block')
+p_extract_spec.add_argument('gridFile', help='Name of input CGNS file')
+p_extract_spec.add_argument('surfFile', help='Name of plot3d surface file')
+p_extract_spec.add_argument('blockID', help='cgns block number to extract from')
+p_extract_spec.add_argument('imin', help='lower i bound,use 0-based numbering')
+p_extract_spec.add_argument('imax', help='upper i bound,use 0-based numbering')
+p_extract_spec.add_argument('jmin', help='lower j bound,use 0-based numbering')
+p_extract_spec.add_argument('jmax', help='upper j bound,use 0-based numbering')
+p_extract_spec.add_argument('kmin', help='lower k bound,use 0-based numbering')
+p_extract_spec.add_argument('kmax', help='upper k bound,use 0-based numbering')
+
 # ------------- Options for 'mirror' mode --------------------
 p_mirror = subparsers.add_parser('mirror',
                                  help='Mirror a grid about a plane defined \
@@ -671,6 +684,10 @@ if args.mode == 'extract':
     curGrid.extractSurface(args.surfFile)
     sys.exit(0)
 
+if args.mode == 'extractSpecified':
+    curGrid.extractSpecifiedSurface(args.surfFile,args.blockID,args.imin,args.imax,args.jmin,args.jmax,args.kmin,args.kmax)
+    sys.exit(0)
+   
 if args.mode == 'cgns2plot3d':
     curGrid.writePlot3d(args.plot3dFile)
     sys.exit(0)
