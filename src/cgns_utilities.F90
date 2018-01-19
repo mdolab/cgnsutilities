@@ -211,10 +211,10 @@ contains
     ! Working
     integer :: ier, base, i
     integer :: NormalIndex(3), NormalDataType
-    integer :: ptset_type, tmpPtRange(cellDim,2),pnts_donor(cellDim,2),ncon
+    integer :: ptset_type,pnts_donor(cellDim,2),ncon
     integer :: nuserdata
     character(len=256) :: name
-    integer(kind=cgsize_t) :: npnts, NormalListSize
+    integer(kind=cgsize_t) :: npnts, NormalListSize, tmpPtRange(cellDim,2)
     base = 1
     call cg_goto_f(cg, base, ier, 'end')
     if (ier .eq. CG_ERROR) call cg_error_exit_f
@@ -496,8 +496,8 @@ contains
     real(kind=8), intent(out) :: X(il, jl, kl, 3)
 
     ! Working
-    integer :: ier, base, tmp(9), blockStart(3), blockEnd(3)
-
+    integer :: ier, base
+    integer(cgsize_t) :: blockStart(3), blockEnd(3)
     base = 1
     blockStart = (/1,1,1/)
     blockEnd = (/il, jl, kl/)
@@ -606,6 +606,7 @@ contains
     base = 1
     c_ptRange = ptRange
     c_tmp = 2
+
     call cg_boco_write_f(cg, base, iBlock, trim(bcName), bcType, PointRange, &
          c_tmp, c_ptRange, BCout, ier)
 
@@ -643,7 +644,6 @@ contains
     call cg_dataset_write_f(cg, base, iBlock, iBC, datasetName, bcType, iDataSet, ier)
     if (ier .eq. CG_ERROR) call cg_error_exit_f
 
-
   end subroutine writeBCDataHeader
 
 
@@ -665,7 +665,7 @@ contains
 
     ! Working
     integer :: ier, base
-
+    integer(kind=cgsize_t) :: tmp(3)
     base = 1
 
     if (writeBCDataHeader) then
@@ -679,8 +679,9 @@ contains
 
     ! Note that dataType is ignored here since the data is stored
     ! as RealDouble in python. Everything is thus written as double.
+    tmp = dataDimensionVector
     call cg_array_write_f(trim(dataArrayName), RealDouble, nDataDimensions, &
-         dataDimensionVector, dataArr, ier)
+         tmp, dataArr, ier)
     if (ier .eq. CG_ERROR) call cg_error_exit_f
 
   end subroutine writeBCData
