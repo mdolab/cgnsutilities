@@ -458,7 +458,10 @@ p_obc = subparsers.add_parser(
     'Only used with pyHyp hyperbolically generated meshes.')
 p_obc.add_argument('gridFile', help='Name of input CGNS file')
 p_obc.add_argument('sym', help='Normal for possible symmetry plane.',
-                  choices=['x', 'y', 'z'])
+                   choices=['x', 'y', 'z', 'none'])
+p_obc.add_argument('--connectSelf', help='only check for connection on-block (periodic type)',
+                   action='store_true', dest='connectSelf', default=False)
+p_obc.add_argument('--tol', type=float, default=1e-12, help='Tolerance for connect')
 p_obc.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
@@ -687,7 +690,7 @@ if args.mode == 'extract':
 if args.mode == 'extractSpecified':
     curGrid.extractSpecifiedSurface(args.surfFile,args.blockID,args.imin,args.imax,args.jmin,args.jmax,args.kmin,args.kmax)
     sys.exit(0)
-   
+
 if args.mode == 'cgns2plot3d':
     curGrid.writePlot3d(args.plot3dFile)
     sys.exit(0)
@@ -807,7 +810,7 @@ elif args.mode == 'rotate':
     curGrid.rotate(args.vx, args.vy, args.vz, args.theta)
 
 elif args.mode == 'autoOversetBC':
-    curGrid.autoOversetBC(args.sym)
+    curGrid.autoOversetBC(args.sym, args.connectSelf, args.tol)
 
 elif args.mode == 'autoNearfieldBC':
     curGrid.autoNearfieldBC(args.sym)
