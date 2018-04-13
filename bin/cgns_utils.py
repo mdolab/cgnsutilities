@@ -370,7 +370,7 @@ class Grid(object):
                 self.blocks[block].overwriteBCs(face, bctype, family, dataSet)
         f.close()
 
-    def autoOversetBC(self, sym):
+    def autoOversetBC(self, sym, connectSelf, tol):
         """This is essentially a simplified version of autoBC that flags all
         kMin faces as walls and all kMax faces as BCOverset"""
 
@@ -379,18 +379,25 @@ class Grid(object):
             blk.bocos = []
             blk.B2Bs = []
 
+        checkSym = True
         if sym == 'x':
             symAxis = 0
         elif sym == 'y':
             symAxis = 1
-        else:
+        elif sym == 'z':
             symAxis = 2
+        else:
+            symAxis = 0 # doesn't matter
+            checkSym = False
 
         symNormal = [0.0, 0.0, 0.0]
         symNormal[symAxis] = 1.0
 
         # Do the b2b by running connect:
-        types, pointRanges, myIDs, faceAvg, faceNormal = self.connect()
+        if connectSelf:
+            types, pointRanges, myIDs, faceAvg, faceNormal = self.connectSelfOnly(tol)
+        else:
+            types, pointRanges, myIDs, faceAvg, faceNormal = self.connect(tol)
 
         # Loop over all subfaces and deal with the BCs
         for i in range(len(types)):
@@ -399,7 +406,7 @@ class Grid(object):
             if types[i] == 0: # Boco
                 coor_check = abs(faceAvg[symAxis, i]) < 1e-3
                 dp_check = abs(numpy.dot(faceNormal[:, i], symNormal)) > 0.98
-                if dp_check and coor_check:
+                if dp_check and coor_check and checkSym:
                     bocoType = BC['bcsymmetryplane']
                     famName = 'sym'
                 else:
@@ -1079,6 +1086,57 @@ class Grid(object):
         # routines (autobc for example) may need this.
 
         return types, pointRanges, myIDs, faceAvgs, faceNormals
+
+    def connectSelfOnly(self, tol=1e-12):
+        """Generate block-to-block connectivity information for a grid, but
+        only for b2b connections within a given block. Ie only periodic conditions
+        """
+
+        types = []
+        pointRanges = []
+        myIDs = []
+        faceAvgs = []
+        faceNormals = []
+        for i in range(len(self.blocks)):
+            blk = self.blocks[i]
+            coords = blk.coords.flatten()
+            sizes = numpy.array([blk.dims])
+
+            # Run the fortran code to generate all the connectivities
+            libcgns_utils.utils.computeconnectivity(coords, sizes.T, tol)
+            nPatches = libcgns_utils.utils.getnpatches()
+            t, pointRange, myID, pointRangeDonor, \
+                transform, donorID, faceAvg, faceNormal = (
+                    libcgns_utils.utils.getpatchinfo(nPatches))
+            libcgns_utils.utils.deallocpatches()
+
+            # Remove all existing B2B info
+            blk.B2Bs = []
+
+            for j in range(nPatches):
+                if t[j] == 1: # B2B
+                    connectName = 'SF%d'%i
+                    donorName = blk.name # Has to be the same block
+                    blk.B2Bs.append(B2B(
+                        connectName, donorName, pointRange[:, :, j],
+                        pointRangeDonor[:, :, j], transform[:, j]))
+
+                # Also append this information to return the same way
+                # that connect does:
+                types.append(t[j])
+                myIDs.append(myID[j])
+                pointRanges.append(pointRange[:, :, j])
+                faceAvgs.append(faceAvg[:, j])
+                faceNormals.append(faceNormal[:, j])
+
+        # Return the information we computed since other
+        # routines (autobc for example) may need this.
+        pointRanges = numpy.moveaxis(numpy.array(pointRanges),0, -1)
+        faceNormals = numpy.moveaxis(numpy.array(faceNormals),0, -1)
+        faceAvgs = numpy.moveaxis(numpy.array(faceAvgs),0, -1)
+        return (numpy.array(types), pointRanges, numpy.array(myIDs),
+                faceAvgs, faceNormals)
+
 
     def autoBC(self, radius, sym, offset):
         """This function will try to generate boundary condition
@@ -1912,8 +1970,8 @@ class Block(object):
         if jmax>self.dims[1]-1:
             jmax = self.dims[1]-1
         if kmax>self.dims[2]-1:
-            kmax = self.dims[2]-1    
-        
+            kmax = self.dims[2]-1
+
         patches = []
         #Setup the slice dimensions
         ptRanges = [numpy.array([[imin,imin],[jmin, jmax], [kmin,kmax]]),
@@ -1945,7 +2003,7 @@ class Block(object):
 
             #Flip all the normals
             patches[-1] = patches[-1][::-1, :, :]
-                
+
         return patches
 
     def overwriteFamily(self, faceStr, family):
