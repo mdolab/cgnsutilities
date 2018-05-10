@@ -156,7 +156,6 @@ python module libcgns_utils ! in
             integer dimension(3),intent(in) :: transform
         end subroutine writeb2b
         subroutine refine(xin,xout, refinex, refiney, refinez,il,jl,kl)
-        ! subroutine refine(xin,xout,il,jl,kl)
             ! in :libcgns_utils:cgns_utilities.F90
             real(kind=8) dimension(il,jl,kl,3),intent(in) :: xin
             integer, intent(in) :: refinex
@@ -167,13 +166,6 @@ python module libcgns_utils ! in
             integer, optional,intent(in),check(shape(xin,1)==jl),depend(xin) :: jl=shape(xin,1)
             integer, optional,intent(in),check(shape(xin,2)==kl),depend(xin) :: kl=shape(xin,2)
         end subroutine refine
-            ! end subroutine refine
-            ! subroutine refine(Xin, Xout, il, jl, kl)
-            ! ! in :libcgns_utils:cgns_utilities.F90
-            !     real(kind=8) dimension(il,jl,kl,3),intent(in) :: xin
-            !     ! logical intent(in) :: alongX
-            !     ! logical intent(in) :: alongY
-            !     ! logical intent(in) :: alongZ
         subroutine interpedge(xcoarse,xfine,il) ! in :libcgns_utils:cgns_utilities.F90
             real(kind=8) dimension(il,3),intent(in) :: xcoarse
             real(kind=8) dimension(2 * il - 1,3),intent(inout),depend(il) :: xfine
