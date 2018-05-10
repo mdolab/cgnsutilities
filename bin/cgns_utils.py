@@ -185,10 +185,10 @@ class Grid(object):
         for blk in self.blocks:
             blk.coarsen()
 
-    def refine(self):
-        """Refine he block by interpolating every-other grid line"""
+    def refine(self, axes):
+        """Refine the block by interpolating every-other grid line"""
         for blk in self.blocks:
-            blk.refine()
+            blk.refine(axes)
 
     def renameBlocks(self, actualName=False):
         """Rename all blocks in a consistent fashion"""
@@ -1551,17 +1551,19 @@ class Block(object):
         self.dims[1] = self.coords.shape[1]
         self.dims[2] = self.coords.shape[2]
 
-    def refine(self):
+    def refine(self, axes):
         """Refine the block uniformly. We will also update the
         boundary conditions and B2Bs if necessary"""
-        self.coords = libcgns_utils.utils.refine(self.coords)
+        axes = ''.join(axes)
+        self.coords = libcgns_utils.utils.refine(self.coords, 'i' in axes, 'j' in axes, 'k' in axes)
         self.dims[0] = self.coords.shape[0]
         self.dims[1] = self.coords.shape[1]
         self.dims[2] = self.coords.shape[2]
         for boco in self.bocos:
-            boco.refine()
+            boco.refine(axes)
+
         for b2b in self.B2Bs:
-            b2b.refine()
+            b2b.refine(axes)
 
     def section(self, iStart, iEnd, jStart, jEnd, kStart, kEnd):
         self.bocos = []
@@ -2217,11 +2219,11 @@ class Boco(object):
         for j in range(2):
             self.ptRange[direction, j] = (self.ptRange[direction, j]-1)//2 + 1
 
-    def refine(self):
+    def refine(self, axes):
         """refine the range of the BC"""
-        for i in range(3):
+        for i, axis in enumerate(['i','j', 'k']):
             for j in range(2):
-                self.ptRange[i, j] = (self.ptRange[i, j]-1)*2 + 1
+                self.ptRange[i, j] = (self.ptRange[i, j]-1)*2**(axis in axes) + 1
 
 
 class BocoDataSet(object):
@@ -2267,13 +2269,12 @@ class B2B(object):
             self.ptRange[direction, j] = (self.ptRange[direction, j]-1)//2 + 1
             self.donorRange[direction, j] = (self.donorRange[direction, j]-1)//2 + 1
 
-    def refine(self):
+    def refine(self, axes):
         """refine the range of the B2B"""
-        for i in range(3):
+        for i, axis in enumerate(['i','j', 'k']):
             for j in range(2):
-                self.ptRange[i, j] = (self.ptRange[i, j]-1)*2 + 1
-                self.donorRange[i, j] = (self.donorRange[i, j]-1)*2 + 1
-
+                self.ptRange[i, j]    = (self.ptRange[i, j]-1)*2**(axis in axes) + 1
+                self.donorRange[i, j] = (self.donorRange[i, j]-1)*2**(axis in axes) + 1
 
 # ----------------------------------------
 # These are miscellaneous helper functions
