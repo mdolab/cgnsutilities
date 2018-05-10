@@ -58,8 +58,8 @@ p_coarsen.add_argument('outFile', nargs='?', default=None,
 p_refine = subparsers.add_parser('refine', help='Refine a grid uniformly')
 p_refine.add_argument('gridFile', help='Name of input CGNS file')
 p_refine.add_argument('outFile', nargs='?', default=None, help='Optional output file')
-p_refine.add_argument('--axes', nargs='+', help="Refine mesh along axis: 'i', 'j', 'k'\
-                                                 default is all three axes", default=['i','j', 'k'])
+p_refine.add_argument('--axes', nargs='+', help="Refine mesh only along specified axis or axes ( default is all three axes): 'i', 'j', 'k'\
+                                                ", default=['i','j', 'k'])
 
 # ------------- Options for 'extract' mode --------------------
 p_extract = subparsers.add_parser('extract',
