@@ -117,6 +117,8 @@ p_connect = subparsers.add_parser(
     for a point-matched grid')
 p_connect.add_argument('gridFile', help='Name of input CGNS file')
 p_connect.add_argument('tol', nargs='?', default=1e-12, help='Tolerance for node merge')
+p_connect.add_argument('--connectSelf', help='only check for connection on-block (periodic type)',
+                   action='store_true', dest='connectSelf', default=False)
 p_connect.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
@@ -261,6 +263,7 @@ p_ran = subparsers.add_parser(
 p_ran.add_argument('gridFile', help='Name of input CGNS file')
 p_ran.add_argument('seed', type=int, default=0, help='Seed for random generator. \
 Specifying a seed will make process deterministic.')
+p_ran.add_argument('--keepRHS',help='Keep right hand coordinate system', action='store_true', default=False)
 p_ran.add_argument('outFile', nargs='?', default=None,
                      help='Optional output file')
 
@@ -735,7 +738,10 @@ elif args.mode == 'merge':
     curGrid = mergeGrid(curGrid)
 
 elif args.mode == 'connect':
-    curGrid.connect(args.tol)
+    if args.connectSelf:
+        curGrid.connectSelfOnly(args.tol)
+    else:
+        curGrid.connect(args.tol)
 
 elif args.mode == 'divide':
     curGrid = divideGrid(curGrid)
@@ -764,7 +770,7 @@ elif args.mode == 'rebunch':
     curGrid.rebunch(args.spacing, args.extraCells, args.nodes)
 
 elif args.mode == 'randomize':
-    curGrid.randomize(args.seed)
+    curGrid.randomize(args.seed, args.keepRHS)
 
 elif args.mode == 'reorder':
     curGrid.reorder(args.intDigits)

@@ -1115,7 +1115,7 @@ class Grid(object):
 
             for j in range(nPatches):
                 if t[j] == 1: # B2B
-                    connectName = 'SF%d'%i
+                    connectName = 'SF%d_%d'%(i,j)
                     donorName = blk.name # Has to be the same block
                     blk.B2Bs.append(B2B(
                         connectName, donorName, pointRange[:, :, j],
@@ -1242,7 +1242,7 @@ class Grid(object):
             blk.BCs = []
         self.connect()
 
-    def randomize(self, seed):
+    def randomize(self, seed, keepRHS):
         """Perform random reording of grid orientation and block numbers. This
         method destroys *ALL* boundary condition information. Grid
         connectivity is recomputed on the reorginized grid. Actual
@@ -1254,7 +1254,7 @@ class Grid(object):
         for blk in self.blocks:
             blk.bocos = []
             blk.B2Bs = []
-            blk.randomize()
+            blk.randomize(keepRHS)
 
         # Finally reconnect
         self.connect()
@@ -2062,7 +2062,7 @@ class Block(object):
         elif faceStr == 'khigh':
             ptRange = [[1, 1, d[2]], [d[0], d[1], d[2]]]
         else:
-            print("ERROR: faceStr must be one of iLow, iHigh, jLow, jHigh, kLow or kHigh")
+            print("ERROR: faceStr must be one of iLow, iHigh, jLow, jHigh, kLow or kHigh. Got %s"%faceStr)
             exit()
 
         ptRange = numpy.array(ptRange).T
@@ -2104,19 +2104,21 @@ class Block(object):
 
         self.coords = newNodes
 
-    def randomize(self):
+    def randomize(self, keepRHS):
         """Randomly reorder the indices in the block. No attempt is made to
         change BCs or B2Bs since these should be deleted already
         """
-
+        flipCount = 0
         if numpy.random.random() > 0.5:
             # We will flip the i-index
+            flipCount +=1
             for k in range(self.dims[2]):
                 for j in range(self.dims[1]):
                     for idim in range(3):
                         self.coords[:, j, k, idim] = self.coords[::-1, j, k, idim]
 
         if numpy.random.random() > 0.5:
+            flipCount +=1
             # We will flip the j-index
             for k in range(self.dims[2]):
                 for i in range(self.dims[0]):
@@ -2124,6 +2126,7 @@ class Block(object):
                         self.coords[i, :, k, idim] = self.coords[i, ::-1, k, idim]
 
         if numpy.random.random() > 0.5:
+            flipCount +=1
             # We will flip the k-index
             for j in range(self.dims[1]):
                 for i in range(self.dims[0]):
@@ -2133,6 +2136,7 @@ class Block(object):
         # So that filps the order of the axis. We can also perform
         # axis swapping.
         if numpy.random.random() > 0.5:
+
             # Swap X and Y axis
             newCoords = numpy.zeros((self.dims[1], self.dims[0], self.dims[2], 3))
             for k in range(self.dims[2]):
@@ -2161,6 +2165,14 @@ class Block(object):
 
             self.dims = list(newCoords.shape[0:3])
             self.coords = newCoords.copy()
+
+        # if the flip count is odd, do one final flip of the j-index
+        # to keep the same handed-ness
+        if numpy.mod(flipCount, 2) == 1 and keepRHS:
+            for k in range(self.dims[2]):
+                for j in range(self.dims[1]):
+                    for idim in range(3):
+                        self.coords[:, j, k, idim] = self.coords[::-1, j, k, idim]
 
     def symmZero(self, idir):
         for bc in self.bocos:
