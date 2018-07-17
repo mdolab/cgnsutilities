@@ -709,10 +709,11 @@ contains
 
   end subroutine writeB2B
 
-  subroutine refine(Xin, Xout, il, jl, kl)
-    ! This routine is used to refine a block 'Xin' of size (il, jl, kl,
-    ! 3) to form block Xout of size ((il-1)*2+1, (jl-1)*2+1, (kl-1)*2+1,
-    ! 3). It uses a local cubic interpolation that attemps to respect
+  subroutine refine(Xin, Xout, refine_i, refine_j, refine_k, il, jl, kl )
+  ! subroutine refine(Xin,  Xout, il, jl, kl )
+    ! This routine is used to refine a block 'Xin' of size (il, jl, kl,3)
+    ! to form block Xout of size ((il-1)*2+1, (jl-1)*2+1, (kl-1)*2+1, 3).
+    ! It uses a local cubic interpolation that attemps to respect
     ! spacing ratios of the original grid. Note that this routine does
     ! not use anything from the cgns library
 
@@ -720,92 +721,124 @@ contains
 
     ! Input/Output
     real(kind=8), intent(in), dimension(il, jl, kl, 3) :: Xin
+    ! either a 0 (don't refine along that axis) or 1 (do refine along the axis)
+    integer, intent(in) :: refine_i, refine_j, refine_k
     integer, intent(in) :: il, jl ,kl
-    real(kind=8), intent(out), dimension((il-1)*2+1, (jl-1)*2+1, (kl-1)*2+1, 3) :: Xout
-
+    real(kind=8), intent(out), dimension((il-1)*2**refine_i+1, (jl-1)*2**refine_j+1, (kl-1)*2**refine_k+1, 3) :: Xout
     ! Working
     integer :: i, j, k, ii, jj, kk, idim, ill, jll, kll
     real(kind=8) :: fact26, pt(3)
+    integer  :: feq_i, feq_j, feq_k
 
-    ill = (il-1)*2 + 1
-    jll = (jl-1)*2 + 1
-    kll = (kl-1)*2 + 1
+    ! set the relative frequency of nodes of Xout compared to Xin
+    feq_i = 2**refine_i
+    feq_j = 2**refine_j
+    feq_k = 2**refine_k
+
+    ! set the relative frequency of nodes of Xout compared to Xin
+    ill = (il-1)*feq_i + 1
+    jll = (jl-1)*feq_j + 1
+    kll = (kl-1)*feq_k + 1
+
     fact26 = dble(1.0)/dble(26.0)
+
+
     ! First copy the values we have into the new array
     do idim=1,3
        do k=1,kl
           do j=1,jl
              do i=1,il
-                Xout((i-1)*2+1, (j-1)*2+1, (k-1)*2+1, idim) = Xin(i, j, k, idim)
+                Xout((i-1)*feq_i+1, (j-1)*feq_j+1, (k-1)*feq_k+1, idim) = Xin(i, j, k, idim)
              end do
           end do
        end do
     end do
 
-    ! Next interpolate all the edges
-    do k=1,kl
-       do j=1,jl
-          call interpEdge(Xin(:, j, k, :), Xout(:, (j-1)*2+1, (k-1)*2+1, :), il)
-       end do
-    end do
 
-    do k=1,kl
-       do i=1,il
-          call interpEdge(Xin(i, :, k, :), Xout((i-1)*2+1, :, (k-1)*2+1, :), jl)
-       end do
-    end do
+    ! ! Next interpolate all the edges
 
-    do j=1,jl
-       do i=1,il
-          call interpEdge(Xin(i, j, :, :), Xout((i-1)*2+1, (j-1)*2+1, :, :), kl)
-       end do
-    end do
+    if (refine_i .ne. 0) then
+      do k=1,kl
+        do j=1,jl
+          call interpEdge(Xin(:, j, k, :), Xout(:, (j-1)*feq_j+1, (k-1)*feq_k+1, :), il)
+        end do
+      end do
+    endif
+
+    if (refine_j .ne. 0) then
+        do k=1,kl
+          do i=1,il
+              call interpEdge(Xin(i, :, k, :), Xout((i-1)*feq_i+1, :, (k-1)*feq_k+1, :), jl)
+          end do
+        end do
+    endif
+
+    if (refine_k .ne. 0) then
+        do j=1,jl
+          do i=1,il
+              call interpEdge(Xin(i, j, :, :), Xout((i-1)*feq_i+1, (j-1)*feq_j+1, :, :), kl)
+          end do
+        end do
+    endif
+
 
     ! Next interpolate all the faces
-    do k=1,kl
-       call interpFace(Xin(:, :, k, :), Xout(:, :, (k-1)*2+1, :), il, jl)
-    end do
 
-    do j=1,jl
+    if ((refine_i .ne. 0) .and. (refine_j .ne. 0)) then
+      do k=1,kl
+        call interpFace(Xin(:, :, k, :), Xout(:, :, (k-1)*feq_k+1, :), il, jl)
+      end do
+    endif
 
-       call interpFace(Xin(:, j, :, :), Xout(:, (j-1)*2+1, :, :), il, kl)
-    end do
+    if ((refine_i .ne. 0) .and. (refine_k .ne. 0)) then
+      do j=1,jl
 
-    do i=1,il
-       call interpFace(Xin(i, :, :, :), Xout((i-1)*2+1, :, :, :), jl, kl)
-    end do
+          call interpFace(Xin(:, j, :, :), Xout(:, (j-1)*feq_j+1, :, :), il, kl)
+      end do
+    endif
+
+    if ((refine_j .ne. 0) .and. (refine_k .ne. 0)) then
+      do i=1,il
+         call interpFace(Xin(i, :, :, :), Xout((i-1)*feq_i+1, :, :, :), jl, kl)
+      end do
+    endif
+
+
 
     ! Finally interpolate the last center points --- by averaging all 26 neighbours
-    do k=2, kll, 2
-       do j=2, jll, 2
-          do i=2, ill, 2
+    if ((refine_i .ne. 0) .and. (refine_j .ne. 0) .and. (refine_k .ne. 0)) then
+      do k=2, kll, 2
+        do j=2, jll, 2
+            do i=2, ill, 2
 
-             pt = 0.0_8
-             ! Get 18 of them from these loops
-             do kk=-1,1,2
-                do jj=-1,1
-                   do ii=-1,1
-                      pt = pt + Xout(i+ii, j+jj, k+kk, :)
-                   end do
-                end do
-             end do
+              pt = 0.0_8
+              ! Get 18 of them from these loops
+              do kk=-1,1,2
+                  do jj=-1,1
+                    do ii=-1,1
+                        pt = pt + Xout(i+ii, j+jj, k+kk, :)
+                    end do
+                  end do
+              end do
 
-             ! And another 6 on the kk=0 sub-plane
-             do ii=-1,1
-                do jj=-1,1,2
-                   pt = pt + Xout(i+ii, j+jj, k, :)
-                end do
-             end do
+              ! And another 6 on the kk=0 sub-plane
+              do ii=-1,1
+                  do jj=-1,1,2
+                    pt = pt + Xout(i+ii, j+jj, k, :)
+                  end do
+              end do
 
-             ! And the last 2:
-             pt = pt + Xout(i-1, j, k, :)
-             pt = pt + Xout(i+1, j, k, :)
+              ! And the last 2:
+              pt = pt + Xout(i-1, j, k, :)
+              pt = pt + Xout(i+1, j, k, :)
 
-             ! Finally set value:
-             Xout(i, j, k, :) = pt * fact26
-          end do
-       end do
-    end do
+              ! Finally set value:
+              Xout(i, j, k, :) = pt * fact26
+            end do
+        end do
+      end do
+    endif
+
 
   end subroutine refine
 
@@ -830,11 +863,12 @@ contains
        Xfine(ii, :) = 0.5_8 * (Xcoarse(i, :) + Xcoarse(i+1, :))
     end do
 
+
   end subroutine interpEdge
 
   subroutine interpFace(Xcoarse, Xfine, il, jl)
 
-    ! This routine generically interpolates an face of size il, jl from
+    ! This routine generically interpolates a face of size il, jl from
     ! Xcoarse to Xfine. We assume we already have computed where the
     ! edges of the face are: XCoarse is actually unused.
 
