@@ -2965,13 +2965,16 @@ def mergeGrid(grid):
 
     return grid
 
-def combineGrids(grids):
+def combineGrids(grids, useOldNames=False):
 
     """Method that takes in a list of grids and returns a new grid object
     containing all zones from each grid. The blocks are renamed as
     there could (almost most certainly) be conflicts between the zone
     names in the different grids. This also means that the block to
-    block connectivities need to be updated based on the new zone names
+    block connectivities need to be updated based on the new zone names.
+
+    If useOldNames=True we will preserve the domain names after merging
+    the blocks, otherwise, we will replace all names by the filenames.
     """
 
     # Create a dictionary to contain grid objects with their names
@@ -3000,10 +3003,14 @@ def combineGrids(grids):
         zoneMap = {}
 
         nBlock = 0
+
         # Loop over the blocks and obtain the name mapping
         for blk in grid.blocks:
             nBlock += 1
-            newName = name + '.%5.5d'% nBlock
+            if not useOldNames:
+                newName = name + '.%5.5d'% nBlock
+            else:
+                newName = blk.name.split('.')[0] + '.%5.5d'% nBlock
             zoneMap[blk.name] = newName
             blk.name = newName
 
