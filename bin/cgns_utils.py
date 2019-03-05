@@ -21,7 +21,7 @@ import numpy
 import libcgns_utils
 import time
 
-# These are taken from the CNGS include file (cgnslib_f.h in your cgns library folder)
+# These are taken from the CGNS include file (cgnslib_f.h in your cgns library folder)
 BC = {'bcfarfield':7,
       'bcsymmetryplane':16,
       'bcwall':20,
@@ -474,7 +474,7 @@ class Grid(object):
 
     def autoFarfieldBC(self, sym):
         """This is essentially a simplified version of autoBC that flags all
-        boundaries as BCOverset except for possible symmetry planes."""
+        boundaries as BCFarfield except for possible symmetry planes."""
 
         # Remove any BCinfo/B2B info we may have.
         for blk in self.blocks:
@@ -499,13 +499,12 @@ class Grid(object):
             blockID = myIDs[i] - 1
 
             if types[i] == 0: # Boco
-                coor_check = abs(faceAvg[symAxis, i]) < 1e-3
                 dp_check = abs(numpy.dot(faceNormal[:, i], symNormal)) > 0.98
-                if dp_check and coor_check:
+                if dp_check:
                     bocoType = BC['bcsymmetryplane']
                     famName = 'sym'
                 else:
-                    # Flag as overset
+                    # Flag as farfield
                     bocoType = BC['bcfarfield']
                     famName = 'far'
 
@@ -552,15 +551,18 @@ class Grid(object):
         patches = []
 
         # First take patches that are opposite from the origin planes
-        patches.append(X[-1, :, :, :])
-        patches.append(X[:, -1, :, :][::-1, :, :])
-        patches.append(X[:, :, -1, :])
+        if 'xmax' not in sym:
+            patches.append(X[-1, :, :, :])
+        if 'ymax' not in sym:
+            patches.append(X[:, -1, :, :][::-1, :, :])
+        if 'zmax' not in sym:
+            patches.append(X[:, :, -1, :])
 
-        if sym != 'x':
+        if 'x' not in sym and 'xmin' not in sym:
             patches.append(X[0, :, :, :][::-1, :, :])
-        if sym != 'y':
+        if 'y' not in sym and 'ymin' not in sym:
             patches.append(X[:, 0, :, :])
-        if sym != 'z':
+        if 'z' not in sym and 'zmin' not in sym:
             patches.append(X[:, :, 0, :][::-1, :, :])
 
         # Set up the generic input for pyHyp:
@@ -588,6 +590,14 @@ class Grid(object):
             fName = os.path.join(dirpath, 'tmp.cgns')
 
         hyp.writeCGNS(MPI.COMM_WORLD.bcast(fName))
+
+        # Reset symmetry to single axis
+        if 'x' in sym or 'xmin' in sym or 'xmax' in sym:
+            sym = 'x'
+        elif 'y' in sym or 'ymin' in sym or 'ymax' in sym:
+            sym = 'y'
+        elif 'z' in sym or 'zmin' in sym or 'zmax' in sym:
+            sym = 'z'
 
         if MPI.COMM_WORLD.rank == 0:
             # Read the pyhyp mesh back in and add our additional "X" from above.
@@ -2406,16 +2416,57 @@ def inRange(ptRange, chkRange):
     return val
 
 def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
-    """Generates a cartesian mesh"""
+    """
+    Generates a cartesian mesh
+
+    Parameters
+    ----------
+    xMin : array (3)
+        Minimum along each coordinate axis.
+
+    xMax : array (3)
+        Maximum along each coordinate axis.
+
+    dh : float OR array (3)
+        Approximate edge length of each cell.
+
+    hExtra : float
+
+    nExtra : float
+
+    sym : str OR list
+        Axis of symmetry plane, one or more of ('x', 'y', 'z', 'xmin', 'xmax',
+        'ymin', 'ymax', 'zmin', 'zmax').
+
+    mgcycle : int OR array (3)
+        Number of times mesh should be able to be coarsened for multigrid cycles.
+
+    outFile : str
+        Output file name (optional).
+    """
+    assert(len(xMin) == 3)
+    assert(len(xMax) == 3)
+
+    if isinstance(dh, float) or isinstance(dh, int):
+        dh = [dh]*3
+    else:
+        assert(len(dh) == 3)
+
+    if isinstance(sym, str):
+        sym = [sym]
+
+    if isinstance(mgcycle, int):
+        mgcycle = [mgcycle]
 
     # Now determine how many nodes we need on the inside
-    MGFact = 2**(mgcycle-1)
     N = numpy.zeros(3, 'intc')
     dx = numpy.zeros(3)
     r = numpy.zeros(3)
     Xcart = []
     for iDim in range(3):
-        n = int((xMax[iDim]-xMin[iDim])/dh)
+        assert(isinstance(mgcycle[iDim], int))
+        MGFact = 2**(mgcycle[iDim]-1)
+        n = int((xMax[iDim]-xMin[iDim])/dh[iDim])
         n = n//MGFact + 1
         N[iDim] = n*MGFact # Number of CELLS
 
@@ -2430,12 +2481,18 @@ def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
         pos = True
         neg = True
 
-        if sym == 'x' and iDim == 0:
+        if ('x' in sym or 'xmin' in sym) and iDim == 0:
             neg = False
-        if sym == 'y' and iDim == 1:
+        if ('y' in sym or 'ymin' in sym) and iDim == 1:
             neg = False
-        if sym == 'z' and iDim == 2:
+        if ('z' in sym or 'zmin' in sym) and iDim == 2:
             neg = False
+        if ('xmax' in sym) and iDim == 0:
+            pos = False
+        if ('ymax' in sym) and iDim == 1:
+            pos = False
+        if ('zmax' in sym) and iDim == 2:
+            pos = False
 
         # Now fill up the cartesian direction
         n = N[iDim]
