@@ -118,6 +118,7 @@ class Grid(object):
             print ('Block Number:', counter)
             print ('Number of Cells:', nCells)
             print ('Number of Nodes:', nNodes)
+            print('Block dimensions:', blk.dims)
             totalCells += nCells
             totalNodes += nNodes
             counter +=1
@@ -1529,7 +1530,6 @@ class Block(object):
     def coarsen(self):
         """Coarsen the block uniformly. We will update the boundary
         conditions and B2B if necessary"""
-
         # We will coarsen one direction at a time. We do this to check if the block
         # is already 1-cell wide, which can't be coarsened any further
         if self.dims[0] != 2:
@@ -2276,8 +2276,35 @@ class BocoDataSetArray(object):
 
 
 class B2B(object):
-    """Class for storing information related to a Block-to-block or
-    (1to1 in cgns speak) connection"""
+    """
+    Class for storing information related to a Block-to-block or
+    (1to1 in cgns speak) connection. More details at http://cgns.github.io/CGNS_docs_current/sids/cnct.html#GridConnectivity1to1.
+
+    Parameters
+    ----------
+    connectName : str
+        Name of the surface patch.
+
+    donorName : str
+        Name of the adjacent block (that sits on the other side of the block-to-
+        block interface).
+
+    ptRange : array (3,2)
+        ptRange contains the subrange of indices that makes up the interface
+        patch in the current zone.
+
+    donorRange : array (3,2)
+        donorRange contains the interface patch subrange of indices for the
+        adjacent block (whose identifier is given by donorName). By
+        convention the indices contained in ptRange and donorRange
+        refer to vertices.
+
+    transform : array (3)
+        Information to produce transformation matrix between ijk axes from one
+        block to the other. Each entry, transform[i], gives the axis in the
+        donor block that corresponds to the ith axis in the owner block. If the
+        blocks are perfectly aligned, transform = [1, 2, 3].
+    """
     def __init__(self, connectName, donorName, ptRange, donorRange, transform):
         self.name = connectName.strip()
         self.donorName = donorName.strip()
@@ -2287,9 +2314,10 @@ class B2B(object):
 
     def coarsen(self,direction):
         """Coarsen the range of the B2B along the specified direction"""
+        donorDir = abs(self.transform[direction]) - 1
         for j in range(2):
             self.ptRange[direction, j] = (self.ptRange[direction, j]-1)//2 + 1
-            self.donorRange[direction, j] = (self.donorRange[direction, j]-1)//2 + 1
+            self.donorRange[donorDir, j] = (self.donorRange[donorDir, j]-1)//2 + 1
 
     def refine(self, axes):
         """refine the range of the B2B"""
