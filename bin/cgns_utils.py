@@ -500,8 +500,9 @@ class Grid(object):
             blockID = myIDs[i] - 1
 
             if types[i] == 0: # Boco
+                coor_check = abs(faceAvg[symAxis, i]) < 1e-3
                 dp_check = abs(numpy.dot(faceNormal[:, i], symNormal)) > 0.98
-                if dp_check:
+                if dp_check and coor_check:
                     bocoType = BC['bcsymmetryplane']
                     famName = 'sym'
                 else:
