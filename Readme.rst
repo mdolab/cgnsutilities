@@ -81,3 +81,8 @@ which will yield the following::
     scale       scale factor
     outFile     Optional output file
 
+
+License
+-------
+
+Copyright 2019 MDO Lab. See the LICENSE file for details
