@@ -2486,6 +2486,8 @@ def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
 
     if isinstance(mgcycle, int):
         mgcycle = [mgcycle]*3
+    else:
+        assert(len(mgcycle) == 3)
 
     # Now determine how many nodes we need on the inside
     N = numpy.zeros(3, 'intc')
