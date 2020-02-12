@@ -18,7 +18,7 @@ import shutil
 import tempfile
 import argparse
 import numpy
-from . import libcgns_utils
+import libcgns_utils
 import time
 
 # These are taken from the CGNS include file (cgnslib_f.h in your cgns library folder)
