@@ -10,7 +10,6 @@ read cngs file -> Do some operations on it -> |     .or.
                                               | write modified file
 Developed by Dr. Gaetan K. W. Kenway
 """
-from __future__ import print_function, division
 import sys
 import os
 import copy
@@ -18,7 +17,7 @@ import shutil
 import tempfile
 import argparse
 import numpy
-import libcgns_utils
+from . import libcgns_utils
 import time
 
 # These are taken from the CGNS include file (cgnslib_f.h in your cgns library folder)
@@ -761,7 +760,7 @@ class Grid(object):
                         kmax = self.blocks[index].dims[2]
                     # Use the range to compute average volume
                     libcgns_utils.utils.computevolumes(self.blocks[index].coords[imin:imax, jmin:jmax, kmin:kmax, :], xBounds, \
-                                                 binVolX, binVolY, binVolZ, binCellsX, binCellsY, binCellsZ)
+                                                       binVolX, binVolY, binVolZ, binCellsX, binCellsY, binCellsZ)
 
         # DEFINE UNIDIMENSIONAL GRID GENERATION ROUTINES
 
@@ -1417,14 +1416,14 @@ class Grid(object):
             # modify them, then add them to the original grid
 
             for b2b in new_blk.B2Bs:
-                    pt_rng = b2b.ptRange
-                    pt_rng[pt_rng==2] = nThetas
-                    # print(b2b.ptRange)
+                pt_rng = b2b.ptRange
+                pt_rng[pt_rng==2] = nThetas
+                # print(b2b.ptRange)
 
-                    dnr_rng = b2b.donorRange
-                    dnr_rng[dnr_rng==2] = nThetas
+                dnr_rng = b2b.donorRange
+                dnr_rng[dnr_rng==2] = nThetas
 
-                    blk.addB2B(b2b)
+                blk.addB2B(b2b)
 
 
     def addConvArray(self, arrayName, arrayData):
@@ -1460,7 +1459,7 @@ class Block(object):
         libcgns_utils.utils.writecoordinates(cg, zoneID, self.coords)
         for boco in self.bocos:
             iBC = libcgns_utils.utils.writebc(cg, zoneID, boco.name, boco.family,
-                                        boco.ptRange, boco.type)
+                                              boco.ptRange, boco.type)
             for dataSet in boco.dataSets:
                 # Write the header for the BCDataSet
                 iDataSet = libcgns_utils.utils.writebcdataheader(cg, zoneID, dataSet.type, iBC, dataSet.name)
@@ -1469,21 +1468,21 @@ class Block(object):
                 writeBCDataHeader = True
                 for dirArr in dataSet.dirichletArrays:
                     libcgns_utils.utils.writebcdata(cg, zoneID, iBC, iDataSet, BCDATATYPE["Dirichlet"], writeBCDataHeader,
-                                          dirArr.name, dirArr.dataType, dirArr.nDimensions, dirArr.dataDimensions,
-                                          dirArr.dataArr, dirArr.dataArr.shape)
+                                                    dirArr.name, dirArr.dataType, dirArr.nDimensions, dirArr.dataDimensions,
+                                                    dirArr.dataArr, dirArr.dataArr.shape)
                     writeBCDataHeader = False
 
                 writeBCDataHeader = True
                 for neuArr in dataSet.neumannArrays:
                     libcgns_utils.utils.writebcdata(cg, zoneID, iBC, iDataSet, BCDATATYPE["Neumann"], writeBCDataHeader,
-                                          neuArr.name, neuArr.dataType, neuArr.nDimensions, neuArr.dataDimensions,
-                                          neuArr.dataArr, neuArr.dataArr.shape)
+                                                    neuArr.name, neuArr.dataType, neuArr.nDimensions, neuArr.dataDimensions,
+                                                    neuArr.dataArr, neuArr.dataArr.shape)
                     writeBCDataHeader = False
 
         for b2b in self.B2Bs:
             libcgns_utils.utils.writeb2b(cg, zoneID, b2b.name, b2b.donorName,
-                                   b2b.ptRange, b2b.donorRange,
-                                   b2b.transform)
+                                         b2b.ptRange, b2b.donorRange,
+                                         b2b.transform)
 
     def writeDimsPlot3d(self, f):
         """Write dimensions to a plot3d file"""
@@ -1867,7 +1866,7 @@ class Block(object):
                             blk.addBoco(Boco(
                                 boco.name, boco.type,
                                 [[1, 1], [1, dims[1]], [1, dims[2]]],
-                                 boco.family))
+                                boco.family))
 
                         # iHigh
                         chkRange = [[s[0][i+1], s[0][i+1]],
@@ -1889,7 +1888,7 @@ class Block(object):
                             blk.addBoco(Boco(
                                 boco.name, boco.type,
                                 [[1, dims[0]], [1, 1], [1, dims[2]]],
-                                 boco.family))
+                                boco.family))
 
                         # jHigh
                         chkRange = [[s[0][i  ], s[0][i+1]],
@@ -1911,7 +1910,7 @@ class Block(object):
                             blk.addBoco(Boco(
                                 boco.name, boco.type,
                                 [[1, dims[0]], [1, dims[1]], [1, 1]],
-                                 boco.family))
+                                boco.family))
 
                         # kHigh
                         chkRange = [[s[0][i]  , s[0][i+1]],
@@ -1922,7 +1921,7 @@ class Block(object):
                             blk.addBoco(Boco(
                                 boco.name, boco.type,
                                 [[1, dims[0]], [1, dims[1]], [dims[2], dims[2]]],
-                                 boco.family))
+                                boco.family))
 
                     blkList.append(blk)
         return blkList
@@ -2624,7 +2623,7 @@ def readGrid(fileName):
         if cellDim == 2:
             dims[2] = 1
         coords = libcgns_utils.utils.getcoordinates(inFile, iBlock,
-                                              dims[0], dims[1], dims[2])
+                                                    dims[0], dims[1], dims[2])
         blk = Block(zoneName, dims, coords)
 
         for iBoco in range(1, nBoco+1):
@@ -2642,7 +2641,7 @@ def readGrid(fileName):
                     bcDSet = BocoDataSet(bocoDatasetName, bocoType)
 
                     def getBocoDataSetArray(flagDirNeu):
-                         # Get data information
+                        # Get data information
                         dataArrayName, dataType, nDimensions, dataDimensionVector = libcgns_utils.utils.getbcdataarrayinfo(inFile, iBlock, iBoco, iBocoDataSet, iDir, flagDirNeu)
 
                         # Create a flat array for the data
@@ -2687,7 +2686,7 @@ def readGrid(fileName):
 
         for iB2B in range(1, nB2B+1):
             connectName, donorName, ptRange, donorRange, transform = \
-                         libcgns_utils.utils.getb2binfo(inFile, iBlock, iB2B)
+                libcgns_utils.utils.getb2binfo(inFile, iBlock, iB2B)
             blk.addB2B(B2B(connectName, donorName, ptRange, donorRange,
                            transform))
 
