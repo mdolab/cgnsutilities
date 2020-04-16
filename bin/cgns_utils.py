@@ -10,7 +10,6 @@ read cngs file -> Do some operations on it -> |     .or.
                                               | write modified file
 Developed by Dr. Gaetan K. W. Kenway
 """
-from __future__ import print_function, division
 import sys
 import os
 import copy
@@ -18,7 +17,7 @@ import shutil
 import tempfile
 import argparse
 import numpy
-import libcgns_utils
+from . import libcgns_utils
 import time
 
 # These are taken from the CGNS include file (cgnslib_f.h in your cgns library folder)
