@@ -117,7 +117,7 @@ class Grid(object):
             print('Block Number:', counter)
             print('Number of Cells:', nCells)
             print('Number of Nodes:', nNodes)
-            print('Block dimensions:', blk.dims)
+            print('Block dimensions:', list(blk.dims))
             totalCells += nCells
             totalNodes += nNodes
             counter +=1
