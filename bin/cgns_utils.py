@@ -66,9 +66,9 @@ class Grid(object):
             totalCells += (blk.dims[0]-1)*(blk.dims[1]-1)*(blk.dims[2]-1)
             totalNodes += blk.dims[0]*blk.dims[1]*blk.dims[2]
 
-        print ('Total Zones:', len(self.blocks))
-        print ('Total Cells:', totalCells)
-        print ('Total Nodes:', totalNodes)
+        print('Total Zones:', len(self.blocks))
+        print('Total Cells:', totalCells)
+        print('Total Nodes:', totalNodes)
 
         boundaryNodes = 0
         boundaryCells = 0
@@ -100,8 +100,8 @@ class Grid(object):
                                          (ptRange[1, 1] - ptRange[1, 0] +1)
 
 
-        print ('Wall Boundary Cells:', boundaryCells)
-        print ('Wall Boundary Nodes:', boundaryNodes)
+        print('Wall Boundary Cells:', boundaryCells)
+        print('Wall Boundary Nodes:', boundaryNodes)
 
 
     def printBlockInfo(self):
@@ -114,16 +114,16 @@ class Grid(object):
         for blk in self.blocks:
             nCells = (blk.dims[0]-1)*(blk.dims[1]-1)*(blk.dims[2]-1)
             nNodes = blk.dims[0]*blk.dims[1]*blk.dims[2]
-            print ('Block Number:', counter)
-            print ('Number of Cells:', nCells)
-            print ('Number of Nodes:', nNodes)
-            print('Block dimensions:', blk.dims)
+            print('Block Number:', counter)
+            print('Number of Cells:', nCells)
+            print('Number of Nodes:', nNodes)
+            print('Block dimensions:', list(blk.dims))
             totalCells += nCells
             totalNodes += nNodes
             counter +=1
-        print ('Total Zones:', len(self.blocks))
-        print ('Total Cells:', totalCells)
-        print ('Total Nodes:', totalNodes)
+        print('Total Zones:', len(self.blocks))
+        print('Total Cells:', totalCells)
+        print('Total Nodes:', totalNodes)
 
     def addBlock(self, blk):
 
@@ -235,7 +235,7 @@ class Grid(object):
                 f.write('\n')
             f.close()
         else:
-            print ('Warning: No wall surfaces found!')
+            print('Warning: No wall surfaces found!')
 
     def extractSpecifiedSurface(self, fileName,blkid,imin,imax,jmin,jmax,kmin,kmax):
         """ Extract Specified surfaces and write to plot3d file"""
@@ -258,7 +258,7 @@ class Grid(object):
                 f.write('\n')
             f.close()
         else:
-            print ('Warning: No surfaces found!')
+            print('Warning: No surfaces found!')
 
     def overwriteFamilies(self, familyFile):
         """Overwrite families of BC with information given in the
@@ -621,7 +621,7 @@ class Grid(object):
         inLayer = 2 # How many layers of the overset interpolation
                     # faces will be used for volume computation
 
-        print ('Running cartesian grid generator')
+        print('Running cartesian grid generator')
 
         # Preallocate arrays
         extensions = numpy.zeros((2,3),order='F')
@@ -951,14 +951,14 @@ class Grid(object):
             gz = None
 
         # Print growth ratios
-        print ('')
-        print ('Maximum growth ratios along each direction:')
-        print ('X: ',gx)
-        print ('Y: ',gy)
-        print ('Z: ',gz)
+        print('')
+        print('Maximum growth ratios along each direction:')
+        print('X: ',gx)
+        print('Y: ',gy)
+        print('Z: ',gz)
         if max(gx,gy,gz) > 1.2:
-            print ("You may bring weightGR closer to 1 to decrease ratios")
-        print ('')
+            print("You may bring weightGR closer to 1 to decrease ratios")
+        print('')
 
         # Allocate coordinates block
         X = numpy.zeros((nNodes[0],nNodes[1],nNodes[2],3))
@@ -982,7 +982,7 @@ class Grid(object):
         libcgns_utils.utils.closefile(cg)
 
         # Print
-        print ('Mesh successfully generated and stored in: '+outFile)
+        print('Mesh successfully generated and stored in: '+outFile)
 
     def split(self, extraSplits):
 
@@ -2561,8 +2561,8 @@ def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
     shp = [Xcart[0].shape[0], Xcart[1].shape[0], Xcart[2].shape[0]]
     X = numpy.zeros((shp[0], shp[1], shp[2], 3))
 
-    print ('Grid Dimensions:', shp)
-    print ('Grid Ratios:', r)
+    print('Grid Dimensions:', shp)
+    print('Grid Ratios:', r)
     # Write grid coordinates
     Xx, Xy, Xz = numpy.meshgrid(Xcart[0], Xcart[1], Xcart[2], indexing='ij')
     X[:,:,:,0] = Xx
@@ -2858,7 +2858,7 @@ def mergeGrid(grid):
                         blockUsed[otherIndex] == 0 and
                         i != otherIndex):
 
-                        print ('Merging:', i+1, otherIndex+1)
+                        print('Merging:', i+1, otherIndex+1)
 
                         # Great! These block match. Let's make the new
                         # block
@@ -3040,7 +3040,7 @@ def mergeGrid(grid):
 
         # Set the new blocks
         grid.blocks = newBlocks
-        print ("New number of blocks:", len(grid.blocks))
+        print("New number of blocks:", len(grid.blocks))
 
         # Rename the blocks and remove any B2B info since it will all
         # be recomputed:
