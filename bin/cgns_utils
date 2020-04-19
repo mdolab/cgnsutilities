@@ -11,7 +11,6 @@ read cngs file -> Do some operations on it -> |     .or.
 Developed by Dr. Gaetan K. W. Kenway
 
 """
-from __future__ import print_function, division
 import sys
 import os
 import copy
@@ -797,7 +796,7 @@ elif args.mode == 'cartesian':
     if found_overset:
         curGrid.cartesian(args.cartFile,args.outFile)
     else:
-        print ('The CGNS file has no overset boundary conditions')
+        print('The CGNS file has no overset boundary conditions')
     sys.exit(0)
 
 elif args.mode == 'simpleCart':
@@ -848,7 +847,7 @@ elif args.mode == 'include':
 
 elif args.mode == 'section':
     if len(curGrid.blocks) != 1:
-        print ('section command works only on grids with 1 block')
+        print('section command works only on grids with 1 block')
         sys.exit(0)
     curGrid.blocks[0].section(args.iStart, args.iEnd, args.jStart, args.jEnd,
                               args.kStart, args.kEnd)
