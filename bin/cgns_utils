@@ -18,7 +18,6 @@ import shutil
 import tempfile
 import argparse
 import numpy
-import libcgns_utils
 import time
 os.sys.path.append(os.path.dirname(os.path.abspath('.')))
 from cgns_utils import *
