@@ -45,6 +45,8 @@ install:
 
 script:
   # There are no tests for cgnsutilities
+  # we just check that we can run the command line script here
+  - docker exec -it app /bin/bash -c ". \$HOME/.bashrc_mdolab && cd $HOME && cgns_utils -h"
 
 after_script:
   - docker rm -f app
