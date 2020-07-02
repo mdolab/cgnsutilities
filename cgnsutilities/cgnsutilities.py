@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 This is the new gateway program to all of the cgns_utils.
 
@@ -10,15 +9,11 @@ read cngs file -> Do some operations on it -> |     .or.
                                               | write modified file
 Developed by Dr. Gaetan K. W. Kenway
 """
-import sys
 import os
 import copy
-import shutil
 import tempfile
-import argparse
 import numpy
-from cgnsutilities.bin import libcgns_utils
-import time
+from . import libcgns_utils
 
 # These are taken from the CGNS include file (cgnslib_f.h in your cgns library folder)
 BC = {'bcfarfield':7,

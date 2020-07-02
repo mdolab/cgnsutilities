@@ -50,4 +50,4 @@ default:
 # Final Link:
 	$(FC) -shared $(PYTHON_OBJECTS) cgns_utilities.o tecio.a $(CGNS_LINKER_FLAGS) -lstdc++ -o libcgns_utils.so
 	$(PYTHON) importTest.py
-	mv libcgns_utils.so ../bin
+	mv libcgns_utils.so ../cgnsutilities
