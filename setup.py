@@ -26,5 +26,5 @@ setup(name='cgnsutilities',
       classifiers=[
         "Operating System :: Linux",
         "Programming Language :: Python, Fortran"],
-      entry_points={"console_scripts": ["cgns_utils = cgnsutilities.cgns_utils:main"]},
+      scripts=['cgnsutilities/cgns_utils'],
       )
