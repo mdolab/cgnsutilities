@@ -3,7 +3,7 @@
 This repository contains a single program called `cgns_utils` that
 provides many useful functions for working with cgns grids. 
 
-## Compiling
+## Installation Instructions
 
 First, copy the default configuration file to the required name:
   
