@@ -21,7 +21,7 @@ setup(name='cgnsutilities',
           'cgnsutilities': ['*.so']
       },
       install_requires=[
-          'numpy>=1.16.4',
+          'numpy>=1.16',
       ],
       classifiers=[
         "Operating System :: Linux",
