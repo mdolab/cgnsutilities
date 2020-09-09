@@ -1,4 +1,5 @@
 # cgnsUtilities
+[![Build Status](https://travis-ci.com/mdolab/cgnsutilities.svg?branch=master)](https://travis-ci.com/mdolab/cgnsutilities)
 
 This repository contains a single program called `cgns_utils` that
 provides many useful functions for working with cgns grids. 
