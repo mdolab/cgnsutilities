@@ -1,6 +1,8 @@
 import:
-  - mdolab/.github:travis-env.yml
-  - mdolab/.github:travis-before-install.yml
+  - mdolab/.github:travis/jobs-env.yml
+  - mdolab/.github:travis/before-install.yml
+  - mdolab/.github:travis/script.yml
+  
 
 env:
   global:
@@ -18,7 +20,9 @@ install:
 script:
   # There are no tests for cgnsutilities
   # we just check that we can run the command line script here
-  - docker exec -it app /bin/bash -c ". $BASHRC && cd \$HOME && cgns_utils -h"
+  - if [[ "$TEST_TYPE" == "docker" ]]; then
+      docker exec -it app /bin/bash -c ". $BASHRC && cd \$HOME && cgns_utils -h"
+    fi
 
 after_script:
   - docker rm -f app
