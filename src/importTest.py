@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 import sys
 
-name = 'libcgns_utils'
+name = "libcgns_utils"
 print("Testing if module %s can be imported..." % name)
 import_cmd = "import %s" % name
 try:
@@ -12,4 +12,3 @@ except:
 # end try
 
 print("Module %s was successfully imported." % name)
-
