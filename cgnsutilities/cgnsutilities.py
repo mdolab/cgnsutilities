@@ -2698,7 +2698,7 @@ def readGrid(fileName):
                             bcDSet.addNeumannDataSet(bcDSetArr)
 
                         # Append the Neumann BC dataset to the BC
-                        bc.addBocoDataSet(bcNSet)
+                        bc.addBocoDataSet(bcDSet)
 
             blk.addBoco(bc)
 
