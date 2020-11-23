@@ -856,7 +856,7 @@ class Grid(object):
             #                            and will just try to get an uniform growth ratio. This results in an uniform mesh.
 
             # IMPORTS
-            from numpy import array, mean, zeros
+            from numpy import array, mean
             from scipy.optimize import minimize
 
             # Compute farfield coordinates
@@ -1013,7 +1013,7 @@ class Grid(object):
             # USE numpy.unique it doesn't actually work for tuples.
             newSplits = []
             for split in splits:
-                if not split in newSplits:
+                if split not in newSplits:
                     newSplits.append(split)
             splits = newSplits
 
@@ -2255,7 +2255,7 @@ class BocoDataSet(object):
         self.dirichletArrays.append(dirDataSet)
 
     def addNeumannDataSet(self, neuDataSet):
-        self.neumannArrays.append(dirDataSet)
+        self.neumannArrays.append(neuDataSet)
 
 
 class BocoDataSetArray(object):
@@ -2346,7 +2346,6 @@ def getS(N, s0, S):
     # function 'f' is 1 - s0*(1-r^n)/(1-r), s0 is initial ratio and r
     # is the grid ratio.
 
-    M = N - 1
     # Bisection search:
     a = 1.0 + 1e-8
     b = 4.0
@@ -2360,7 +2359,6 @@ def getS(N, s0, S):
         return s[-1]
 
     fa = S - f(a)
-    fb = S - f(b)
 
     for i in range(100):
         c = 0.5 * (a + b)
@@ -2852,7 +2850,6 @@ def mergeGrid(grid):
                 for b2b in blk.B2Bs:
                     otherIndex = zoneMap[b2b.donorName]
                     otherBlk = grid.blocks[otherIndex]
-                    otherRange = b2b.donorRange
 
                     # Determine if this B2B is a full patch on my block
                     # *and* the other block
