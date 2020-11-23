@@ -1081,9 +1081,16 @@ class Grid(object):
         # Run the fortran code to generate all the connectivities
         libcgns_utils.utils.computeconnectivity(coords, sizes.T, tol)
         nPatches = libcgns_utils.utils.getnpatches()
-        types, pointRanges, myIDs, pointRangeDonors, transforms, donorIDs, faceAvgs, faceNormals = libcgns_utils.utils.getpatchinfo(
-            nPatches
-        )
+        (
+            types,
+            pointRanges,
+            myIDs,
+            pointRangeDonors,
+            transforms,
+            donorIDs,
+            faceAvgs,
+            faceNormals,
+        ) = libcgns_utils.utils.getpatchinfo(nPatches)
         libcgns_utils.utils.deallocpatches()
 
         # Remove all existing B2B info
@@ -1124,9 +1131,16 @@ class Grid(object):
             # Run the fortran code to generate all the connectivities
             libcgns_utils.utils.computeconnectivity(coords, sizes.T, tol)
             nPatches = libcgns_utils.utils.getnpatches()
-            t, pointRange, myID, pointRangeDonor, transform, donorID, faceAvg, faceNormal = libcgns_utils.utils.getpatchinfo(
-                nPatches
-            )
+            (
+                t,
+                pointRange,
+                myID,
+                pointRangeDonor,
+                transform,
+                donorID,
+                faceAvg,
+                faceNormal,
+            ) = libcgns_utils.utils.getpatchinfo(nPatches)
             libcgns_utils.utils.deallocpatches()
 
             # Remove all existing B2B info
@@ -2628,14 +2642,22 @@ def readGrid(fileName):
                 # Loop over all the datasets for this BC
                 for iBocoDataSet in range(1, nDataSets + 1):
 
-                    bocoDatasetName, bocoDataSetType, nDirichletArrays, nNeumannArrays = libcgns_utils.utils.getbcdatasetinfo(
-                        inFile, iBlock, iBoco, iBocoDataSet
-                    )
+                    (
+                        bocoDatasetName,
+                        bocoDataSetType,
+                        nDirichletArrays,
+                        nNeumannArrays,
+                    ) = libcgns_utils.utils.getbcdatasetinfo(inFile, iBlock, iBoco, iBocoDataSet)
                     bcDSet = BocoDataSet(bocoDatasetName, bocoType)
 
                     def getBocoDataSetArray(flagDirNeu):
                         # Get data information
-                        dataArrayName, dataType, nDimensions, dataDimensionVector = libcgns_utils.utils.getbcdataarrayinfo(
+                        (
+                            dataArrayName,
+                            dataType,
+                            nDimensions,
+                            dataDimensionVector,
+                        ) = libcgns_utils.utils.getbcdataarrayinfo(
                             inFile, iBlock, iBoco, iBocoDataSet, iDir, flagDirNeu
                         )
 
@@ -3152,8 +3174,8 @@ def explodeGrid(grid, kMin=False):
 
 
 def explodeByZoneName(grid):
-    """ Method that takes one multiblock grid and returns a list of grids, each
-        containing all zones that have similar naming.
+    """Method that takes one multiblock grid and returns a list of grids, each
+    containing all zones that have similar naming.
     """
 
     # Initialize list of grids
