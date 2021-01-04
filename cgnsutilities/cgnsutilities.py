@@ -556,13 +556,13 @@ class Grid(object):
         hypOptions = {
             "patches": patches,
             "unattachedEdgesAreSymmetry": True,
-            "outerFaceBC": "farField",
+            "outerFaceBC": "farfield",
             "autoConnect": True,
             "BC": {},
             "N": nExtra,
             "s0": numpy.average(dx),
             "marchDist": hExtra,
-            "cmax": 3,
+            "cmax": 3.0,
         }
 
         # Run pyHyp
