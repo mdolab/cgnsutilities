@@ -1,5 +1,5 @@
 # cgnsUtilities
-[![Build Status](https://travis-ci.com/mdolab/cgnsutilities.svg?branch=master)](https://travis-ci.com/mdolab/cgnsutilities)
+[![Build Status](https://dev.azure.com/mdolab/Public/_apis/build/status/mdolab.cgnsutilities?repoName=mdolab%2Fcgnsutilities&branchName=azure)](https://dev.azure.com/mdolab/Public/_build/latest?definitionId=16&repoName=mdolab%2Fcgnsutilities&branchName=azure)
 
 This repository contains a single program called `cgns_utils` that
 provides many useful functions for working with cgns grids. 
