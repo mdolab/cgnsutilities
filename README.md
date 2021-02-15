@@ -6,7 +6,7 @@ provides many useful functions for working with cgns grids.
 
 ## Installation Instructions
 
-First, copy the default configuration file to the required name. For example, to use GFORTRAN: 
+First, copy the default configuration file to the required name. For example, to use gfortran: 
   
     cp config/defaults/config.LINUX_GFORTRAN.mk config/config.mk
 
