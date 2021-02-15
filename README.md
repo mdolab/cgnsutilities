@@ -6,9 +6,9 @@ provides many useful functions for working with cgns grids.
 
 ## Installation Instructions
 
-First, copy the default configuration file to the required name:
+First, copy the default configuration file to the required name. For example, to use GFORTRAN: 
   
-    cp config.mk.info config.mk
+    cp config/defaults/config.LINUX_GFORTRAN.mk config/config.mk
 
 Open and edit the config file.
 You many have to adjust the `CGNS_INCLUDE_FLAGS` and `CGNS_LINKER_FLAGS` to match your installation of the CGNS library.
