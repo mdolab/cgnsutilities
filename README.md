@@ -1,14 +1,14 @@
 # cgnsUtilities
-[![Build Status](https://travis-ci.com/mdolab/cgnsutilities.svg?branch=master)](https://travis-ci.com/mdolab/cgnsutilities)
+[![Build Status](https://dev.azure.com/mdolab/Public/_apis/build/status/mdolab.cgnsutilities?repoName=mdolab%2Fcgnsutilities&branchName=azure)](https://dev.azure.com/mdolab/Public/_build/latest?definitionId=16&repoName=mdolab%2Fcgnsutilities&branchName=azure)
 
 This repository contains a single program called `cgns_utils` that
 provides many useful functions for working with cgns grids. 
 
 ## Installation Instructions
 
-First, copy the default configuration file to the required name:
+First, copy the default configuration file to the required name. For example, to use gfortran: 
   
-    cp config.mk.info config.mk
+    cp config/defaults/config.LINUX_GFORTRAN.mk config/config.mk
 
 Open and edit the config file.
 You many have to adjust the `CGNS_INCLUDE_FLAGS` and `CGNS_LINKER_FLAGS` to match your installation of the CGNS library.

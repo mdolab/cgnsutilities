@@ -1,0 +1,12 @@
+*.DS_Store
+*__pycache__
+*.egg-info
+*.mod
+*.o
+*.so
+
+# auto generated files
+src/libcgns_utils-f2pywrappers2.f90
+src/libcgns_utilsmodule.c
+
+config.mk
