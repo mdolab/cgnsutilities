@@ -1306,7 +1306,7 @@ class Grid(object):
         # Loop over the blocks to add more significant digits to the last integer
         for blk in self.blocks:
             # Find last integer in the current name
-            last_int = re.findall(r"\d+", blk.name)[-1]
+            last_int = re.findall(rb"\d+", blk.name)[-1]
 
             # Apply modifications only if we have found an integer
             if last_int:
