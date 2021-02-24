@@ -217,11 +217,11 @@ class Grid(object):
 
                 f.write("%d %d 1\n" % (patches[i].shape[0], patches[i].shape[1]))
             for i in range(len(patches)):
-                patches[i][:, :, 0].flatten(1).tofile(f, sep="\n", format="%20.15g")
+                patches[i][:, :, 0].flatten("F").tofile(f, sep="\n", format="%20.15g")
                 f.write("\n")
-                patches[i][:, :, 1].flatten(1).tofile(f, sep="\n", format="%20.15g")
+                patches[i][:, :, 1].flatten("F").tofile(f, sep="\n", format="%20.15g")
                 f.write("\n")
-                patches[i][:, :, 2].flatten(1).tofile(f, sep="\n", format="%20.15g")
+                patches[i][:, :, 2].flatten("F").tofile(f, sep="\n", format="%20.15g")
                 f.write("\n")
             f.close()
         else:
@@ -239,11 +239,11 @@ class Grid(object):
 
                 f.write("%d %d 1\n" % (patches[i].shape[0], patches[i].shape[1]))
             for i in range(len(patches)):
-                patches[i][:, :, 0].flatten(1).tofile(f, sep="\n", format="%20.15g")
+                patches[i][:, :, 0].flatten("F").tofile(f, sep="\n", format="%20.15g")
                 f.write("\n")
-                patches[i][:, :, 1].flatten(1).tofile(f, sep="\n", format="%20.15g")
+                patches[i][:, :, 1].flatten("F").tofile(f, sep="\n", format="%20.15g")
                 f.write("\n")
-                patches[i][:, :, 2].flatten(1).tofile(f, sep="\n", format="%20.15g")
+                patches[i][:, :, 2].flatten("F").tofile(f, sep="\n", format="%20.15g")
                 f.write("\n")
             f.close()
         else:
@@ -1527,7 +1527,7 @@ class Block(object):
     def writeCoordsPlot3d(self, f):
         """Write coordinates to plot3d file"""
         for iDim in range(3):
-            self.coords[:, :, :, iDim].flatten(1).tofile(f, sep="\n", format="%20.15g")
+            self.coords[:, :, :, iDim].flatten("F").tofile(f, sep="\n", format="%20.15g")
             f.write("\n")
 
     def scale(self, scaleFact):
