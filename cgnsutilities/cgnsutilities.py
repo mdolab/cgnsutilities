@@ -51,14 +51,21 @@ class Grid(object):
         self.name = "domain"
         self.cellDim = 3
 
-    def printInfo(self):
-        """Print some information on the mesh to screen. Specifically
-        information needed by the drag prediction workshop"""
+    def getCellsNodes(self):
+        """ Returns the total number of Cells and Nodes in the grid. """
         totalCells = 0
         totalNodes = 0
         for blk in self.blocks:
             totalCells += (blk.dims[0] - 1) * (blk.dims[1] - 1) * (blk.dims[2] - 1)
             totalNodes += blk.dims[0] * blk.dims[1] * blk.dims[2]
+
+        return totalCells, totalNodes
+        
+
+    def printInfo(self):
+        """Print some information on the mesh to screen. Specifically
+        information needed by the drag prediction workshop"""
+        totalCells, totalNodes = self.getCellsNodes()
 
         print("Total Zones:", len(self.blocks))
         print("Total Cells:", totalCells)
