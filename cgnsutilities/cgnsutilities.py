@@ -51,18 +51,36 @@ class Grid(object):
         self.name = "domain"
         self.cellDim = 3
 
-    def printInfo(self):
-        """Print some information on the mesh to screen. Specifically
-        information needed by the drag prediction workshop"""
+    def getTotalCellsNodes(self):
+        """
+        Returns the total number of Cells and Nodes in the grid.
+
+        Example
+        -------
+        To determine the number of cells/nodes in a grid use:
+            >>> from cgnsutilities.cgnsutilities import Grid, readGrid
+            >>> grid = readGrid("gridfilename.cgns")
+            >>> totalCells, totalNodes = grid.getTotalCellsNodes()
+        """
         totalCells = 0
         totalNodes = 0
         for blk in self.blocks:
             totalCells += (blk.dims[0] - 1) * (blk.dims[1] - 1) * (blk.dims[2] - 1)
             totalNodes += blk.dims[0] * blk.dims[1] * blk.dims[2]
 
-        print("Total Zones:", len(self.blocks))
-        print("Total Cells:", totalCells)
-        print("Total Nodes:", totalNodes)
+        return totalCells, totalNodes
+
+    def getWallCellsNodes(self):
+        """
+        Returns the number of Cells and Nodes on wall boundaries
+
+        Example
+        -------
+        To determine the number of cells/nodes in a grid use:
+            >>> from cgnsutilities.cgnsutilities import Grid, readGrid
+            >>> grid = readGrid("gridfilename.cgns")
+            >>> nWallCells, nWallNodes = grid.getWallCellsNodes()
+        """
 
         boundaryNodes = 0
         boundaryCells = 0
@@ -91,6 +109,20 @@ class Grid(object):
                         boundaryCells += (ptRange[0, 1] - ptRange[0, 0]) * (ptRange[1, 1] - ptRange[1, 0])
 
                         boundaryNodes += (ptRange[0, 1] - ptRange[0, 0] + 1) * (ptRange[1, 1] - ptRange[1, 0] + 1)
+        return boundaryCells, boundaryNodes
+
+    def printInfo(self):
+        """
+        Prints the number of zones, total number of cells and nodes,
+        and the number of cells and nodes on wall boundaries.
+        """
+        totalCells, totalNodes = self.getTotalCellsNodes()
+
+        print("Total Zones:", len(self.blocks))
+        print("Total Cells:", totalCells)
+        print("Total Nodes:", totalNodes)
+
+        boundaryCells, boundaryNodes = self.getWallCellsNodes()
 
         print("Wall Boundary Cells:", boundaryCells)
         print("Wall Boundary Nodes:", boundaryNodes)
