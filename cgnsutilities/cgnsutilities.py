@@ -2082,28 +2082,17 @@ class Block(object):
 
         # Check for existing boco and pop if necessary
         pop_list = []
-        for index in range(len(self.bocos)):
-            boco = self.bocos[index]
-            r = boco.ptRange
-            match = (
-                (r[0][0] == r[0][1] == 1 and faceStr == "ilow")
-                or (r[0][0] == r[0][1] == self.dims[0] and faceStr == "ihigh")
-                or (r[1][0] == r[1][1] == 1 and faceStr == "jlow")
-                or (r[1][0] == r[1][1] == self.dims[1] and faceStr == "jhigh")
-                or (r[2][0] == r[2][1] == 1 and faceStr == "klow")
-                or (r[2][0] == r[2][1] == self.dims[2] and faceStr == "khigh")
-            )
-
-            if match:
+        for index, boco in enumerate(self.bocos):
+            # Check if this boco point range matches the faceStr
+            if self.isFaceInBocoPtRange(boco, faceStr):
                 pop_list = pop_list + [index]
 
         # Pop all bcs in the face
-        pop_list.reverse()  # We have to remove the hogher indices first
+        pop_list.reverse()  # We have to remove the higher indices first
         for index in pop_list:
             self.bocos.pop(index)
 
         d = self.dims
-        faceStr = faceStr.lower()
         if faceStr == "ilow":
             ptRange = [[1, 1, 1], [1, d[1], d[2]]]
         elif faceStr == "ihigh":
@@ -2121,9 +2110,26 @@ class Block(object):
             exit()
 
         ptRange = numpy.array(ptRange).T
-        newBoco = Boco("boco_%d" % self.bocoCounter, BC[bcType.lower()], ptRange, family, dataSet)
+        self.addBoco(Boco("boco_%d" % self.bocoCounter, BC[bcType.lower()], ptRange, family, dataSet))
         self.bocoCounter += 1
-        self.bocos.append(newBoco)
+
+    def isFaceInBocoPtRange(self, boco, faceStr):
+        """
+        Helper routine that identifies if provided faceStr is in a given
+        boundary condition point set.
+        """
+
+        faceStr = faceStr.lower()
+        r = boco.ptRange
+        isFound = (
+            (r[0][0] == r[0][1] == 1 and faceStr == "ilow")
+            or (r[0][0] == r[0][1] == self.dims[0] and faceStr == "ihigh")
+            or (r[1][0] == r[1][1] == 1 and faceStr == "jlow")
+            or (r[1][0] == r[1][1] == self.dims[1] and faceStr == "jhigh")
+            or (r[2][0] == r[2][1] == 1 and faceStr == "klow")
+            or (r[2][0] == r[2][1] == self.dims[2] and faceStr == "khigh")
+        )
+        return isFound
 
     def rebunch(self, spacing, extraCells, nStar):
         """Perform rebunching for this block"""
