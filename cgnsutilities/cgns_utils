@@ -191,17 +191,17 @@ p_rem.add_argument('outFile', nargs='?', default=None,
 p_sub = subparsers.add_parser(
     'overwritebc', help='Overwrite boundary condition information', formatter_class=argparse.RawTextHelpFormatter)
 p_sub.add_argument('gridFile', help='Name of input CGNS file')
-p_sub.add_argument('bcFile', help="File containing additional bc info. The\
-File must consist of one or more lines contaning the following data: \n\
+p_sub.add_argument('bcFile', help="File containing additional bc info. \
+The file must consist of one or more lines contaning the following data: \n\
 <block number> <faceID> <BCType> <family> [dataset] \n \
 \n\
 where: \n\
 block number is the block index *IN 1 BASED NUMBERING* \n\
 faceID - one of iLow, iHigh jLow, jHigh, kLow or kHigh \n\
-BCType - one of the supported CGNS boundary conditions. \See below for supported types\n\
+BCType - one of the supported CGNS boundary conditions. See below for supported types\n\
 family - the family name. \n\
 \n\
-Supported BC Typess are : bcfarfield, bcsymmetryplane bcwall, bcwallinviscid, bcwallviscous \n\
+Supported BC types are : bcfarfield, bcsymmetryplane bcwall, bcwallinviscid, bcwallviscous \n\
 bcwallviscousheatflux, bcwallviscousisothermal, bcoutflow, bcoutflowsubsonic \n\
 bcinflow, bcinflowsubsonic, bcinflowsupersonic \n\
 \n\
@@ -212,14 +212,14 @@ The format of the dataset line is as follows: \n\
 \n\
 where: \n\
 BCSetName     - bc dataset name \n\
-BCSetType     - the dataset bc type. This is in most cases the same type as the BCType specified \n\
+BCSetType     - bc dataset type. This is in most cases the same type as the BCType specified \n\
 DirNeuArr     - can have one of two options: Dirichlet or Neumann \n\
-DataArrNameN  - name of first property specified. This can be a range of things. Refer to ICEM or SUMAD supported BC properties \n\
+DataArrNameN  - name of first property specified. This can be a range of things. Refer to ICEM or ADflow for supported BC properties \n\
 dataArrN      - the actual data for the property \n\
 \n\
 Note that only scalar values are supported at the moment for dataArrN.\n\
 \n\
-Example lines are as follows: \n\
+Examples: \n\
 \n\
 7 kLow bcwallviscous wing \n\
 4 jHigh bcsymmetryplane sym\n\
