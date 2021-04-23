@@ -145,16 +145,23 @@ p_bc.add_argument('--zOffset', nargs='?', default=0.0, type=float,
 
 # ------------ Options for 'family' mode --------------------
 p_fam = subparsers.add_parser(
-    'family', help='Overwrite family information')
+    'family', help='Overwrite family information', formatter_class=argparse.RawTextHelpFormatter)
 p_fam.add_argument('gridFile', help='Name of input CGNS file')
-p_fam.add_argument('familyFile', help='File containing additional family \
-information. Format is (one per line, 1-based blockID): blockID, \
-{iLow, iHigh etc}, newFamilyName <genI_start genI_end genJ_start genJ_end> \
-genI_start means generalized I start etc. That is once the face is identified, these \
-are the two remaining indices. If it is a I face, they are (j,k), J face they are (i, k) \
-and for a K face (i, j). These are optional and if given must be in 1 based ordering. Also \
--1 is acceptable for the end index.'
-                )
+p_fam.add_argument('familyFile', help="File containing additional family information. \
+The file must consist of one or more lines contaning the following data: \n\
+<blockID> <faceID> <family> \n\
+\n\
+where: \n\
+blockID - is the block index *IN 1 BASED NUMBERING* \n\
+faceID  - one of iLow, iHigh jLow, jHigh, kLow, or kHigh \n\
+family  - the family name. \n\
+\n\
+Examples: \n\
+\n\
+7 kLow wing \n\
+4 jHigh sym \n\
+")
+
 p_fam.add_argument('outFile', nargs='?', default=None,
                 help='Optional output file')
 
@@ -193,13 +200,13 @@ p_sub = subparsers.add_parser(
 p_sub.add_argument('gridFile', help='Name of input CGNS file')
 p_sub.add_argument('bcFile', help="File containing additional bc info. \
 The file must consist of one or more lines contaning the following data: \n\
-<block number> <faceID> <BCType> <family> [dataset] \n \
+<blockID> <faceID> <BCType> <family> [dataset] \n\
 \n\
 where: \n\
-block number is the block index *IN 1 BASED NUMBERING* \n\
-faceID - one of iLow, iHigh jLow, jHigh, kLow or kHigh \n\
-BCType - one of the supported CGNS boundary conditions. See below for supported types\n\
-family - the family name. \n\
+blockID - is the block index *IN 1 BASED NUMBERING* \n\
+faceID  - one of iLow, iHigh jLow, jHigh, kLow or kHigh \n\
+BCType  - one of the supported CGNS boundary conditions. See below for supported types\n\
+family  - the family name. \n\
 \n\
 Supported BC types are : bcfarfield, bcsymmetryplane bcwall, bcwallinviscid, bcwallviscous \n\
 bcwallviscousheatflux, bcwallviscousisothermal, bcoutflow, bcoutflowsubsonic \n\

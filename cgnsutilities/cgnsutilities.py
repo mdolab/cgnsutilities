@@ -2062,17 +2062,7 @@ class Block(object):
     def overwriteFamily(self, faceStr, family):
         """Possibly overwrite the family in the bocos if possible"""
         for boco in self.bocos:
-            r = boco.ptRange
-            match = (
-                (r[0][0] == r[0][1] == 1 and faceStr == "ilow")
-                or (r[0][0] == r[0][1] == self.dims[0] and faceStr == "ihigh")
-                or (r[1][0] == r[1][1] == 1 and faceStr == "jlow")
-                or (r[1][0] == r[1][1] == self.dims[1] and faceStr == "jhigh")
-                or (r[2][0] == r[2][1] == 1 and faceStr == "klow")
-                or (r[2][0] == r[2][1] == self.dims[2] and faceStr == "khigh")
-            )
-
-            if match:
+            if self.isFaceInBocoPtRange(boco, faceStr):
                 boco.family = family
 
     def overwriteBCs(self, faceStr, bcType, family, dataSet):
