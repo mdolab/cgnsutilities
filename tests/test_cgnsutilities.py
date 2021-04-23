@@ -1,10 +1,13 @@
+import os
 import unittest
 from cgnsutilities.cgnsutilities import readGrid, BC
+
+baseDir = os.path.dirname(os.path.abspath(__file__))
 
 
 class TestGrid(unittest.TestCase):
     def setUp(self):
-        self.grid = readGrid("../examples/717_wl_L2.cgns")
+        self.grid = readGrid(os.path.abspath(os.path.join(baseDir, "../examples/717_wl_L2.cgns")))
         return
 
     def test_getTotalCellsNodes(self):
@@ -19,7 +22,7 @@ class TestGrid(unittest.TestCase):
 
     def test_overwriteFamilies(self):
         # Find a specific BC and overwrite the family
-        famFile = "../examples/overwriteFamily_famFile"
+        famFile = os.path.abspath(os.path.join(baseDir, "../examples/overwriteFamily_famFile"))
         # Check the family before overwriting.
         self.assertEqual(self.grid.blocks[0].bocos[0].family.strip().decode("utf-8"), "wall")
         self.grid.overwriteFamilies(famFile)
@@ -28,7 +31,7 @@ class TestGrid(unittest.TestCase):
 
     def test_overwriteBCs(self):
         # Find a specific BC and overwrite the type and family
-        bcFile = "../examples/overwriteBCs_bcFile"
+        bcFile = os.path.abspath(os.path.join(baseDir, "../examples/overwriteBCs_bcFile"))
         # Check the BC before overwriting. Note that the "updated" BC is first deleted and new appended
         self.assertEqual(self.grid.blocks[0].bocos[0].family.strip().decode("utf-8"), "wall")
         self.assertEqual(self.grid.blocks[0].bocos[0].type, BC["bcwallviscous"])
