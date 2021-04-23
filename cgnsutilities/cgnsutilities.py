@@ -358,9 +358,9 @@ class Grid(object):
         for line in f:
             if line.strip():
                 aux = line.split()
-                block = int(aux[0]) - 1
+                blockID = int(aux[0]) - 1
                 face = aux[1].lower()
-                bctype = aux[2]
+                bocoType = aux[2].lower()
                 family = aux[3]
 
                 dataSet = []
@@ -369,7 +369,7 @@ class Grid(object):
                     bocoSetName = aux[4]
                     bocoDataSetType = aux[5]
                     DirNeu = aux[6]
-                    bcDSet = BocoDataSet(bocoSetName, BC[bocoDataSetType.lower()])
+                    bocoDataSet = BocoDataSet(bocoSetName, BC[bocoDataSetType.lower()])
 
                     for i in range(7, len(aux), 2):
                         arrayName = aux[i]
@@ -381,15 +381,15 @@ class Grid(object):
 
                         bcDataArr = BocoDataSetArray(arrayName, dType, nDims, dataDims, dataArr)
                         if DirNeu == "Dirichlet":
-                            bcDSet.addDirichletDataSet(bcDataArr)
+                            bocoDataSet.addDirichletDataSet(bcDataArr)
                         elif DirNeu == "Neumann":
-                            bcDSet.addNeumannDataSet(bcDataArr)
+                            bocoDataSet.addNeumannDataSet(bcDataArr)
                         else:
                             print("ERROR: Datatype <{0}> not supported.".format(DirNeu))
                             exit()
-                    dataSet.append(bcDSet)
+                    dataSet.append(bocoDataSet)
 
-                self.blocks[block].overwriteBCs(face, bctype, family, dataSet)
+                self.blocks[blockID].overwriteBCs(face, bocoType, family, dataSet)
         f.close()
 
     def autoOversetBC(self, sym, connectSelf, tol):
@@ -2059,22 +2059,23 @@ class Block(object):
 
         return patches
 
-    def overwriteFamily(self, faceStr, family):
+    def overwriteFamily(self, face, family):
         """Possibly overwrite the family in the bocos if possible"""
         for boco in self.bocos:
-            if self.isFaceInBocoPtRange(boco, faceStr):
+            if self.isFaceInPtRange(face, boco.ptRange):
                 boco.family = family
 
-    def overwriteBCs(self, faceStr, bcType, family, dataSet):
+    def overwriteBCs(self, face, bocoType, family, dataSet):
         """Find any BCs on this face and toast them. Note that we *ONLY ALLOW
         ONE BC per face*
         """
 
         # Check for existing boco and pop if necessary
+        face = face.lower()
         pop_list = []
         for index, boco in enumerate(self.bocos):
-            # Check if this boco point range matches the faceStr
-            if self.isFaceInBocoPtRange(boco, faceStr):
+            # Check if this boco point range matches the face
+            if self.isFaceInPtRange(face, boco.ptRange):
                 pop_list = pop_list + [index]
 
         # Pop all bcs in the face
@@ -2083,41 +2084,52 @@ class Block(object):
             self.bocos.pop(index)
 
         d = self.dims
-        if faceStr == "ilow":
+        if face == "ilow":
             ptRange = [[1, 1, 1], [1, d[1], d[2]]]
-        elif faceStr == "ihigh":
+        elif face == "ihigh":
             ptRange = [[d[0], 1, 1], [d[0], d[1], d[2]]]
-        elif faceStr == "jlow":
+        elif face == "jlow":
             ptRange = [[1, 1, 1], [d[0], 1, d[2]]]
-        elif faceStr == "jhigh":
+        elif face == "jhigh":
             ptRange = [[1, d[1], 1], [d[0], d[1], d[2]]]
-        elif faceStr == "klow":
+        elif face == "klow":
             ptRange = [[1, 1, 1], [d[0], d[1], 1]]
-        elif faceStr == "khigh":
+        elif face == "khigh":
             ptRange = [[1, 1, d[2]], [d[0], d[1], d[2]]]
         else:
-            print("ERROR: faceStr must be one of iLow, iHigh, jLow, jHigh, kLow or kHigh. Got %s" % faceStr)
+            print("ERROR: face must be one of iLow, iHigh, jLow, jHigh, kLow or kHigh. Got %s" % face)
             exit()
 
         ptRange = numpy.array(ptRange).T
-        self.addBoco(Boco("boco_%d" % self.bocoCounter, BC[bcType.lower()], ptRange, family, dataSet))
+        self.addBoco(Boco("boco_%d" % self.bocoCounter, BC[bocoType.lower()], ptRange, family, dataSet))
         self.bocoCounter += 1
 
-    def isFaceInBocoPtRange(self, boco, faceStr):
+    def isFaceInPtRange(self, face, ptRange):
         """
-        Helper routine that identifies if provided faceStr is in a given
-        boundary condition point set.
+        Identifies if the provided face matches a given point range.
+
+        Parameters
+        ----------
+        face : str
+            Should be one of iLow, iHigh, etc.
+        ptRange : array (3,2)
+            Point range
+
+        Returns
+        -------
+        isFound : bool
+            Returns True if face is found in the given point range.
         """
 
-        faceStr = faceStr.lower()
-        r = boco.ptRange
+        face = face.lower()
+        r = ptRange
         isFound = (
-            (r[0][0] == r[0][1] == 1 and faceStr == "ilow")
-            or (r[0][0] == r[0][1] == self.dims[0] and faceStr == "ihigh")
-            or (r[1][0] == r[1][1] == 1 and faceStr == "jlow")
-            or (r[1][0] == r[1][1] == self.dims[1] and faceStr == "jhigh")
-            or (r[2][0] == r[2][1] == 1 and faceStr == "klow")
-            or (r[2][0] == r[2][1] == self.dims[2] and faceStr == "khigh")
+            (r[0][0] == r[0][1] == 1 and face == "ilow")
+            or (r[0][0] == r[0][1] == self.dims[0] and face == "ihigh")
+            or (r[1][0] == r[1][1] == 1 and face == "jlow")
+            or (r[1][0] == r[1][1] == self.dims[1] and face == "jhigh")
+            or (r[2][0] == r[2][1] == 1 and face == "klow")
+            or (r[2][0] == r[2][1] == self.dims[2] and face == "khigh")
         )
         return isFound
 
