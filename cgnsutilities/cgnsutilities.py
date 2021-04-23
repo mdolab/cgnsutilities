@@ -359,7 +359,7 @@ class Grid(object):
             if line.strip():
                 aux = line.split()
                 block = int(aux[0]) - 1
-                face = aux[1]
+                face = aux[1].lower()
                 bctype = aux[2]
                 family = aux[3]
 
