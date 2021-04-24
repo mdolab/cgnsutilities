@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script demonstrates how to run the and use the overwritebc option
+# This script demonstrates how to run and use the overwritebc option
 CGNS_INFILE="717_wl_L2.cgns"
 CGNS_OUTFILE="717_wl_L2_overwriteBCs.cgns"
 BC_FILE="overwriteBCs_bcFile"

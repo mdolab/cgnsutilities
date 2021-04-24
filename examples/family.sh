@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# This script demonstrates how to run the and use the overwriteFamilies option
+# This script demonstrates how to run and use the family option
 CGNS_INFILE="717_wl_L2.cgns"
-CGNS_OUTFILE="717_wl_L2_overwriteFamily.cgns"
-FAMFILE="overwriteFamily_famFile"
+CGNS_OUTFILE="717_wl_L2_family.cgns"
+FAMFILE="family_famFile"
 WRITEFILE=true
 
 # Prepare the family file input. Each line has the following format:
