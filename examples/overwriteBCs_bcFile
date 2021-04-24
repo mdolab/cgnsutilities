@@ -1,2 +1,2 @@
-1 kLow bcwallinviscid wall_invicid
+1 kLow bcwallinviscid wall_inviscid
 2 kLow bcoutflowsubsonic wing_le_inlet BCDataSet_1 BCInFlowSubsonic Dirichlet PressureStagnation 1234.0 TemperatureStagnation 4556.0

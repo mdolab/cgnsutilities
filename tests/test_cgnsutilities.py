@@ -34,5 +34,5 @@ class TestGrid(unittest.TestCase):
         self.assertEqual(self.grid.blocks[0].bocos[0].family.strip().decode("utf-8"), "wall")
         self.assertEqual(self.grid.blocks[0].bocos[0].type, BC["bcwallviscous"])
         self.grid.overwriteBCs(bcFile)
-        self.assertEqual(self.grid.blocks[0].bocos[-1].family, "wall_invicid")
+        self.assertEqual(self.grid.blocks[0].bocos[-1].family, "wall_inviscid")
         self.assertEqual(self.grid.blocks[0].bocos[-1].type, BC["bcwallinviscid"])
