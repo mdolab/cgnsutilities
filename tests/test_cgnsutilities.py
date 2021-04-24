@@ -21,7 +21,7 @@ class TestGrid(unittest.TestCase):
 
     def test_overwriteFamilies(self):
         # Find a specific BC and overwrite the family
-        famFile = os.path.abspath(os.path.join(baseDir, "../examples/overwriteFamily_famFile"))
+        famFile = os.path.abspath(os.path.join(baseDir, "../examples/family_famFile"))
         # Check the family before overwriting.
         self.assertEqual(self.grid.blocks[0].bocos[0].family.strip().decode("utf-8"), "wall")
         self.grid.overwriteFamilies(famFile)
