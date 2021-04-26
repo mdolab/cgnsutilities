@@ -335,8 +335,7 @@ class Grid(object):
                 ptRanges = numpy.array(aux[0].split(","), dtype=float).reshape(3, 2)
                 famName = aux[1]
             else:
-                print("ERROR: familyFile is incorrectly formatted.")
-                exit()
+                raise ValueError("familyFile is incorrectly formatted.")
 
             self.blocks[blockID].addBoco(
                 Boco(oldBoco.name + "_" + str(count), oldBoco.type, ptRanges, famName, bcDataSets=oldBoco.dataSets)
@@ -391,8 +390,8 @@ class Grid(object):
                             elif DirNeu == "Neumann":
                                 bocoDataSet.addNeumannDataSet(bcDataArr)
                             else:
-                                print("ERROR: Datatype <{0}> not supported.".format(DirNeu))
-                                exit()
+                                raise ValueError(f"DirNeu must be Dirichlet or Neumann. Input was {DirNeu}.")
+
                         dataSet.append(bocoDataSet)
 
                     self.blocks[blockID].overwriteBCs(face, bocoType, family, dataSet)
@@ -1718,8 +1717,7 @@ class Block(object):
             order = [0, 1, 2]
             newDims = [self.dims[0], self.dims[1], nSteps, 3]
         else:
-            print("ERROR direction normal <{0}> not supported...exit".format(directionNormal))
-            exit()
+            raise ValueError(f"Direction normal must be x, y, or z. Input was {directionNormal}.")
 
         return order, numpy.array(newDims)
 
@@ -2102,8 +2100,7 @@ class Block(object):
         elif face == "khigh":
             ptRange = [[1, 1, d[2]], [d[0], d[1], d[2]]]
         else:
-            print("ERROR: face must be one of iLow, iHigh, jLow, jHigh, kLow or kHigh. Got %s" % face)
-            exit()
+            raise ValueError(f"Face must be one of iLow, iHigh, jLow, jHigh, kLow, or kHigh. Input was {face}")
 
         ptRange = numpy.array(ptRange).T
         self.addBoco(Boco("boco_%d" % self.bocoCounter, BC[bocoType.lower()], ptRange, family, dataSet))
