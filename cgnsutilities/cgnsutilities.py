@@ -238,7 +238,7 @@ class Grid(object):
                 i += 1
 
     def extractSurface(self, fileName):
-        """ Extract wall surfaces and write to plot3d file"""
+        """Extract wall surfaces and write to plot3d file"""
         patches = []
         for blk in self.blocks:
             patches.extend(blk.extractWallSurfaces())
@@ -260,7 +260,7 @@ class Grid(object):
             print("Warning: No wall surfaces found!")
 
     def extractSpecifiedSurface(self, fileName, blkid, imin, imax, jmin, jmax, kmin, kmax):
-        """ Extract Specified surfaces and write to plot3d file"""
+        """Extract Specified surfaces and write to plot3d file"""
         patches = []
         blk = self.blocks[int(blkid)]
         patches.extend(blk.extractSpecifiedSurfaces(int(imin), int(imax), int(jmin), int(jmax), int(kmin), int(kmax)))
@@ -1497,15 +1497,15 @@ class Block(object):
         self.bocoCounter = 0
 
     def addBoco(self, boco):
-        """ A add a boundary condition to this block"""
+        """A add a boundary condition to this block"""
         self.bocos.append(boco)
 
     def addB2B(self, b2b):
-        """ A  block-2-block connection to this block"""
+        """A  block-2-block connection to this block"""
         self.B2Bs.append(b2b)
 
     def writeToCGNS(self, cg):
-        """ Write all information in this block to the cg file handle"""
+        """Write all information in this block to the cg file handle"""
         zoneID = libcgns_utils.utils.writezone(cg, self.name, self.dims)
         libcgns_utils.utils.writecoordinates(cg, zoneID, self.coords)
         for boco in self.bocos:
@@ -1698,7 +1698,7 @@ class Block(object):
                 self.dims = new_dimensions[:]
 
     def _extrudeGetDataOrderAndDIms(self, directionNormal, nSteps):
-        """ This is a support function that member functions extrude and revolve call"""
+        """This is a support function that member functions extrude and revolve call"""
 
         # Note that the self.dims always has data in the first and second
         # slot like it is a xy plane dataset. The third slot always has ones
@@ -1722,7 +1722,7 @@ class Block(object):
         return order, numpy.array(newDims)
 
     def _extrudeBocoAndAddSymmBoco(self, order, nSteps=2):
-        """ This is a support function that member functions extrude and revolve call"""
+        """This is a support function that member functions extrude and revolve call"""
 
         # Update current BCs
         for boco in self.bocos:
