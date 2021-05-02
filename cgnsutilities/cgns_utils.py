@@ -17,7 +17,25 @@ import shutil
 import tempfile
 import argparse
 import numpy
-from cgnsutilities.cgnsutilities import *
+
+from cgnsutilities.cgnsutilities import (
+    Block,
+    Boco,
+    BC,
+    Grid,
+    explodeGrid,
+    readGrid,
+    explodeByZoneName,
+    write_tecplot_file,
+    simpleCart,
+    combineGrids,
+    convertPlot3d,
+    mirrorGrid,
+    splitGrid,
+    mergeGrid,
+    divideGrid,
+    libcgns_utils,
+)
 
 # List out all of the possible options here.
 parser = argparse.ArgumentParser(prog="cgns_utils")
@@ -816,7 +834,7 @@ try:
         outFileName = os.path.join(dirpath, "tmp.cgns")
     else:
         outFileName = args.outFile
-except:
+except Exception:
     outFile = None
 
 # Perform one of the following actions:
