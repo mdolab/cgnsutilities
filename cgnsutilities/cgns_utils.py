@@ -2,11 +2,12 @@
 This is the new gateway program to all of the cgns_utils.
 
 Run cgns_utils -help to get a list of all available options. The basic
-idea is as follows:
+idea is as follows::
 
-                                              | write new file
-read cngs file -> Do some operations on it -> |     .or.
-                                              | write modified file
+                                                | write new file
+    read cngs file -> Do some operations on it -> |     .or.
+                                                | write modified file
+
 Developed by Dr. Gaetan K. W. Kenway
 
 """
@@ -368,7 +369,8 @@ def get_parser():
     # ------------ Options for 'remove' mode  --------------------
     p_rm = subparsers.add_parser(
         "remove",
-        help="Remove blocks from a cgns file. The user should ensure that the final mesh is still valid in terms of boundary conditions and connectivities.",
+        help="""Remove blocks from a cgns file. The user should ensure that the final mesh
+                is still valid in terms of boundary conditions and connectivities.""",
     )
     p_rm.add_argument("gridFile", help="Name of input CGNS file")
     p_rm.add_argument(
@@ -376,8 +378,7 @@ def get_parser():
         metavar="files",
         type=int,
         nargs="+",
-        help="IDs (integers) of the blocks that will be removed.\n\
-    The integers should be 1-indexed",
+        help="IDs (integers) of the blocks that will be removed. The integers should be 1-indexed",
     )
     p_rm.add_argument("outFile", type=str, help="Output CGNS file name")
 
@@ -390,18 +391,16 @@ def get_parser():
         "outFile",
         nargs="?",
         default=None,
-        help="Optional reference to name output files. \n\
-    An integer will be added to the end. \n\
-    if none is given, the input filename will be used as reference. \n\
-    All connectivity information between different blocks is lost in this step. Only \n\
-    internal connectivity remains.",
+        help="""Optional reference to name output files. An integer will be added to the end.
+                If none is given, the input filename will be used as reference.
+                All connectivity information between different blocks is lost in this step, only
+                internal connectivity remains.""",
     )
 
     # ------------ Options for 'explodeKmin' mode  --------------------
     p_expkmin = subparsers.add_parser(
         "explodeKmin",
-        help="Take one multiblock cgns file and explodes it into single-block plot3d files that contains \n\
-        only the K=1 faces.",
+        help="Take one multiblock cgns file and explodes it into single-block plot3d files that contains only the K=1 faces.",
     )
     p_expkmin.add_argument("gridFile", type=str, help="Name of input multiblock CGNS file")
     p_expkmin.add_argument(
