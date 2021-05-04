@@ -175,20 +175,17 @@ def get_parser():
     p_fam.add_argument("gridFile", help="Name of input CGNS file")
     p_fam.add_argument(
         "familyFile",
-        help="File containing additional family information. \
-    The file must consist of one or more lines contaning the following data: \n\
-    <blockID> <faceID> <family> \n\
-    \n\
-    where: \n\
-    blockID - is the block index *IN 1 BASED NUMBERING* \n\
-    faceID  - one of iLow, iHigh jLow, jHigh, kLow, or kHigh \n\
-    family  - the family name. \n\
-    \n\
-    Examples: \n\
-    \n\
-    7 kLow wing \n\
-    4 jHigh sym \n\
-    ",
+        help="""File containing additional family information. The file must consist of one or more lines contaning the following data:
+<blockID> <faceID> <family>
+where:
+    blockID - is the block index *IN 1 BASED NUMBERING*
+    faceID  - one of iLow, iHigh jLow, jHigh, kLow, or kHigh
+    family  - the family name.
+
+Examples:
+    7 kLow wing
+    4 jHigh sym
+""",
     )
 
     p_fam.add_argument("outFile", nargs="?", default=None, help="Optional output file")
@@ -204,8 +201,8 @@ def get_parser():
     p_fam.add_argument(
         "familyFile",
         help="""file containing data for the new families and face division.
-        Format is 1st line: 1-based blockID, 2nd line: {ilow, ihigh, etc},
-        subsequent lines, one per line: ptRange (as 6 ints seperated by commas, not spaces), newFamilyName""",
+                Format is 1st line: 1-based blockID, 2nd line: {ilow, ihigh, etc}, subsequent lines,
+                one per line: p_extractnge (as 6 ints seperated by commas, not spaces), newFamilyName""",
     )
     p_fam.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
@@ -227,39 +224,39 @@ def get_parser():
     p_sub.add_argument("gridFile", help="Name of input CGNS file")
     p_sub.add_argument(
         "bcFile",
-        help="File containing additional bc info. \
-    The file must consist of one or more lines contaning the following data: \n\
-    <blockID> <faceID> <BCType> <family> [dataset] \n\
-    \n\
-    where: \n\
-    blockID - is the block index *IN 1 BASED NUMBERING* \n\
-    faceID  - one of iLow, iHigh jLow, jHigh, kLow or kHigh \n\
-    BCType  - one of the supported CGNS boundary conditions. See below for supported types\n\
-    family  - the family name. \n\
-    \n\
-    Supported BC types are : bcfarfield, bcsymmetryplane bcwall, bcwallinviscid, bcwallviscous \n\
-    bcwallviscousheatflux, bcwallviscousisothermal, bcoutflow, bcoutflowsubsonic \n\
-    bcinflow, bcinflowsubsonic, bcinflowsupersonic \n\
-    \n\
-    Optionally, additional datasets may be specified. These \n\
-    can be used to set additional boundary condition data. \n\
-    The format of the dataset line is as follows: \n\
-    <BCSetName> <BCSetType> <DirNeuArr> <DataArrName1> <dataArr1>, ..., <DataArrNameN> <dataArrN> \n\
-    \n\
-    where: \n\
-    BCSetName     - bc dataset name \n\
-    BCSetType     - bc dataset type. This is in most cases the same type as the BCType specified \n\
-    DirNeuArr     - can have one of two options: Dirichlet or Neumann \n\
-    DataArrNameN  - name of first property specified. This can be a range of things. Refer to ICEM or ADflow for supported BC properties \n\
-    dataArrN      - the actual data for the property \n\
-    \n\
-    Note that only scalar values are supported at the moment for dataArrN.\n\
-    \n\
-    Examples: \n\
-    \n\
-    7 kLow bcwallviscous wing \n\
-    4 jHigh bcsymmetryplane sym\n\
-    5 khigh bcoutflowsubsonic turb_inlet BCDataSet_1 BCInFlowSubsonic Dirichlet PressureStagnation 1234.0 TemperatureStagnation 4556.0 \n",
+        help="""File containing additional bc info. The file must consist of one or more lines contaning the following data:
+<blockID> <faceID> <BCType> <family> [dataset]
+
+where:
+    blockID - is the block index *IN 1 BASED NUMBERING*
+    faceID  - one of iLow, iHigh jLow, jHigh, kLow or kHigh
+    BCType  - one of the supported CGNS boundary conditions. See below for supported types
+    family  - the family name.
+
+Supported BC types are : bcfarfield, bcsymmetryplane bcwall, bcwallinviscid, bcwallviscous
+bcwallviscousheatflux, bcwallviscousisothermal, bcoutflow, bcoutflowsubsonic
+bcinflow, bcinflowsubsonic, bcinflowsupersonic
+
+Optionally, additional datasets may be specified. These
+can be used to set additional boundary condition data.
+The format of the dataset line is as follows:
+<BCSetName> <BCSetType> <DirNeuArr> <DataArrName1> <dataArr1>, ..., <DataArrNameN> <dataArrN>
+
+where:
+    BCSetName     - bc dataset name
+    BCSetType     - bc dataset type. This is in most cases the same type as the BCType specified
+    DirNeuArr     - can have one of two options: Dirichlet or Neumann
+    DataArrNameN  - name of first property specified. This can be a range of things. Refer to ICEM or ADflow for supported BC properties
+    dataArrN      - the actual data for the property
+
+Note that only scalar values are supported at the moment for dataArrN.
+
+Examples:
+
+    7 kLow bcwallviscous wing
+    4 jHigh bcsymmetryplane sym
+    5 khigh bcoutflowsubsonic turb_inlet BCDataSet_1 BCInFlowSubsonic Dirichlet PressureStagnation 1234.0 TemperatureStagnation 4556.0
+""",
     )
     p_sub.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
@@ -318,12 +315,11 @@ def get_parser():
         "intDigits",
         type=int,
         default=5,
-        help="Number of digits used for the integers. \n\
-    When CGNSlib generates a CGNS file \n\
-    (when converting from a plot3d file, for instance), it does not add extra digits to the integers \n\
-    when naming zones. This becomes a problem when you have more than 10 zones because the ordering will be: \n\
-    Zone1, Zone11, Zone12, ..., Zone19, Zone2, Zone21, ...\n\
-    This method will add extra digits to the zone names to give the correct ordering.",
+        help="""Number of digits used for the integers. When CGNSlib generates a CGNS file
+                (when converting from a plot3d file, for instance), it does not add extra digits to the integers
+                when naming zones. This becomes a problem when you have more than 10 zones because the ordering will be:
+                Zone1, Zone11, Zone12, ..., Zone19, Zone2, Zone21, ...
+                This method will add extra digits to the zone names to give the correct ordering.""",
     )
     p_reorder.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
@@ -426,49 +422,51 @@ def get_parser():
     p_cart.add_argument("gridFile", help="Name of input CGNS file")
     p_cart.add_argument(
         "cartFile",
-        help="File containing background mesh info. The file must consist of \n\
-    4 lines contaning the following data: \n\
-    <extensionXneg> <extensionYneg> <extensionZneg> \n\
-    <extensionXpos> <extensionYpos> <extensionZpos> \n\
-    <numNodesX> <numNodesY> <numNodesZ> \n\
-    <weightGRX> <weightGRY> <weightGRZ> \n\
-    \n\
-    where: \n\
-    extension is the distance of the cartesian box\n\
-    face to the corresponding bounding box face divided by the\n\
-    bounding box length. We need 2 values of extension per \n\
-    direction as we have two parallel faces for each one of them.\n\
-    numNodes is the number of nodes that should be used along the \n\
-    edges of the cartesian mesh. If you want one symmetry plane\n\
-    in the z direction, for instance, you need to set one of the\n\
-    extensionZ values to 0. If you want two symmetry planes in\n\
-    the z direction, (e.g. to run a 2D case) you need to set both\n\
-    extensionZ values to 0.\n\
-    weightGR are values between 0.0 and 1.0 used to balance edge\n\
-    growth ratio and cell volume resolution mismatch during the\n\
-    optimization. If weightGR = 0, the optimizer will not care\n\
-    about the growth ratios at the farfield and will just try\n\
-    to match the bounding box resolution. If weightGR = 1, the\n\
-    optimizer will not care about the bounding box resolution\n\
-    and will just try to get an uniform growth ratio. This\n\
-    results in an uniform mesh.\n\n\
-    example:\n\
-    10 10 0\n\
-    10 10 10\n\
-    65 65 65\n\
-    0.1 0.1 0.1\n",
+        help="""File containing background mesh info. The file must consist of
+4 lines contaning the following data:
+
+<extensionXneg> <extensionYneg> <extensionZneg>
+<extensionXpos> <extensionYpos> <extensionZpos>
+<numNodesX> <numNodesY> <numNodesZ>
+<weightGRX> <weightGRY> <weightGRZ>
+
+where:
+    extension is the distance of the cartesian box
+    face to the corresponding bounding box face divided by the
+    bounding box length. We need 2 values of extension per
+    direction as we have two parallel faces for each one of them.
+
+    numNodes is the number of nodes that should be used along the
+    edges of the cartesian mesh. If you want one symmetry plane
+    in the z direction, for instance, you need to set one of the
+    extensionZ values to 0. If you want two symmetry planes in
+    the z direction, (e.g. to run a 2D case) you need to set both
+    extensionZ values to 0.
+
+    weightGR are values between 0.0 and 1.0 used to balance edge
+    growth ratio and cell volume resolution mismatch during the
+    optimization. If weightGR = 0, the optimizer will not care
+    about the growth ratios at the farfield and will just try
+    to match the bounding box resolution. If weightGR = 1, the
+    optimizer will not care about the bounding box resolution
+    and will just try to get an uniform growth ratio. This
+    results in an uniform mesh.
+
+example:
+    10 10 0
+    10 10 10
+    65 65 65
+    0.1 0.1 0.1
+""",
     )
     p_cart.add_argument(
         "outFile",
-        help="Name of output CGNS file \n\
-    The output file contains only one cartesian block. The input \n\
-    mesh is not included and BCs are applied.\n",
+        help="""Name of output CGNS file. The output file contains only one cartesian block.
+The input mesh is not included and BCs are applied.""",
     )
 
     # ------------ Options for 'simpleCart' mode --------------------
-    p_sub = subparsers.add_parser(
-        "simpleCart", help="Generates a background cartesian mesh", formatter_class=argparse.RawTextHelpFormatter
-    )
+    p_sub = subparsers.add_parser("simpleCart", help="Generates a background cartesian mesh")
     p_sub.add_argument("gridFile", help="Name of input CGNS file")
     p_sub.add_argument("dh", help="Uniform spacing size", type=float)
     p_sub.add_argument("hExtra", help="Extension in each dimension", type=float)
@@ -478,9 +476,7 @@ def get_parser():
     p_sub.add_argument("outFile", help="Name of output CGNS file")
 
     # ------------ Options for 'explicitCart' mode --------------------
-    p_sub = subparsers.add_parser(
-        "explicitCart", help="Generates a background cartesian mesh", formatter_class=argparse.RawTextHelpFormatter
-    )
+    p_sub = subparsers.add_parser("explicitCart", help="Generates a background cartesian mesh")
     p_sub.add_argument("xmin", type=float, help="min x coordinate")
     p_sub.add_argument("ymin", type=float, help="min y coordinate")
     p_sub.add_argument("zmin", type=float, help="min z coordinate")
@@ -495,11 +491,7 @@ def get_parser():
     p_sub.add_argument("outFile", help="Name of output CGNS file")
 
     # ------------ Options for 'simpleOCart' mode --------------------
-    p_sub = subparsers.add_parser(
-        "simpleOCart",
-        help="Generates a background cartesian mesh surrounding by an OMesh",
-        formatter_class=argparse.RawTextHelpFormatter,
-    )
+    p_sub = subparsers.add_parser("simpleOCart", help="Generates a background cartesian mesh surrounding by an OMesh")
     p_sub.add_argument("gridFile", help="Name of input CGNS file")
     p_sub.add_argument("dh", help="Uniform cartesian spacing size", type=float)
     p_sub.add_argument("hExtra", help='Extension in "O" dimension', type=float)
@@ -573,7 +565,7 @@ def get_parser():
     p_fbc.add_argument("gridFile", help="Name of input CGNS file")
     p_fbc.add_argument(
         "bocoType",
-        help="""Boundary condition type. Supported types are: \n
+        help="""Boundary condition type. Supported types are:
                 bcfarfield, bcsymmetryplane, bcwall, bcwallinviscid, bcwallviscous, bcwallviscousheatflux,
                 bcwallviscousisothermal, bcoutflow, bcoutflowsubsonic, bcoutflowsupersonic, bcinflow, bcinflowsubsonic,
                 bcinflowsupersonic and bcoverset""",
