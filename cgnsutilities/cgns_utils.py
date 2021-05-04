@@ -71,13 +71,14 @@ def get_parser():
     p_coarsen.add_argument("gridFile", help="Name of input CGNS file")
     p_coarsen.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
+    # ------------- Options for 'refine' mode --------------------
     p_refine = subparsers.add_parser("refine", help="Refine a grid uniformly")
     p_refine.add_argument("gridFile", help="Name of input CGNS file")
     p_refine.add_argument("outFile", nargs="?", default=None, help="Optional output file")
     p_refine.add_argument(
         "--axes",
         nargs="+",
-        help="Refine mesh only along specified axis or axes ( default is all three axes): 'i', 'j', 'k'",
+        help="Refine mesh only along specified axis or axes (default: %(default)s)",
         default=["i", "j", "k"],
     )
 
@@ -343,8 +344,7 @@ Examples:
     p_symnobc.add_argument("sym", help="Normal for possible symmetry plane.", choices=["x", "y", "z"])
     p_symnobc.add_argument(
         "--tol",
-        help="Distance tolerance to bring nodes to symmetry plane.\n\
-                                        Default is 1.0e-5.",
+        help="Distance tolerance to bring nodes to symmetry plane (default: %(default)s)",
         type=float,
         default=1.0e-5,
     )
