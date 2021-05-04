@@ -166,7 +166,7 @@ def get_parser():
     p_bc.add_argument("outFile", nargs="?", default=None, help="Optional output file")
     p_bc.add_argument("--xOffset", nargs="?", default=0.0, type=float, help="x-coordinate of sphere origin")
     p_bc.add_argument("--yOffset", nargs="?", default=0.0, type=float, help="y-coordinate of sphere origin")
-    p_bc.add_argument("--zOffset", nargs="?", default=0.0, type=float, help="z--coordinate of sphere origin")
+    p_bc.add_argument("--zOffset", nargs="?", default=0.0, type=float, help="z-coordinate of sphere origin")
 
     # ------------ Options for 'family' mode --------------------
     p_fam = subparsers.add_parser(
@@ -193,9 +193,7 @@ Examples:
     # ------------ Options for 'familysubface' mode --------------------
     p_fam = subparsers.add_parser(
         "familysubface",
-        help="""Overwrite the family information on a subface. ***NOTE*** It is highly recommended that an output file
-                is specified as this method will overwrite existing boundary conditions on a face, and it is
-                up to the user to supply subfaces which sufficiently replace it.""",
+        help="""Overwrite the family information on a subface.""",
     )
     p_fam.add_argument("gridFile", help="Name of inputCGNS file")
     p_fam.add_argument(
@@ -204,7 +202,14 @@ Examples:
                 Format is 1st line: 1-based blockID, 2nd line: {ilow, ihigh, etc}, subsequent lines,
                 one per line: p_extractnge (as 6 ints seperated by commas, not spaces), newFamilyName""",
     )
-    p_fam.add_argument("outFile", nargs="?", default=None, help="Optional output file")
+    p_fam.add_argument(
+        "outFile",
+        nargs="?",
+        default=None,
+        help="""Optional output file. ***NOTE*** It is highly recommended that an output file
+                is specified as this method will overwrite existing boundary conditions on a face, and it is
+                up to the user to supply subfaces which sufficiently replace it.""",
+    )
 
     # ------------ Options for 'familycopy' mode --------------------
     p_fam = subparsers.add_parser("familycopy", help="Copy family information from two otherwise identical grids")
