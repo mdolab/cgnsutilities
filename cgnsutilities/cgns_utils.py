@@ -37,6 +37,9 @@ from cgnsutilities.cgnsutilities import (
     libcgns_utils,
 )
 
+# set width of printing for line wrap
+os.environ["COLUMNS"] = "120"
+
 
 def get_parser():
     # List out all of the possible options here.
@@ -53,14 +56,12 @@ def get_parser():
     # ------------- Options for 'flip' mode --------------------
     p_flip = subparsers.add_parser(
         "flip",
-        help="Flip a grid about a plane defined \
-    by an axis",
+        help="Flip a grid about a plane defined by an axis",
     )
     p_flip.add_argument("gridFile", help="Name of input CGNS file")
     p_flip.add_argument(
         "axis",
-        help="Flip the mesh about plane defined by \
-    axis: 'x', 'y', 'z'",
+        help="Flip the mesh about plane defined by axis: 'x', 'y', 'z'",
     )
     p_flip.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
@@ -75,8 +76,7 @@ def get_parser():
     p_refine.add_argument(
         "--axes",
         nargs="+",
-        help="Refine mesh only along specified axis or axes ( default is all three axes): 'i', 'j', 'k'\
-                                                    ",
+        help="Refine mesh only along specified axis or axes ( default is all three axes): 'i', 'j', 'k'",
         default=["i", "j", "k"],
     )
 
@@ -102,8 +102,7 @@ def get_parser():
     # ------------- Options for 'mirror' mode --------------------
     p_mirror = subparsers.add_parser(
         "mirror",
-        help="Mirror a grid about a plane defined \
-                                    by an axis. This doubles the grid size",
+        help="Mirror a grid about a plane defined by an axis. This doubles the grid size",
     )
     p_mirror.add_argument("gridFile", help="Name of input CGNS file")
     p_mirror.add_argument("axis", help="Mirror about plane defined by axis: 'x', 'y', 'z'")
@@ -113,9 +112,7 @@ def get_parser():
     # ------------- Options for 'split' mode --------------------
     p_split = subparsers.add_parser(
         "split",
-        help="Face-match a grid. If the grid is \
-                                    already faced matched, this witll have no \
-                                    effect",
+        help="Face-match a grid. If the grid is already faced matched, this witll have no effect",
     )
     p_split.add_argument("gridFile", help="Name of input CGNS file")
     p_split.add_argument("outFile", nargs="?", default=None, help="Optional output file")
@@ -123,16 +120,15 @@ def get_parser():
         "--splitFile",
         nargs="?",
         default=None,
-        help="Add additional splits specified in split file. Each\
-                        line must contain a block index (1 based), idim (1, 2, or 3),\
-                        and a 1-based index of the block to split at",
+        help="""Add additional splits specified in split file. Each
+                line must contain a block index (1 based), idim (1, 2, or 3),
+                and a 1-based index of the block to split at""",
     )
 
     # ------------- Options for 'merge' mode --------------------
     p_merge = subparsers.add_parser(
         "merge",
-        help="Automatically merge as many blocks as possible.\
-                                    Boundary conditions and family information is kept.",
+        help="Automatically merge as many blocks as possible. Boundary conditions and family information is kept.",
     )
     p_merge.add_argument("gridFile", help="Name of input CGNS file")
     p_merge.add_argument("outFile", nargs="?", default=None, help="Optional output file")
@@ -140,8 +136,7 @@ def get_parser():
     # ------------- Options for 'connect' mode --------------------
     p_connect = subparsers.add_parser(
         "connect",
-        help="Determine the block-to-block connectivity information \
-        for a point-matched grid",
+        help="Determine the block-to-block connectivity information for a point-matched grid",
     )
     p_connect.add_argument("gridFile", help="Name of input CGNS file")
     p_connect.add_argument("tol", nargs="?", default=1e-12, help="Tolerance for node merge")
@@ -162,8 +157,7 @@ def get_parser():
     # ------------- Options for 'autobc' mode --------------------
     p_bc = subparsers.add_parser(
         "autobc",
-        help="Try to determine boundary conditions for blocks. Only \
-        suitable for external flow applications.",
+        help="Try to determine boundary conditions for blocks. Only suitable for external flow applications.",
     )
     p_bc.add_argument("gridFile", help="Name of input CGNS file")
     p_bc.add_argument("sym", help="Normal for possible symmetry plane.", choices=["x", "y", "z"])
@@ -201,18 +195,16 @@ def get_parser():
     # ------------ Options for 'familysubface' mode --------------------
     p_fam = subparsers.add_parser(
         "familysubface",
-        help="Overwrite the family information on a subface \n \
-        ***NOTE*** It is highly recommended that an output file is specified \
-        as this method will overwrite existing boundary conditions on a face, and \
-        it is up to the user to supply subfaces which sufficiently replace it.",
+        help="""Overwrite the family information on a subface. ***NOTE*** It is highly recommended that an output file
+                is specified as this method will overwrite existing boundary conditions on a face, and it is
+                up to the user to supply subfaces which sufficiently replace it.""",
     )
     p_fam.add_argument("gridFile", help="Name of inputCGNS file")
     p_fam.add_argument(
         "familyFile",
-        help="file containing data for the new \
-    families and face division. Format is 1st line: 1-based blockID, 2nd line: \
-    {ilow, ihigh, etc}, subsequent lines, one per line: ptRange (as 6 \
-    ints seperated by commas-not spaces), newFamilyName",
+        help="""file containing data for the new families and face division.
+        Format is 1st line: 1-based blockID, 2nd line: {ilow, ihigh, etc},
+        subsequent lines, one per line: ptRange (as 6 ints seperated by commas, not spaces), newFamilyName""",
     )
     p_fam.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
@@ -277,15 +269,13 @@ def get_parser():
     p_bunch.add_argument("outFile", nargs="?", default=None, help="Optional output file")
     p_bunch.add_argument(
         "--extraCells",
-        help="Number of additional cells to \
-    use in re-bunching. *SHOULD BE A MG NUMBER*.",
+        help="Number of additional cells to use in re-bunching. *SHOULD BE A MG NUMBER*.",
         type=int,
         default=0,
     )
     p_bunch.add_argument(
         "--nodes",
-        help="Only rebunch the first 'nodes' in the \
-    offwall direction",
+        help="Only rebunch the first 'nodes' in the offwall direction",
         type=int,
         default=1,
     )
@@ -298,8 +288,8 @@ def get_parser():
     # ------------ Options for 'plot3dtocgns' mode --------------------
     p3dtoc = subparsers.add_parser(
         "plot3d2cgns",
-        help="Convert a multiblock, unformatted fortran, big-endian, multiblock plot3d file to a plain \
-        cgns file. This specific format is widely used at NASA and Boeing.",
+        help="""Convert a multiblock, unformatted fortran, big-endian, multiblock plot3d file to a plain
+                cgns file. This specific format is widely used at NASA and Boeing.""",
     )
     p3dtoc.add_argument("plot3dFile", help="Name of input plot3d file")
     p3dtoc.add_argument("gridFile", help="Name of output CGNS file")
@@ -311,8 +301,7 @@ def get_parser():
         "seed",
         type=int,
         default=0,
-        help="Seed for random generator. \
-    Specifying a seed will make process deterministic.",
+        help="Seed for random generator. Specifying a seed will make process deterministic.",
     )
     p_ran.add_argument("--keepRHS", help="Keep right hand coordinate system", action="store_true", default=False)
     p_ran.add_argument("outFile", nargs="?", default=None, help="Optional output file")
@@ -320,8 +309,8 @@ def get_parser():
     # ------------ Options for 'reorder' mode --------------------
     p_reorder = subparsers.add_parser(
         "reorder",
-        help="Sort blocks in an alpha-numerical order. It can also add extra digits \
-        to the integers at the end of the block names to facilitate ordering.",
+        help="""Sort blocks in an alpha-numerical order. It can also add extra digits
+                to the integers at the end of the block names to facilitate ordering.""",
     )
     p_reorder.add_argument("gridFile", help="Name of input CGNS file")
     p_reorder.add_argument(
@@ -419,16 +408,15 @@ def get_parser():
         "outFile",
         nargs="?",
         default=None,
-        help="Optional reference to name output files. \n\
-    An integer will be added to the end. \n\
-    if none is given, the input filename will be used as reference.",
+        help="""Optional reference to name output files. An integer will be added to the end.
+                if none is given, the input filename will be used as reference.""",
     )
 
     # ------------ Options for 'explodeByZoneName' mode  --------------------
     p_expkmin = subparsers.add_parser(
         "explodeByZoneName",
-        help="Take one multiblock cgns file and explode it into multiple multiblock \n\
-        cgns files based on the zone name from the blocks.",
+        help="""Take one multiblock cgns file and explode it into multiple multiblock
+                cgns files based on the zone name from the blocks.""",
     )
     p_expkmin.add_argument("gridFile", type=str, help="Name of input multiblock CGNS file")
 
@@ -581,15 +569,15 @@ def get_parser():
     # ------------ Options for 'fillOpenBCs' mode
     p_fbc = subparsers.add_parser(
         "fillOpenBCs",
-        help="Adds a given BC to the faces that are not face-matched and \
-        also that do not have any previously-assigned BCs.",
+        help="Adds a given BC to the faces that are not face-matched and also that do not have any previously-assigned BCs.",
     )
     p_fbc.add_argument("gridFile", help="Name of input CGNS file")
     p_fbc.add_argument(
         "bocoType",
-        help="Boundary condition type. Supported types are: \
-    bcfarfield, bcsymmetryplane, bcwall, bcwallinviscid, bcwallviscous, bcwallviscousheatflux, \
-    bcwallviscousisothermal, bcoutflow, bcoutflowsubsonic, bcoutflowsupersonic, bcinflow, bcinflowsubsonic, bcinflowsupersonic and bcoverset",
+        help="""Boundary condition type. Supported types are: \n
+                bcfarfield, bcsymmetryplane, bcwall, bcwallinviscid, bcwallviscous, bcwallviscousheatflux,
+                bcwallviscousisothermal, bcoutflow, bcoutflowsubsonic, bcoutflowsupersonic, bcinflow, bcinflowsubsonic,
+                bcinflowsupersonic and bcoverset""",
     )
     p_fbc.add_argument("famName", help="Family name for the new BCs.")
     p_fbc.add_argument("outFile", nargs="?", default=None, help="Optional output file")
@@ -597,8 +585,7 @@ def get_parser():
     # ------------ Options for 'extractConv' mode  --------------------
     p_conv = subparsers.add_parser(
         "extractConv",
-        help="Reads the convergence history node of a CGNS file and saves the \
-        data in a pickle or tecplot file.",
+        help="Reads the convergence history node of a CGNS file and saves the data in a pickle or tecplot file.",
     )
     p_conv.add_argument("gridFile", type=str, help="Name of input CGNS file.")
     p_conv.add_argument("outType", choices=["pickle", "tecplot"], help="The type of convergence data output file.")
@@ -606,8 +593,7 @@ def get_parser():
         "outFile",
         nargs="?",
         default=None,
-        help="The convergence data will be saved to this filename. \
-    If none is given, the grid filename will be used as reference.",
+        help="The convergence data will be saved to this filename. If none is given, the grid filename will be used as reference.",
     )
 
     # ------------ Options for 'include' mode
@@ -617,16 +603,15 @@ def get_parser():
     p_inc.add_argument("gridFile", help="Name of input CGNS file")
     p_inc.add_argument(
         "rangeSpec",
-        help="Range to extract. Comma separated list. \
-    Ranges can given like 6-8. Must be 1 based. Exampe: rangeSpec=4,5,9-16,19",
+        help="""Range to extract. Comma separated list. Ranges can given like 6-8. Must be 1 based.
+                Example: rangeSpec=4,5,9-16,19""",
     )
     p_inc.add_argument("outFile", help="Output file")
 
     # ------------ Options for 'section' mode
     p_sec = subparsers.add_parser(
         "section",
-        help="For cgns files with 1 domain ONLY, write a subsection of the\
-    zone. Boundary conditions/B2Bs are deleted.",
+        help="For cgns files with 1 domain ONLY, write a subsection of the zone. Boundary conditions/B2Bs are deleted.",
     )
     p_sec.add_argument("gridFile", help="Name of input CGNS file")
     p_sec.add_argument("iStart", type=int)
@@ -644,14 +629,13 @@ def get_parser():
     # ------------ Options for 'extrude' mode
     p_p2D = subparsers.add_parser(
         "extrude",
-        help="Takes a true 2D mesh (planar) and extrude it in one direction to make \
-        it a 3D mesh, one cell wide. This method assumes that BCs are already set in the CGNS file. \
-        BCs are retained and symmetry BCs are applied on planar surfaces.",
+        help="""Takes a true 2D mesh (planar) and extrude it in one direction to make
+                it a 3D mesh, one cell wide. This method assumes that BCs are already set in the CGNS file.
+                BCs are retained and symmetry BCs are applied on planar surfaces.""",
     )
     p_p2D.add_argument(
         "gridFile",
-        help="Name of input CGNS file. Note that the planar grid should \
-        not have symmetry BCs set on the plane.",
+        help="Name of input CGNS file. Note that the planar grid should not have symmetry BCs set on the plane.",
     )
     p_p2D.add_argument("direction", help="Direction which to extrude the grid", choices=["x", "y", "z"])
     p_p2D.add_argument("outFile", nargs="?", default=None, help="Optional output CGNS file")
@@ -659,25 +643,23 @@ def get_parser():
     # ------------ Options for 'revolve' mode
     p_p2R = subparsers.add_parser(
         "revolve",
-        help="Takes a true 2D mesh (planar) and reloves it about specified axis to make \
-        a 3D axisymmetric mesh, one cell wide. This method assumes that BCs are already set in the CGNS file. \
-        BCs are retained and symmetry BCs are applied on planar surfaces. Output should be a wedge shape.",
+        help="""Takes a true 2D mesh (planar) and reloves it about specified axis to make
+                a 3D axisymmetric mesh, one cell wide. This method assumes that BCs are already set in the CGNS file.
+                BCs are retained and symmetry BCs are applied on planar surfaces. Output should be a wedge shape.""",
     )
     p_p2R.add_argument(
         "gridFile",
-        help="Name of input CGNS file. Note that the planar grid should \
-        not have symmetry BCs set on the plane.",
+        help="Name of input CGNS file. Note that the planar grid should not have symmetry BCs set on the plane.",
     )
     p_p2R.add_argument(
         "normalDirection",
-        help="This is the direction in which the plane normal points in. \
-                        Example: If supplied data is in xz plane, the normal points in y",
+        help="""This is the direction in which the plane normal points in.
+                Example: If supplied data is in xz plane, the normal points in y""",
         choices=["x", "y", "z"],
     )
     p_p2R.add_argument(
         "axis",
-        help="Axis which to rotate about \
-                        Example: If supplied data is in xz plane, you would give either x or z",
+        help="Axis which to rotate about Example: If supplied data is in xz plane, you would give either x or z",
         choices=["x", "y", "z"],
     )
     p_p2R.add_argument(
