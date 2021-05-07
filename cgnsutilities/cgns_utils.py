@@ -4,9 +4,9 @@ This is the new gateway program to all of the cgns_utils.
 Run cgns_utils -help to get a list of all available options. The basic
 idea is as follows::
 
-                                                | write new file
+                                                  | write new file
     read cngs file -> Do some operations on it -> |     .or.
-                                                | write modified file
+                                                  | write modified file
 
 Developed by Dr. Gaetan K. W. Kenway
 
@@ -114,7 +114,7 @@ def get_parser():
     # ------------- Options for 'split' mode --------------------
     p_split = subparsers.add_parser(
         "split",
-        help="Face-match a grid. If the grid is already faced matched, this witll have no effect",
+        help="Face-match a grid. If the grid is already faced matched, this will have no effect",
     )
     p_split.add_argument("gridFile", help="Name of input CGNS file")
     p_split.add_argument("outFile", nargs="?", default=None, help="Optional output file")
