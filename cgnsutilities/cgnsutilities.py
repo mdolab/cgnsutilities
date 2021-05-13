@@ -13,7 +13,8 @@ import os
 import copy
 import tempfile
 import numpy
-from . import libcgns_utils
+# from . import libcgns_utils
+import libcgns_utils
 
 # These are taken from the CGNS include file (cgnslib_f.h in your cgns library folder)
 BC = {
@@ -2288,8 +2289,23 @@ class Boco(object):
 
     def coarsen(self, direction):
         """Coarsen the range of the BC along the specified direction"""
+
+        print(direction,'pts b', self.ptRange[direction, :])
         for j in range(2):
             self.ptRange[direction, j] = (self.ptRange[direction, j] - 1) // 2 + 1
+        print(direction,'pts a', self.ptRange[direction, :])
+
+        # coarsen the data set if it is an array
+        if self.dataSets:
+            for data_set in self.dataSets:
+                for dir_arr in data_set.dirichletArrays:
+                    print(self.name, dir_arr.name)
+                    print(dir_arr.dataDimensions)
+                    dir_arr.dataDimensions[0] = numpy.prod(self.ptRange[:,1])
+                    # dir_arr.dataDimensions[direction] = (dir_arr.dataDimensions[direction]-1)//2 + 1
+                    print(dir_arr.dataDimensions, numpy.prod(dir_arr.dataDimensions))
+                    data_size = numpy.prod(dir_arr.dataDimensions)
+                    dir_arr.dataArr = dir_arr.dataArr[:data_size]
 
     def refine(self, axes):
         """refine the range of the BC"""
