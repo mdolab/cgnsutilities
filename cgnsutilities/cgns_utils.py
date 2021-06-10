@@ -191,9 +191,9 @@ Examples:
 
     p_fam.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
-    # ------------ Options for 'familysubface' mode --------------------
+    # ------------ Options for 'familySubface' mode --------------------
     p_fam = subparsers.add_parser(
-        "familysubface",
+        "familySubface",
         help="""Overwrite the family information on a subface.""",
     )
     p_fam.add_argument("gridFile", help="Name of inputCGNS file")
@@ -212,20 +212,20 @@ Examples:
                 up to the user to supply subfaces which sufficiently replace it.""",
     )
 
-    # ------------ Options for 'familycopy' mode --------------------
-    p_fam = subparsers.add_parser("familycopy", help="Copy family information from two otherwise identical grids")
+    # ------------ Options for 'familyCopy' mode --------------------
+    p_fam = subparsers.add_parser("familyCopy", help="Copy family information from two otherwise identical grids")
     p_fam.add_argument("gridFile", help="Name of CGNS file to which family information is to be copied")
     p_fam.add_argument("sourceFile", help="Name of output CGNS file which contains family information")
     p_fam.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
-    # ------------ Options for 'removebc' mode --------------------
-    p_rem = subparsers.add_parser("removebc", help="Remove all BC")
+    # ------------ Options for 'removeBC' mode --------------------
+    p_rem = subparsers.add_parser("removeBC", help="Remove all BC")
     p_rem.add_argument("gridFile", help="Name of input CGNS file")
     p_rem.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
-    # ------------ Options for 'overwritebc' mode --------------------
+    # ------------ Options for 'overwriteBC' mode --------------------
     p_sub = subparsers.add_parser(
-        "overwritebc", help="Overwrite boundary condition information", formatter_class=argparse.RawTextHelpFormatter
+        "overwriteBC", help="Overwrite boundary condition information", formatter_class=argparse.RawTextHelpFormatter
     )
     p_sub.add_argument("gridFile", help="Name of input CGNS file")
     p_sub.add_argument(
@@ -329,15 +329,15 @@ Examples:
     )
     p_reorder.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
-    # ------------ Options for 'symmzero' mode --------------------
-    p_sym = subparsers.add_parser("symmzero", help="Hard-zero any nodes on symmetry plane BCs.")
+    # ------------ Options for 'symmZero' mode --------------------
+    p_sym = subparsers.add_parser("symmZero", help="Hard-zero any nodes on symmetry plane BCs.")
     p_sym.add_argument("gridFile", help="Name of input CGNS file")
     p_sym.add_argument("sym", help="Normal for possible symmetry plane.", choices=["x", "y", "z"])
     p_sym.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
-    # ------------ Options for 'symmzeronobc' mode --------------------
+    # ------------ Options for 'symmZeroNoBC' mode --------------------
     p_symnobc = subparsers.add_parser(
-        "symmzeronobc",
+        "symmZeroNoBC",
         help="Hard-zero any nodes within a given tolerance of the symmetry plane. BCs are not taken into account.",
     )
     p_symnobc.add_argument("gridFile", help="Name of input CGNS file")
@@ -350,9 +350,9 @@ Examples:
     )
     p_symnobc.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
-    # ------------ Options for 'timecombine' mode  --------------------
+    # ------------ Options for 'timeCombine' mode  --------------------
     p_tc = subparsers.add_parser(
-        "timecombine", help="Combine cgns files from time accurate simulation into unsteady tecplot file."
+        "timeCombine", help="Combine cgns files from time accurate simulation into unsteady tecplot file."
     )
     p_tc.add_argument("baseName", help="baseName of the files. Use %%d to denote the counter.")
     p_tc.add_argument("outFile", nargs="?", default=None, help="Output file name. If not given, unsteady.plt is used")
@@ -695,7 +695,7 @@ def main():
 
     # The time combine is special. First we generate the list of files we
     # need to deal with.
-    if args.mode == "timecombine":
+    if args.mode == "timeCombine":
         # Get the directory name where the baseName is:
         path = os.path.dirname(os.path.abspath(args.baseName))
 
@@ -855,17 +855,17 @@ def main():
     elif args.mode == "family":
         curGrid.overwriteFamilies(args.familyFile)
 
-    elif args.mode == "familysubface":
+    elif args.mode == "familySubface":
         curGrid.writeSubfaceFamily(args.familyFile)
 
-    elif args.mode == "familycopy":
+    elif args.mode == "familyCopy":
         sourceGrid = readGrid(args.sourceFile)
         curGrid.copyFamilyInfo(sourceGrid)
 
-    elif args.mode == "overwritebc":
+    elif args.mode == "overwriteBC":
         curGrid.overwriteBCs(args.bcFile)
 
-    elif args.mode == "removebc":
+    elif args.mode == "removeBC":
         curGrid.removeBCs()
 
     elif args.mode == "rebunch":
@@ -877,10 +877,10 @@ def main():
     elif args.mode == "reorder":
         curGrid.reorder(args.intDigits)
 
-    elif args.mode == "symmzero":
+    elif args.mode == "symmZero":
         curGrid.symmZero(args.sym)
 
-    elif args.mode == "symmzeronobc":
+    elif args.mode == "symmZeroNoBC":
         curGrid.symmZeroNoBC(args.sym, args.tol)
 
     elif args.mode == "double2d":
