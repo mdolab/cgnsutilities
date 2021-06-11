@@ -42,7 +42,7 @@ class TestGrid(unittest.TestCase):
         if os.path.isfile("717_wl_L2_overwriteBCs.cgns"):
             os.remove("717_wl_L2_overwriteBCs.cgns")
         out = subprocess.run(
-            "cgns_utils overwriteBC ../examples/717_wl_L2.cgns ../examples/overwriteBCs_bcFile 717_wl_L2_overwriteBCs.cgns",
+            "cgns_utils overwriteBC examples/717_wl_L2.cgns examples/overwriteBCs_bcFile 717_wl_L2_overwriteBCs.cgns",
             shell=True,
         )
         self.assertFalse(out.returncode)
