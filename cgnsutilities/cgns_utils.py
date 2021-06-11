@@ -82,14 +82,14 @@ def get_parser():
         default=["i", "j", "k"],
     )
 
-    # ------------- Options for 'extract' mode --------------------
-    p_extract = subparsers.add_parser("extract", help="Extract a wall surface from file")
+    # ------------- Options for 'extractSurface' mode --------------------
+    p_extract = subparsers.add_parser("extractSurface", help="Extract a wall surface from file")
     p_extract.add_argument("gridFile", help="Name of input CGNS file")
     p_extract.add_argument("surfFile", help="Name of plot3d surface file")
 
-    # ------------- Options for 'extractSpecified' mode --------------------
+    # ------------- Options for 'extractSpecifiedSurface' mode --------------------
     p_extract_spec = subparsers.add_parser(
-        "extractSpecified", help="Extract a surface from a specified set of layers in a cgns block"
+        "extractSpecifiedSurface", help="Extract a surface from a specified set of layers in a cgns block"
     )
     p_extract_spec.add_argument("gridFile", help="Name of input CGNS file")
     p_extract_spec.add_argument("surfFile", help="Name of plot3d surface file")
@@ -101,9 +101,9 @@ def get_parser():
     p_extract_spec.add_argument("kmin", help="lower k bound,use 0-based numbering")
     p_extract_spec.add_argument("kmax", help="upper k bound,use 0-based numbering")
 
-    # ------------- Options for 'mirrorGrid' mode --------------------
+    # ------------- Options for 'mirror' mode --------------------
     p_mirror = subparsers.add_parser(
-        "mirrorGrid",
+        "mirror",
         help="Mirror a grid about a plane defined by an axis. This doubles the grid size",
     )
     p_mirror.add_argument("gridFile", help="Name of input CGNS file")
@@ -111,9 +111,9 @@ def get_parser():
     p_mirror.add_argument("tol", nargs="?", default=1e-12, help="Tolerance for node merge")
     p_mirror.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
-    # ------------- Options for 'splitGrid' mode --------------------
+    # ------------- Options for 'split' mode --------------------
     p_split = subparsers.add_parser(
-        "splitGrid",
+        "split",
         help="Face-match a grid. If the grid is already faced matched, this will have no effect",
     )
     p_split.add_argument("gridFile", help="Name of input CGNS file")
@@ -127,9 +127,9 @@ def get_parser():
                 and a 1-based index of the block to split at""",
     )
 
-    # ------------- Options for 'mergeGrid' mode --------------------
+    # ------------- Options for 'merge' mode --------------------
     p_merge = subparsers.add_parser(
-        "mergeGrid",
+        "merge",
         help="Automatically merge as many blocks as possible. Boundary conditions and family information is kept.",
     )
     p_merge.add_argument("gridFile", help="Name of input CGNS file")
@@ -151,8 +151,8 @@ def get_parser():
     )
     p_connect.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
-    # ------------- Options for 'divideGrid' mode --------------------
-    p_divide = subparsers.add_parser("divideGrid", help="Divide all blocks in the grid into 8 sub-blocks")
+    # ------------- Options for 'divide' mode --------------------
+    p_divide = subparsers.add_parser("divide", help="Divide all blocks in the grid into 8 sub-blocks")
     p_divide.add_argument("gridFile", help="Name of input CGNS file")
     p_divide.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
@@ -787,11 +787,11 @@ def main():
     # The following are "special" and done first since they do not
     # have a CGNS output.
 
-    if args.mode == "extract":
+    if args.mode == "extractSurface":
         curGrid.extractSurface(args.surfFile)
         sys.exit(0)
 
-    if args.mode == "extractSpecified":
+    if args.mode == "extractSpecifiedSurface":
         curGrid.extractSpecifiedSurface(
             args.surfFile, args.blockID, args.imin, args.imax, args.jmin, args.jmax, args.kmin, args.kmax
         )
@@ -825,7 +825,7 @@ def main():
     elif args.mode == "scale":
         curGrid.scale(args.scale)
 
-    elif args.mode == "mirrorGrid":
+    elif args.mode == "mirror":
         curGrid = mirrorGrid(curGrid, args.axis, args.tol)
 
     elif args.mode == "coarsen":
@@ -834,10 +834,10 @@ def main():
     elif args.mode == "refine":
         curGrid.refine(args.axes)
 
-    elif args.mode == "splitGrid":
+    elif args.mode == "split":
         curGrid = splitGrid(curGrid, args.splitFile)
 
-    elif args.mode == "mergeGrid":
+    elif args.mode == "merge":
         curGrid = mergeGrid(curGrid)
 
     elif args.mode == "connect":
@@ -846,7 +846,7 @@ def main():
         else:
             curGrid.connect(args.tol)
 
-    elif args.mode == "divideGrid":
+    elif args.mode == "divide":
         curGrid = divideGrid(curGrid)
 
     elif args.mode == "autoBC":
