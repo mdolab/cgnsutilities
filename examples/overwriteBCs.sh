@@ -17,4 +17,4 @@ EOF
 fi
 
 # Run the command
-cgns_utils overwritebc $CGNS_INFILE $BC_FILE $CGNS_OUTFILE
+cgns_utils overwriteBC $CGNS_INFILE $BC_FILE $CGNS_OUTFILE
