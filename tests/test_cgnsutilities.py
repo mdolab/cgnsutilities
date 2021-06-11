@@ -1,4 +1,5 @@
-import os, subprocess
+import os
+import subprocess
 import unittest
 from cgnsutilities.cgnsutilities import readGrid, BC
 
