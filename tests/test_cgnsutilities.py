@@ -1,4 +1,4 @@
-import os
+import os, subprocess
 import unittest
 from cgnsutilities.cgnsutilities import readGrid, BC
 
@@ -36,3 +36,14 @@ class TestGrid(unittest.TestCase):
         self.grid.overwriteBCs(bcFile)
         self.assertEqual(self.grid.blocks[0].bocos[-1].family, "wall_inviscid")
         self.assertEqual(self.grid.blocks[0].bocos[-1].type, BC["bcwallinviscid"])
+
+    def test_overwriteBCs_CLI(self):
+        if os.path.isfile("717_wl_L2_overwriteBCs.cgns"):
+            os.remove("717_wl_L2_overwriteBCs.cgns")
+        out = subprocess.run(
+            "cgns_utils overwriteBC ../examples/717_wl_L2.cgns ../examples/overwriteBCs_bcFile 717_wl_L2_overwriteBCs.cgns",
+            shell=True,
+        )
+        self.assertFalse(out.returncode)
+        self.assertTrue(os.path.isfile("717_wl_L2_overwriteBCs.cgns"))
+        os.remove("717_wl_L2_overwriteBCs.cgns")
