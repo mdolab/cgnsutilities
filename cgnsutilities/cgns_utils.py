@@ -101,9 +101,9 @@ def get_parser():
     p_extract_spec.add_argument("kmin", help="lower k bound,use 0-based numbering")
     p_extract_spec.add_argument("kmax", help="upper k bound,use 0-based numbering")
 
-    # ------------- Options for 'mirror' mode --------------------
+    # ------------- Options for 'mirrorGrid' mode --------------------
     p_mirror = subparsers.add_parser(
-        "mirror",
+        "mirrorGrid",
         help="Mirror a grid about a plane defined by an axis. This doubles the grid size",
     )
     p_mirror.add_argument("gridFile", help="Name of input CGNS file")
@@ -111,9 +111,9 @@ def get_parser():
     p_mirror.add_argument("tol", nargs="?", default=1e-12, help="Tolerance for node merge")
     p_mirror.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
-    # ------------- Options for 'split' mode --------------------
+    # ------------- Options for 'splitGrid' mode --------------------
     p_split = subparsers.add_parser(
-        "split",
+        "splitGrid",
         help="Face-match a grid. If the grid is already faced matched, this will have no effect",
     )
     p_split.add_argument("gridFile", help="Name of input CGNS file")
@@ -127,9 +127,9 @@ def get_parser():
                 and a 1-based index of the block to split at""",
     )
 
-    # ------------- Options for 'merge' mode --------------------
+    # ------------- Options for 'mergeGrid' mode --------------------
     p_merge = subparsers.add_parser(
-        "merge",
+        "mergeGrid",
         help="Automatically merge as many blocks as possible. Boundary conditions and family information is kept.",
     )
     p_merge.add_argument("gridFile", help="Name of input CGNS file")
@@ -151,14 +151,14 @@ def get_parser():
     )
     p_connect.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
-    # ------------- Options for 'divide' mode --------------------
-    p_divide = subparsers.add_parser("divide", help="Divide all blocks in the grid into 8 sub-blocks")
+    # ------------- Options for 'divideGrid' mode --------------------
+    p_divide = subparsers.add_parser("divideGrid", help="Divide all blocks in the grid into 8 sub-blocks")
     p_divide.add_argument("gridFile", help="Name of input CGNS file")
     p_divide.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
-    # ------------- Options for 'autobc' mode --------------------
+    # ------------- Options for 'autoBC' mode --------------------
     p_bc = subparsers.add_parser(
-        "autobc",
+        "autoBC",
         help="Try to determine boundary conditions for blocks. Only suitable for external flow applications.",
     )
     p_bc.add_argument("gridFile", help="Name of input CGNS file")
@@ -169,9 +169,9 @@ def get_parser():
     p_bc.add_argument("--yOffset", nargs="?", default=0.0, type=float, help="y-coordinate of sphere origin")
     p_bc.add_argument("--zOffset", nargs="?", default=0.0, type=float, help="z-coordinate of sphere origin")
 
-    # ------------ Options for 'family' mode --------------------
+    # ------------ Options for 'overwriteFamilies' mode --------------------
     p_fam = subparsers.add_parser(
-        "family", help="Overwrite family information", formatter_class=argparse.RawTextHelpFormatter
+        "overwriteFamilies", help="Overwrite family information", formatter_class=argparse.RawTextHelpFormatter
     )
     p_fam.add_argument("gridFile", help="Name of input CGNS file")
     p_fam.add_argument(
@@ -191,9 +191,9 @@ Examples:
 
     p_fam.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
-    # ------------ Options for 'familySubface' mode --------------------
+    # ------------ Options for 'writeSubfaceFamily' mode --------------------
     p_fam = subparsers.add_parser(
-        "familySubface",
+        "writeSubfaceFamiliy",
         help="""Overwrite the family information on a subface.""",
     )
     p_fam.add_argument("gridFile", help="Name of inputCGNS file")
@@ -212,8 +212,8 @@ Examples:
                 up to the user to supply subfaces which sufficiently replace it.""",
     )
 
-    # ------------ Options for 'familyCopy' mode --------------------
-    p_fam = subparsers.add_parser("familyCopy", help="Copy family information from two otherwise identical grids")
+    # ------------ Options for 'copyFamilyInfo' mode --------------------
+    p_fam = subparsers.add_parser("copyFamilyInfo", help="Copy family information from two otherwise identical grids")
     p_fam.add_argument("gridFile", help="Name of CGNS file to which family information is to be copied")
     p_fam.add_argument("sourceFile", help="Name of output CGNS file which contains family information")
     p_fam.add_argument("outFile", nargs="?", default=None, help="Optional output file")
@@ -267,7 +267,7 @@ Examples:
     p_sub.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
     # ------------ Options for 'rebunch' mode --------------------
-    p_bunch = subparsers.add_parser("rebunch", help="Rebunch offwall spacing (experimental")
+    p_bunch = subparsers.add_parser("rebunch", help="Rebunch offwall spacing (experimental)")
     p_bunch.add_argument("gridFile", help="Name of input CGNS file")
     p_bunch.add_argument("spacing", help="The desired off-wall spacing", type=float)
     p_bunch.add_argument("outFile", nargs="?", default=None, help="Optional output file")
@@ -357,8 +357,8 @@ Examples:
     p_tc.add_argument("baseName", help="baseName of the files. Use %%d to denote the counter.")
     p_tc.add_argument("outFile", nargs="?", default=None, help="Output file name. If not given, unsteady.plt is used")
 
-    # ------------ Options for 'double2d' mode  --------------------
-    p_dd = subparsers.add_parser("double2d", help="Take a 2d mesh one cell wide and make it two cells wide.")
+    # ------------ Options for 'double2D' mode  --------------------
+    p_dd = subparsers.add_parser("double2D", help="Take a 2d mesh one cell wide and make it two cells wide.")
     p_dd.add_argument("gridFile", help="Name of input CGNS file")
     p_dd.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
@@ -367,9 +367,9 @@ Examples:
     p_dd.add_argument("gridFiles", metavar="files", type=str, nargs="+", help="Name of CGNS files to combine")
     p_dd.add_argument("outFile", type=str, help="Output CGNS file name")
 
-    # ------------ Options for 'remove' mode  --------------------
+    # ------------ Options for 'removeBlocks' mode  --------------------
     p_rm = subparsers.add_parser(
-        "remove",
+        "removeBlocks",
         help="""Remove blocks from a cgns file. The user should ensure that the final mesh
                 is still valid in terms of boundary conditions and connectivities.""",
     )
@@ -825,7 +825,7 @@ def main():
     elif args.mode == "scale":
         curGrid.scale(args.scale)
 
-    elif args.mode == "mirror":
+    elif args.mode == "mirrorGrid":
         curGrid = mirrorGrid(curGrid, args.axis, args.tol)
 
     elif args.mode == "coarsen":
@@ -834,10 +834,10 @@ def main():
     elif args.mode == "refine":
         curGrid.refine(args.axes)
 
-    elif args.mode == "split":
+    elif args.mode == "splitGrid":
         curGrid = splitGrid(curGrid, args.splitFile)
 
-    elif args.mode == "merge":
+    elif args.mode == "mergeGrid":
         curGrid = mergeGrid(curGrid)
 
     elif args.mode == "connect":
@@ -846,19 +846,19 @@ def main():
         else:
             curGrid.connect(args.tol)
 
-    elif args.mode == "divide":
+    elif args.mode == "divideGrid":
         curGrid = divideGrid(curGrid)
 
-    elif args.mode == "autobc":
+    elif args.mode == "autoBC":
         curGrid.autoBC(args.radius, args.sym, [args.xOffset, args.yOffset, args.zOffset])
 
-    elif args.mode == "family":
+    elif args.mode == "overwriteFamilies":
         curGrid.overwriteFamilies(args.familyFile)
 
-    elif args.mode == "familySubface":
+    elif args.mode == "writeSubfaceFamily":
         curGrid.writeSubfaceFamily(args.familyFile)
 
-    elif args.mode == "familyCopy":
+    elif args.mode == "copyFamilyInfo":
         sourceGrid = readGrid(args.sourceFile)
         curGrid.copyFamilyInfo(sourceGrid)
 
@@ -883,10 +883,10 @@ def main():
     elif args.mode == "symmZeroNoBC":
         curGrid.symmZeroNoBC(args.sym, args.tol)
 
-    elif args.mode == "double2d":
+    elif args.mode == "double2D":
         curGrid.double2D()
 
-    elif args.mode == "remove":
+    elif args.mode == "removeBlocks":
         curGrid.removeBlocks(args.blockIDs)
 
     elif args.mode == "cartesian":
