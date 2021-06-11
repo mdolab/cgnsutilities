@@ -42,13 +42,13 @@ class TestGrid(unittest.TestCase):
 class TestCLI(unittest.TestCase):
     def setUp(self):
         self.grid = os.path.abspath(os.path.join(baseDir, "../examples/717_wl_L2.cgns"))
-    
+
     def test_overwriteBCs_CLI(self):
         if os.path.isfile("717_wl_L2_overwriteBCs.cgns"):
             os.remove("717_wl_L2_overwriteBCs.cgns")
 
         cmd = "cgns_utils overwriteBC "
-        cmd += self.grid + " " 
+        cmd += self.grid + " "
         cmd += os.path.abspath(os.path.join(baseDir, "../examples/overwriteBCs_bcFile")) + " "
         cmd += "717_wl_L2_overwriteBCs.cgns"
 
