@@ -38,12 +38,17 @@ class TestGrid(unittest.TestCase):
         self.assertEqual(self.grid.blocks[0].bocos[-1].family, "wall_inviscid")
         self.assertEqual(self.grid.blocks[0].bocos[-1].type, BC["bcwallinviscid"])
 
+
+class TestCLI(unittest.TestCase):
+    def setUp(self):
+        self.grid = os.path.abspath(os.path.join(baseDir, "../examples/717_wl_L2.cgns"))
+    
     def test_overwriteBCs_CLI(self):
         if os.path.isfile("717_wl_L2_overwriteBCs.cgns"):
             os.remove("717_wl_L2_overwriteBCs.cgns")
 
         cmd = "cgns_utils overwriteBC "
-        cmd += os.path.abspath(os.path.join(baseDir, "../examples/717_wl_L2.cgns")) + " "
+        cmd += self.grid + " " 
         cmd += os.path.abspath(os.path.join(baseDir, "../examples/overwriteBCs_bcFile")) + " "
         cmd += "717_wl_L2_overwriteBCs.cgns"
 
@@ -51,3 +56,17 @@ class TestGrid(unittest.TestCase):
         self.assertFalse(out.returncode)
         self.assertTrue(os.path.isfile("717_wl_L2_overwriteBCs.cgns"))
         os.remove("717_wl_L2_overwriteBCs.cgns")
+
+    def test_overwriteFamilies(self):
+        if os.path.isfile("717_wl_L2_overwriteFamilies.cgns"):
+            os.remove("717_wl_L2_overwriteFamilies.cgns")
+
+        cmd = "cgns_utils overwriteFamilies "
+        cmd += self.grid + " "
+        cmd += os.path.abspath(os.path.join(baseDir, "../examples/family_famFile")) + " "
+        cmd += "717_wl_L2_overwriteFamilies.cgns"
+
+        out = subprocess.run(cmd, shell=True)
+        self.assertFalse(out.returncode)
+        self.assertTrue(os.path.isfile("717_wl_L2_overwriteFamilies.cgns"))
+        os.remove("717_wl_L2_overwriteFamilies.cgns")

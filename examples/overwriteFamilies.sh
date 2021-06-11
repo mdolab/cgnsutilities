@@ -16,4 +16,4 @@ EOF
 fi
 
 # Run the command
-cgns_utils family $CGNS_INFILE $FAMFILE $CGNS_OUTFILE
+cgns_utils overwriteFamilies $CGNS_INFILE $FAMFILE $CGNS_OUTFILE
