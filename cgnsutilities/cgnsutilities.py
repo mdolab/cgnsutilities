@@ -13,8 +13,7 @@ import os
 import copy
 import tempfile
 import numpy
-# from . import libcgns_utils
-import libcgns_utils
+from . import libcgns_utils
 
 # These are taken from the CGNS include file (cgnslib_f.h in your cgns library folder)
 BC = {
@@ -359,7 +358,6 @@ class Grid(object):
 
     def overwriteBCs(self, bcFile):
         """Overwrite BCs with information given in the file"""
-
         with open(bcFile, "r") as f:
             for line in f:
                 if line.strip():
@@ -377,14 +375,31 @@ class Grid(object):
                         DirNeu = aux[6]
                         bocoDataSet = BocoDataSet(bocoSetName, BC[bocoDataSetType.lower()])
 
-                        for i in range(7, len(aux), 2):
+                        # for i in range(7, len(aux), 2):
+                        i = 7
+                        while i < len(aux):    
                             arrayName = aux[i]
+                            i += 1
                             dType = CGNSDATATYPES["RealDouble"]
                             nDims = 1
+                            
+                            
+                            dataArr = []
+                            
+                            for j in range(i,len(aux)):
+                                if aux[j].isnumeric():
+                                    dataArr.append(aux[j])
+                                    i += 1
+                                else:
+                                    break
+                            
+                            dataArr = numpy.array(dataArr, dtype=numpy.float64)
+                            
+                            nDims = 1
                             dataDims = numpy.ones(3, dtype=numpy.int32, order="F")
-                            dataArr = numpy.zeros(1, dtype=numpy.float64, order="F")
-                            dataArr[0] = float(aux[i + 1])
-
+                            dataDims[0] = dataArr.size
+                            
+                            
                             bcDataArr = BocoDataSetArray(arrayName, dType, nDims, dataDims, dataArr)
                             if DirNeu == "Dirichlet":
                                 bocoDataSet.addDirichletDataSet(bcDataArr)
