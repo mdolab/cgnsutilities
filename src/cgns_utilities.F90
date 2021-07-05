@@ -2603,7 +2603,7 @@ contains
     integer(kind=4) :: nZones, i, j, k, cg, dims(9), zoneID, ierr, Cx, Cy, Cz, iZone
     integer(kind=4), dimension(:, :), allocatable :: sizes
     real(kind=8), dimension(:, :, :), allocatable :: coorX, coorY, coorZ
-    character*12 :: zoneName
+    character(len=12) :: zoneName
 
     ! We will be assuming multiblock, unformatted without iblank array.
     open (unit=50, form='unformatted', file=pFile)
@@ -2622,7 +2622,7 @@ contains
     zoneLoop: do iZone=1, nZones
 
        ! Write the zone itself.
-       write(zoneName, "((a) (I5))")  'Domain.', izone
+       write(zoneName, "((a), (I5))")  'Domain.', izone
        dims(1:3) = sizes(:, iZone)
        call writeZone(cg, zoneName, dims, zoneID)
 
