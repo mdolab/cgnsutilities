@@ -9,7 +9,7 @@ CGNS_LINKER_FLAGS=-L$(CGNS_HOME)/lib -lcgns
 CC = gcc
 CFLAGS = -O2 -fPIC
 FC = gfortran
-FFLAGS= -O2 -fdefault-real-8 -g -fPIC -std=f2003
+FFLAGS= -O2 -fdefault-real-8 -g -fPIC -std=f2008
 
 # Define potentially different python, python-config and f2py executables:
 PYTHON = python
