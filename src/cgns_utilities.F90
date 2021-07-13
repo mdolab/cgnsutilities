@@ -715,10 +715,10 @@ contains
     implicit none
 
     ! Input/Output
+    integer, intent(in) :: il, jl ,kl
     real(kind=8), intent(in), dimension(il, jl, kl, 3) :: Xin
     ! either a 0 (don't refine along that axis) or 1 (do refine along the axis)
     integer, intent(in) :: refine_i, refine_j, refine_k
-    integer, intent(in) :: il, jl ,kl
     real(kind=8), intent(out), dimension((il-1)*2**refine_i+1, (jl-1)*2**refine_j+1, (kl-1)*2**refine_k+1, 3) :: Xout
     ! Working
     integer :: i, j, k, ii, jj, kk, idim, ill, jll, kll
@@ -845,8 +845,8 @@ contains
     implicit none
 
     ! Input/Output
-    real(kind=8), intent(in), dimension(il, 3) :: Xcoarse
     integer, intent(in) :: il
+    real(kind=8), intent(in), dimension(il, 3) :: Xcoarse
     real(kind=8), intent(inout), dimension((il-1)*2+1, 3) ::Xfine
 
     ! Working
@@ -870,8 +870,8 @@ contains
     implicit none
 
     ! Input/Output
-    real(kind=8), intent(in), dimension(il, jl, 3) :: Xcoarse
     integer, intent(in) :: il, jl
+    real(kind=8), intent(in), dimension(il, jl, 3) :: Xcoarse
     real(kind=8), intent(inout), dimension((il-1)*2+1, (jl-1)*2+1, 3) ::Xfine
 
     ! Working
@@ -1425,8 +1425,8 @@ contains
     implicit none
 
     ! Input/Output
-    real(kind=8), dimension(3*nCoords), intent(in):: inCoords
     integer, intent(in) :: nCoords, nBlock
+    real(kind=8), dimension(3*nCoords), intent(in):: inCoords
     integer, dimension(3, nBlock), intent(in) :: sizes
     real(kind=8), intent(in) :: tol
     ! Working
@@ -2150,8 +2150,8 @@ contains
     implicit none
 
     ! Subroutine inputs
-    real(kind=8), dimension(il,jl,kl,3), intent(in) :: x
     integer, intent(in) :: il, jl, kl
+    real(kind=8), dimension(il,jl,kl,3), intent(in) :: x
 
     ! Subroutine inputs/outputs.
     real(kind=8), dimension(2,3), intent(inout) :: xBounds
@@ -2246,9 +2246,9 @@ contains
     implicit none
 
     ! Subroutine inputs
+    integer, intent(in) :: il, jl, kl, nBinX, nBinY, nBinZ
     real(kind=8), dimension(il,jl,kl,3), intent(in) :: x
     real(kind=8), dimension(2,3), intent(in) :: xBounds
-    integer, intent(in) :: il, jl, kl, nBinX, nBinY, nBinZ
 
     ! Subroutine inputs/outputs.
     real(kind=8), dimension(nBinX), intent(inout) :: binVolX
@@ -2603,7 +2603,7 @@ contains
     integer(kind=4) :: nZones, i, j, k, cg, dims(9), zoneID, ierr, Cx, Cy, Cz, iZone
     integer(kind=4), dimension(:, :), allocatable :: sizes
     real(kind=8), dimension(:, :, :), allocatable :: coorX, coorY, coorZ
-    character*12 :: zoneName
+    character(len=12) :: zoneName
 
     ! We will be assuming multiblock, unformatted without iblank array.
     open (unit=50, form='unformatted', file=pFile)
@@ -2622,7 +2622,7 @@ contains
     zoneLoop: do iZone=1, nZones
 
        ! Write the zone itself.
-       write(zoneName, "((a) (I5))")  'Domain.', izone
+       write(zoneName, "((a), (I5))")  'Domain.', izone
        dims(1:3) = sizes(:, iZone)
        call writeZone(cg, zoneName, dims, zoneID)
 
