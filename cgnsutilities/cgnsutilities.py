@@ -51,6 +51,13 @@ class Grid(object):
         self.name = "domain"
         self.cellDim = 3
 
+    @staticmethod
+    def getBlockCellsNodes(blk):
+        blockCells = (blk.dims[0] - 1) * (blk.dims[1] - 1) * (blk.dims[2] - 1)
+        blockNodes = blk.dims[0] * blk.dims[1] * blk.dims[2]
+
+        return blockCells, blockNodes
+
     def getTotalCellsNodes(self):
         """
         Returns the total number of Cells and Nodes in the grid.
@@ -65,8 +72,9 @@ class Grid(object):
         totalCells = 0
         totalNodes = 0
         for blk in self.blocks:
-            totalCells += (blk.dims[0] - 1) * (blk.dims[1] - 1) * (blk.dims[2] - 1)
-            totalNodes += blk.dims[0] * blk.dims[1] * blk.dims[2]
+            blockCells, blockNodes = self.getBlockCellsNodes(blk)
+            totalCells += blockCells
+            totalNodes += blockNodes
 
         return totalCells, totalNodes
 
@@ -127,26 +135,52 @@ class Grid(object):
         print("Wall Boundary Cells:", boundaryCells)
         print("Wall Boundary Nodes:", boundaryNodes)
 
-    def printBlockInfo(self):
-        """Print some information on each block to screen.
-        This info can be helpful assessing overset meshes"""
+    def getBlockInfo(self):
+        """Get the number of nodes, number of cells, BCs, and
+        the dimensions for each block. This info can be helpful
+        for assessing overset meshes."""
 
         totalCells = 0
         totalNodes = 0
         counter = 1
+        allBlocksInfo = {}
+
         for blk in self.blocks:
-            nCells = (blk.dims[0] - 1) * (blk.dims[1] - 1) * (blk.dims[2] - 1)
-            nNodes = blk.dims[0] * blk.dims[1] * blk.dims[2]
-            print("Block Number:", counter)
-            print("Number of Cells:", nCells)
-            print("Number of Nodes:", nNodes)
-            print("Block dimensions:", list(blk.dims))
+            blockInfo = {}
+            nCells, nNodes = self.getBlockCellsNodes(blk)
+            blockInfo["nCells"] = nCells
+            blockInfo["nNodes"] = nNodes
+            blockInfo["dims"] = list(blk.dims)
+            blockInfo["BCs"] = [boco.type for boco in blk.bocos]
+            allBlocksInfo[f"{counter}"] = blockInfo
             totalCells += nCells
             totalNodes += nNodes
             counter += 1
-        print("Total Zones:", len(self.blocks))
-        print("Total Cells:", totalCells)
-        print("Total Nodes:", totalNodes)
+
+        allBlocksInfo["totalZones"] = len(self.blocks)
+        allBlocksInfo["totalCells"] = totalCells
+        allBlocksInfo["totalNodes"] = totalNodes
+
+        return allBlocksInfo
+
+    def printBlockInfo(self):
+        """Print the number of nodes, number of cells, and
+        the dimensions for each block. This info can be helpful
+        for assessing overset meshes."""
+
+        allBlocksInfo = self.getBlockInfo()
+
+        for i in range(len(self.blocks)):
+            blockNumber = str(i + 1)
+            print("Block Number:", blockNumber)
+            blockInfo = allBlocksInfo[blockNumber]
+            print("Number of Cells:", blockInfo["nCells"])
+            print("Number of Nodes:", blockInfo["nNodes"])
+            print("Block dimensions:", blockInfo["dims"])
+
+        print("Total Zones:", allBlocksInfo["totalZones"])
+        print("Total Cells:", allBlocksInfo["totalCells"])
+        print("Total Nodes:", allBlocksInfo["totalNodes"])
 
     def addBlock(self, blk):
 
