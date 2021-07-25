@@ -1,0 +1,184 @@
+{
+    "Block info": {
+        "1": {
+            "BCs": [
+                22,
+                7,
+                16
+            ],
+            "dims": [
+                {
+                    "__ndarray__": 19,
+                    "dtype": "int32",
+                    "shape": []
+                },
+                {
+                    "__ndarray__": 19,
+                    "dtype": "int32",
+                    "shape": []
+                },
+                {
+                    "__ndarray__": 21,
+                    "dtype": "int32",
+                    "shape": []
+                }
+            ],
+            "nCells": {
+                "__ndarray__": 6480,
+                "dtype": "int64",
+                "shape": []
+            },
+            "nNodes": {
+                "__ndarray__": 7581,
+                "dtype": "int32",
+                "shape": []
+            }
+        },
+        "2": {
+            "BCs": [
+                22,
+                7,
+                16
+            ],
+            "dims": [
+                {
+                    "__ndarray__": 3,
+                    "dtype": "int32",
+                    "shape": []
+                },
+                {
+                    "__ndarray__": 19,
+                    "dtype": "int32",
+                    "shape": []
+                },
+                {
+                    "__ndarray__": 21,
+                    "dtype": "int32",
+                    "shape": []
+                }
+            ],
+            "nCells": {
+                "__ndarray__": 720,
+                "dtype": "int64",
+                "shape": []
+            },
+            "nNodes": {
+                "__ndarray__": 1197,
+                "dtype": "int32",
+                "shape": []
+            }
+        },
+        "3": {
+            "BCs": [
+                22,
+                7,
+                16
+            ],
+            "dims": [
+                {
+                    "__ndarray__": 19,
+                    "dtype": "int32",
+                    "shape": []
+                },
+                {
+                    "__ndarray__": 19,
+                    "dtype": "int32",
+                    "shape": []
+                },
+                {
+                    "__ndarray__": 21,
+                    "dtype": "int32",
+                    "shape": []
+                }
+            ],
+            "nCells": {
+                "__ndarray__": 6480,
+                "dtype": "int64",
+                "shape": []
+            },
+            "nNodes": {
+                "__ndarray__": 7581,
+                "dtype": "int32",
+                "shape": []
+            }
+        },
+        "4": {
+            "BCs": [
+                22,
+                7,
+                16
+            ],
+            "dims": [
+                {
+                    "__ndarray__": 3,
+                    "dtype": "int32",
+                    "shape": []
+                },
+                {
+                    "__ndarray__": 19,
+                    "dtype": "int32",
+                    "shape": []
+                },
+                {
+                    "__ndarray__": 21,
+                    "dtype": "int32",
+                    "shape": []
+                }
+            ],
+            "nCells": {
+                "__ndarray__": 720,
+                "dtype": "int64",
+                "shape": []
+            },
+            "nNodes": {
+                "__ndarray__": 1197,
+                "dtype": "int32",
+                "shape": []
+            }
+        },
+        "5": {
+            "BCs": [
+                22,
+                7
+            ],
+            "dims": [
+                {
+                    "__ndarray__": 3,
+                    "dtype": "int32",
+                    "shape": []
+                },
+                {
+                    "__ndarray__": 19,
+                    "dtype": "int32",
+                    "shape": []
+                },
+                {
+                    "__ndarray__": 21,
+                    "dtype": "int32",
+                    "shape": []
+                }
+            ],
+            "nCells": {
+                "__ndarray__": 720,
+                "dtype": "int64",
+                "shape": []
+            },
+            "nNodes": {
+                "__ndarray__": 1197,
+                "dtype": "int32",
+                "shape": []
+            }
+        },
+        "totalCells": {
+            "__ndarray__": 15120,
+            "dtype": "int64",
+            "shape": []
+        },
+        "totalNodes": {
+            "__ndarray__": 18753,
+            "dtype": "int64",
+            "shape": []
+        },
+        "totalZones": 5
+    }
+}
