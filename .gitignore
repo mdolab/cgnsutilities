@@ -4,6 +4,7 @@
 *.mod
 *.o
 *.so
+*.out
 
 # auto generated files
 src/libcgns_utils-f2pywrappers2.f90
