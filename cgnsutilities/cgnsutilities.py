@@ -51,8 +51,7 @@ class Grid(object):
         self.name = "domain"
         self.cellDim = 3
 
-    @staticmethod
-    def getBlockCellsNodes(blk):
+    def getBlockCellsNodes(self, blk):
         blockCells = (blk.dims[0] - 1) * (blk.dims[1] - 1) * (blk.dims[2] - 1)
         blockNodes = blk.dims[0] * blk.dims[1] * blk.dims[2]
 
