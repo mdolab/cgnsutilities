@@ -51,12 +51,6 @@ class Grid(object):
         self.name = "domain"
         self.cellDim = 3
 
-    def getBlockCellsNodes(self, blk):
-        blockCells = (blk.dims[0] - 1) * (blk.dims[1] - 1) * (blk.dims[2] - 1)
-        blockNodes = blk.dims[0] * blk.dims[1] * blk.dims[2]
-
-        return blockCells, blockNodes
-
     def getTotalCellsNodes(self):
         """
         Returns the total number of Cells and Nodes in the grid.
@@ -71,9 +65,8 @@ class Grid(object):
         totalCells = 0
         totalNodes = 0
         for blk in self.blocks:
-            blockCells, blockNodes = self.getBlockCellsNodes(blk)
-            totalCells += blockCells
-            totalNodes += blockNodes
+            totalCells += blk.getNumCells()
+            totalNodes += blk.getNumNodes()
 
         return totalCells, totalNodes
 
@@ -139,22 +132,19 @@ class Grid(object):
         the dimensions for each block. This info can be helpful
         for assessing overset meshes."""
 
-        totalCells = 0
-        totalNodes = 0
         counter = 1
         allBlocksInfo = {}
 
         for blk in self.blocks:
             blockInfo = {}
-            nCells, nNodes = self.getBlockCellsNodes(blk)
-            blockInfo["nCells"] = nCells
-            blockInfo["nNodes"] = nNodes
+            blockInfo["nCells"] = blk.getNumCells()
+            blockInfo["nNodes"] = blk.getNumNodes()
             blockInfo["dims"] = list(blk.dims)
             blockInfo["BCs"] = [boco.type for boco in blk.bocos]
             allBlocksInfo[f"{counter}"] = blockInfo
-            totalCells += nCells
-            totalNodes += nNodes
             counter += 1
+
+        totalCells, totalNodes = self.getTotalCellsNodes()
 
         allBlocksInfo["totalZones"] = len(self.blocks)
         allBlocksInfo["totalCells"] = totalCells
@@ -2294,6 +2284,14 @@ class Block(object):
         nFace = 2 * ((il - 1) * (jl - 1) + (il - 1) * (kl - 1) + (jl - 1) * (kl - 1))
 
         return libcgns_utils.utils.computefacecoords(self.coords, nFace, blockID)
+
+    def getNumCells(self):
+        """Computes and returns the number of cells for this block"""
+        return (self.dims[0] - 1) * (self.dims[1] - 1) * (self.dims[2] - 1)
+
+    def getNumNodes(self):
+        """Computes and returns the number of nodes for this block"""
+        return self.dims[0] * self.dims[1] * self.dims[2]
 
 
 class Boco(object):
