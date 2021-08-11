@@ -15,6 +15,7 @@ setup(
     packages=["cgnsutilities"],
     package_data={"cgnsutilities": ["*.so"]},
     install_requires=["numpy>=1.16"],
+    extras_require={"testing": ["mdolab-baseclasses>=1.3", "testflo"]},
     classifiers=["Operating System :: Linux", "Programming Language :: Python, Fortran"],
     entry_points={"console_scripts": ["cgns_utils = cgnsutilities.cgns_utils:main"]},
 )
