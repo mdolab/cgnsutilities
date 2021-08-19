@@ -36,3 +36,32 @@ class TestGrid(unittest.TestCase):
         self.grid.overwriteBCs(bcFile)
         self.assertEqual(self.grid.blocks[0].bocos[-1].family, "wall_inviscid")
         self.assertEqual(self.grid.blocks[0].bocos[-1].type, BC["bcwallinviscid"])
+
+    def test_coarsen(self):
+
+        coarsened = self.grid.coarsen()
+        totalCells = self.grid.getTotalCellsNodes()[0]
+        self.assertEqual(15120//8, totalCells)
+    
+    def test_refine(self):
+        refined = self.grid.refine("ijk")
+        totalCells = self.grid.getTotalCellsNodes()[0]
+        self.assertEqual(15120*8, totalCells)
+        
+    
+    def test_refine_axes(self):
+        refined = self.grid.refine("i")
+        totalCells = self.grid.getTotalCellsNodes()[0]
+        self.assertEqual(15120*2, totalCells)
+        
+        refined = self.grid.refine("k")
+        totalCells = self.grid.getTotalCellsNodes()[0]
+        self.assertEqual(15120*4, totalCells)
+        
+        refined = self.grid.refine("j")
+        totalCells = self.grid.getTotalCellsNodes()[0]
+        self.assertEqual(15120*8, totalCells)
+        
+        
+if __name__ == '__main__':
+    unittest.main()
