@@ -377,29 +377,27 @@ class Grid(object):
 
                         # for i in range(7, len(aux), 2):
                         i = 7
-                        while i < len(aux):    
+                        while i < len(aux):
                             arrayName = aux[i]
                             i += 1
                             dType = CGNSDATATYPES["RealDouble"]
                             nDims = 1
-                            
-                            
+
                             dataArr = []
-                            
-                            for j in range(i,len(aux)):
+
+                            for j in range(i, len(aux)):
                                 if aux[j].isnumeric():
                                     dataArr.append(aux[j])
                                     i += 1
                                 else:
                                     break
-                            
+
                             dataArr = numpy.array(dataArr, dtype=numpy.float64)
-                            
+
                             nDims = 1
                             dataDims = numpy.ones(3, dtype=numpy.int32, order="F")
                             dataDims[0] = dataArr.size
-                            
-                            
+
                             bcDataArr = BocoDataSetArray(arrayName, dType, nDims, dataDims, dataArr)
                             if DirNeu == "Dirichlet":
                                 bocoDataSet.addDirichletDataSet(bcDataArr)
@@ -1618,34 +1616,46 @@ class Block(object):
         conditions and B2B if necessary"""
         # We will coarsen one direction at a time. We do this to check if the block
         # is already 1-cell wide, which can't be coarsened any further
-        if self.dims[0] != 2:
-            self.coords = self.coords[0::2, :, :, :]
-            # Update BCs and B2B
-            for boco in self.bocos:
-                boco.coarsen(0)
-            for b2b in self.B2Bs:
-                b2b.coarsen(0)
 
-        if self.dims[1] != 2:
-            self.coords = self.coords[:, 0::2, :, :]
-            # Update BCs and B2B
-            for boco in self.bocos:
-                boco.coarsen(1)
-            for b2b in self.B2Bs:
-                b2b.coarsen(1)
+        # the new dimensions are half rounded up of the old dimensions
+        new_dims = copy.deepcopy(self.dims)
+        for i in range(3):
+            if self.dims[i] > 1:
+                new_dims[i] = (self.dims[i] + 1) // 2
 
-        if self.dims[2] != 2:
-            self.coords = self.coords[:, :, 0::2, :]
-            # Update BCs and B2B
-            for boco in self.bocos:
-                boco.coarsen(2)
-            for b2b in self.B2Bs:
-                b2b.coarsen(2)
+        new_coords = numpy.zeros((new_dims[0], new_dims[1], new_dims[2], 3))
 
-        # Update dimensions
-        self.dims[0] = self.coords.shape[0]
-        self.dims[1] = self.coords.shape[1]
-        self.dims[2] = self.coords.shape[2]
+        # Loop over all directions
+        s = slice(None)
+        fine_slicer = [s] * 3
+        for idx_dim in range(3):
+
+            # can this direction be coarsened?
+            if new_dims[idx_dim] > 2:
+
+                fine_slicer[idx_dim] = slice(None, None, 2)
+
+            for boco in self.bocos:
+                boco.coarsen(idx_dim)
+            for b2b in self.B2Bs:
+                b2b.coarsen(idx_dim)
+
+        new_coords = self.coords[tuple(fine_slicer)]
+
+        # set the last ponint to be the same so we don't create any gaps if
+        # the number of points in that direction isn't odd
+        for idx_dim in range(3):
+            end_fine_slicer = copy.deepcopy(fine_slicer)
+            end_coarse_slicer = [s] * 3
+
+            if new_dims[idx_dim] != 2:
+                end_fine_slicer[idx_dim] = -1
+                end_coarse_slicer[idx_dim] = -1
+
+                new_coords[tuple(end_coarse_slicer)] = self.coords[tuple(end_fine_slicer)]
+
+        self.coords = new_coords
+        self.dims = new_dims
 
     def refine(self, axes):
         """Refine the block uniformly. We will also update the
@@ -2305,20 +2315,14 @@ class Boco(object):
     def coarsen(self, direction):
         """Coarsen the range of the BC along the specified direction"""
 
-        print(direction,'pts b', self.ptRange[direction, :])
         for j in range(2):
             self.ptRange[direction, j] = (self.ptRange[direction, j] - 1) // 2 + 1
-        print(direction,'pts a', self.ptRange[direction, :])
 
         # coarsen the data set if it is an array
         if self.dataSets:
             for data_set in self.dataSets:
                 for dir_arr in data_set.dirichletArrays:
-                    print(self.name, dir_arr.name)
-                    print(dir_arr.dataDimensions)
-                    dir_arr.dataDimensions[0] = numpy.prod(self.ptRange[:,1])
-                    # dir_arr.dataDimensions[direction] = (dir_arr.dataDimensions[direction]-1)//2 + 1
-                    print(dir_arr.dataDimensions, numpy.prod(dir_arr.dataDimensions))
+                    dir_arr.dataDimensions[0] = numpy.prod(self.ptRange[:, 1])
                     data_size = numpy.prod(dir_arr.dataDimensions)
                     dir_arr.dataArr = dir_arr.dataArr[:data_size]
 
@@ -2398,8 +2402,8 @@ class B2B(object):
         """Coarsen the range of the B2B along the specified direction"""
         donorDir = abs(self.transform[direction]) - 1
         for j in range(2):
-            self.ptRange[direction, j] = (self.ptRange[direction, j] - 1) // 2 + 1
-            self.donorRange[donorDir, j] = (self.donorRange[donorDir, j] - 1) // 2 + 1
+            self.ptRange[direction, j] = (self.ptRange[direction, j] + 1) // 2
+            self.donorRange[donorDir, j] = (self.donorRange[donorDir, j] + 1) // 2
 
     def refine(self, axes):
         """refine the range of the B2B"""
