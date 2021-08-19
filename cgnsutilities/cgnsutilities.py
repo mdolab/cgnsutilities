@@ -1622,7 +1622,7 @@ class Block(object):
         for i in range(3):
             if self.dims[i] > 2:
                 new_dims[i] = (self.dims[i] + 1) // 2
-        
+
         new_coords = numpy.zeros((new_dims[0], new_dims[1], new_dims[2], 3))
 
         # Loop over all directions
