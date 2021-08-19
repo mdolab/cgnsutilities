@@ -49,7 +49,8 @@ class TestGrid(unittest.TestCase):
         self.grid.coarsen()
         self.grid.coarsen()
         self.grid.coarsen()
-
+        
+        # 5 becuase there is one cell in each block
         totalCells = self.grid.getTotalCellsNodes()[0]
         self.assertEqual(5, totalCells)
 
