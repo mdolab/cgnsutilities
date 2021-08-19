@@ -7,7 +7,9 @@ baseDir = os.path.dirname(os.path.abspath(__file__))
 
 class TestGrid(unittest.TestCase):
     def setUp(self):
-        self.grid = readGrid(os.path.abspath(os.path.join(baseDir, "../examples/717_wl_L2.cgns")))
+        self.grid = readGrid(
+            os.path.abspath(os.path.join(baseDir, "../examples/717_wl_L2.cgns"))
+        )
 
     def test_getTotalCellsNodes(self):
         totalCells, totalNodes = self.grid.getTotalCellsNodes()
@@ -23,15 +25,21 @@ class TestGrid(unittest.TestCase):
         # Find a specific BC and overwrite the family
         famFile = os.path.abspath(os.path.join(baseDir, "../examples/family_famFile"))
         # Check the family before overwriting.
-        self.assertEqual(self.grid.blocks[0].bocos[0].family.strip().decode("utf-8"), "wall")
+        self.assertEqual(
+            self.grid.blocks[0].bocos[0].family.strip().decode("utf-8"), "wall"
+        )
         self.grid.overwriteFamilies(famFile)
         self.assertEqual(self.grid.blocks[0].bocos[0].family, "wing1")
 
     def test_overwriteBCs(self):
         # Find a specific BC and overwrite the type and family
-        bcFile = os.path.abspath(os.path.join(baseDir, "../examples/overwriteBCs_bcFile"))
+        bcFile = os.path.abspath(
+            os.path.join(baseDir, "../examples/overwriteBCs_bcFile")
+        )
         # Check the BC before overwriting. Note that the "updated" BC is first deleted and new appended
-        self.assertEqual(self.grid.blocks[0].bocos[0].family.strip().decode("utf-8"), "wall")
+        self.assertEqual(
+            self.grid.blocks[0].bocos[0].family.strip().decode("utf-8"), "wall"
+        )
         self.assertEqual(self.grid.blocks[0].bocos[0].type, BC["bcwallviscous"])
         self.grid.overwriteBCs(bcFile)
         self.assertEqual(self.grid.blocks[0].bocos[-1].family, "wall_inviscid")
@@ -41,27 +49,26 @@ class TestGrid(unittest.TestCase):
 
         coarsened = self.grid.coarsen()
         totalCells = self.grid.getTotalCellsNodes()[0]
-        self.assertEqual(15120//8, totalCells)
-    
+        self.assertEqual(15120 // 8, totalCells)
+
     def test_refine(self):
         refined = self.grid.refine("ijk")
         totalCells = self.grid.getTotalCellsNodes()[0]
-        self.assertEqual(15120*8, totalCells)
-        
-    
+        self.assertEqual(15120 * 8, totalCells)
+
     def test_refine_axes(self):
         refined = self.grid.refine("i")
         totalCells = self.grid.getTotalCellsNodes()[0]
-        self.assertEqual(15120*2, totalCells)
-        
+        self.assertEqual(15120 * 2, totalCells)
+
         refined = self.grid.refine("k")
         totalCells = self.grid.getTotalCellsNodes()[0]
-        self.assertEqual(15120*4, totalCells)
-        
+        self.assertEqual(15120 * 4, totalCells)
+
         refined = self.grid.refine("j")
         totalCells = self.grid.getTotalCellsNodes()[0]
-        self.assertEqual(15120*8, totalCells)
-        
-        
-if __name__ == '__main__':
+        self.assertEqual(15120 * 8, totalCells)
+
+
+if __name__ == "__main__":
     unittest.main()
