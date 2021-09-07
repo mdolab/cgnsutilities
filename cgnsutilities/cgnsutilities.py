@@ -584,7 +584,7 @@ class Grid(object):
         # Call the generic routine
         return simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile)
 
-    def simpleOCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile, comm=None):
+    def simpleOCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile, comm=None, userOptions=None):
         """Generates a cartesian mesh around the provided grid, surrounded by
         an O-Mesh"""
 
@@ -611,7 +611,7 @@ class Grid(object):
         if "z" not in sym and "zmin" not in sym:
             patches.append(X[:, :, 0, :][::-1, :, :])
 
-        # Set up the generic input for pyHyp:
+        # Set up the generic input for pyHyp
         hypOptions = {
             "patches": patches,
             "unattachedEdgesAreSymmetry": True,
@@ -623,6 +623,10 @@ class Grid(object):
             "marchDist": hExtra,
             "cmax": 3.0,
         }
+
+        # Use user-defined options if provided
+        if userOptions is not None:
+            hypOptions.update(userOptions)
 
         # Run pyHyp
         from pyhyp import pyHyp
