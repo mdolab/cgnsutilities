@@ -568,7 +568,7 @@ class Grid(object):
             blk.double2D()
 
     def simpleCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile):
-        """Generates a cartesian mesh around the provided grid"""
+        """Generates a Cartesian mesh around the provided grid"""
 
         # Get the bounds of each grid.
         xMin = 1e20 * numpy.ones(3)
@@ -584,9 +584,11 @@ class Grid(object):
         # Call the generic routine
         return simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile)
 
-    def simpleOCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile, comm=None, userHypOptions=None):
-        """Generates a cartesian mesh around the provided grid, surrounded by
-        an O-Mesh"""
+    def simpleOCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile, userOptions=None):
+        """Generates a Cartesian mesh around the provided grid, surrounded by an O-mesh.
+        This function requires pyHyp to be installed. If this function is run with MPI,
+        pyHyp will be run in parallel.
+        """
 
         # First run simpleCart with no extension:
         X, dx = self.simpleCart(dh, 0.0, 0, sym, mgcycle, outFile=None)
@@ -625,8 +627,8 @@ class Grid(object):
         }
 
         # Use user-defined options if provided
-        if userHypOptions is not None:
-            hypOptions.update(userHypOptions)
+        if userOptions is not None:
+            hypOptions.update(userOptions)
 
         # Run pyHyp
         from pyhyp import pyHyp
@@ -666,13 +668,13 @@ class Grid(object):
             os.remove(fName)
 
     def cartesian(self, cartFile, outFile):
-        """Generates a cartesian mesh around the provided grid"""
+        """Generates a Cartesian mesh around the provided grid"""
 
         # PARAMETERS
         inLayer = 2  # How many layers of the overset interpolation
         # faces will be used for volume computation
 
-        print("Running cartesian grid generator")
+        print("Running Cartesian grid generator")
 
         # Preallocate arrays
         extensions = numpy.zeros((2, 3), order="F")
@@ -2529,7 +2531,7 @@ def inRange(ptRange, chkRange):
 
 def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
     """
-    Generates a cartesian mesh
+    Generates a Cartesian mesh
 
     Parameters
     ----------
