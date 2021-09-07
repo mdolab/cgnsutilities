@@ -584,7 +584,7 @@ class Grid(object):
         # Call the generic routine
         return simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile)
 
-    def simpleOCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile, comm=None, userOptions=None):
+    def simpleOCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile, comm=None, userHypOptions=None):
         """Generates a cartesian mesh around the provided grid, surrounded by
         an O-Mesh"""
 
@@ -625,8 +625,8 @@ class Grid(object):
         }
 
         # Use user-defined options if provided
-        if userOptions is not None:
-            hypOptions.update(userOptions)
+        if userHypOptions is not None:
+            hypOptions.update(userHypOptions)
 
         # Run pyHyp
         from pyhyp import pyHyp
@@ -3172,7 +3172,7 @@ def combineGrids(grids, useOldNames=False):
     # Create a dictionary to contain grid objects with their names
     # as the corresponding keys
     gridDict = {}
-    for _j, grid in enumerate(grids):
+    for grid in grids:
 
         # Get the name of the grid
         gridDict[grid.name] = grid
