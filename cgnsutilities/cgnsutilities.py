@@ -2451,7 +2451,7 @@ def getS(N, s0, S):
 
     fa = S - f(a)
 
-    for i in range(100):
+    for _i in range(100):
         c = 0.5 * (a + b)
         ff = S - f(c)
         if abs(ff) < 1e-6:
@@ -2727,7 +2727,7 @@ def readGrid(fileName):
                     ) = libcgns_utils.utils.getbcdatasetinfo(inFile, iBlock, iBoco, iBocoDataSet)
                     bcDSet = BocoDataSet(bocoDatasetName, bocoType)
 
-                    def getBocoDataSetArray(flagDirNeu):
+                    def getBocoDataSetArray(flagDirNeu, iDir):
                         # Get data information
                         (
                             dataArrayName,
@@ -2756,7 +2756,7 @@ def readGrid(fileName):
                         for iDir in range(1, nDirichletArrays + 1):
 
                             # Get the data set
-                            bcDSetArr = getBocoDataSetArray(BCDATATYPE["Dirichlet"])
+                            bcDSetArr = getBocoDataSetArray(BCDATATYPE["Dirichlet"], iDir)
 
                             # Append a BocoDataSetArray to the datasets
                             bcDSet.addDirichletDataSet(bcDSetArr)
@@ -2766,10 +2766,10 @@ def readGrid(fileName):
 
                     if nNeumannArrays > 0:
                         # Loop over Neumann data sets
-                        for nDir in range(1, nNeumannArrays + 1):
+                        for iDir in range(1, nNeumannArrays + 1):
 
                             # Get the data set
-                            bcDSetArr = getBocoDataSetArray(BCDATATYPE["Neumann"])
+                            bcDSetArr = getBocoDataSetArray(BCDATATYPE["Neumann"], iDir)
 
                             # Append a BocoDataSetArray to the datasets
                             bcDSet.addNeumannDataSet(bcDSetArr)
@@ -3172,7 +3172,7 @@ def combineGrids(grids, useOldNames=False):
     # Create a dictionary to contain grid objects with their names
     # as the corresponding keys
     gridDict = {}
-    for j, grid in enumerate(grids):
+    for _j, grid in enumerate(grids):
 
         # Get the name of the grid
         gridDict[grid.name] = grid
