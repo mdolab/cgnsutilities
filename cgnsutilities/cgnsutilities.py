@@ -3176,8 +3176,9 @@ def combineGrids(grids, useOldNames=False):
     gridDict = {}
     for grid in grids:
 
-        # Get the name of the grid
-        gridDict[grid.name] = grid
+        # Create a dictionary of copies so the original grids are not modified
+        gridDict[grid.name] = copy.deepcopy(grid)
+        # gridDict[grid.name] = grid
 
     # Alphabetically sort the list of grid object names
     nameList = list(sorted(gridDict.keys()))
@@ -3202,9 +3203,13 @@ def combineGrids(grids, useOldNames=False):
         for blk in grid.blocks:
             nBlock += 1
             if not useOldNames:
-                newName = name + ".%5.5d" % nBlock
+                blockName = name
             else:
-                newName = blk.name.split(".")[0] + ".%5.5d" % nBlock
+                try:
+                    blockName = blk.name.split(".")[0]
+                except TypeError:
+                    blockName = blk.name.decode().split(".")[0]
+            newName = blockName + f".{nBlock:05}"
             zoneMap[blk.name] = newName
             blk.name = newName
 
