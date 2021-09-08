@@ -3178,7 +3178,6 @@ def combineGrids(grids, useOldNames=False):
 
         # Create a dictionary of copies so the original grids are not modified
         gridDict[grid.name] = copy.deepcopy(grid)
-        # gridDict[grid.name] = grid
 
     # Alphabetically sort the list of grid object names
     nameList = list(sorted(gridDict.keys()))
