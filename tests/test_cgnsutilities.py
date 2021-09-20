@@ -2,7 +2,7 @@ import os
 import subprocess
 import unittest
 from baseclasses import BaseRegTest
-from cgnsutilities.cgnsutilities import readGrid, BC
+from cgnsutilities.cgnsutilities import readGrid, BC, combineGrids
 
 baseDir = os.path.dirname(os.path.abspath(__file__))
 
@@ -115,3 +115,55 @@ class TestBlock(unittest.TestCase):
 
     def train_getNumNodes(self):
         self.test_getNumNodes(train=True)
+
+
+class TestReturnFuncs(unittest.TestCase):
+    def setUp(self):
+        # Use the same grid file with different names
+        self.grid1 = readGrid(os.path.abspath(os.path.join(baseDir, "../examples/717_wl_L2.cgns")))
+        self.grid1.name = "grid1"
+        self.grid2 = readGrid(os.path.abspath(os.path.join(baseDir, "../examples/717_wl_L2.cgns")))
+        self.grid2.name = "grid2"
+        self.grids = [self.grid1, self.grid2]
+
+    def test_combineGrids(self, train=False):
+
+        combinedNewNames = combineGrids(self.grids)
+        combinedOldNames = combineGrids(self.grids, useOldNames=True)
+
+        newNames = [blk.name for blk in combinedNewNames.blocks]
+        oldNames = [blk.name for blk in combinedOldNames.blocks]
+
+        # Blocks are named after the grid name
+        self.assertEqual(
+            newNames,
+            [
+                "grid1.00001",
+                "grid1.00002",
+                "grid1.00003",
+                "grid1.00004",
+                "grid1.00005",
+                "grid2.00001",
+                "grid2.00002",
+                "grid2.00003",
+                "grid2.00004",
+                "grid2.00005",
+            ],
+        )
+
+        # Block names from original grids are preserved
+        self.assertEqual(
+            oldNames,
+            [
+                "domain.00001",
+                "domain.00002",
+                "domain.00003",
+                "domain.00004",
+                "domain.00005",
+                "domain.00001",
+                "domain.00002",
+                "domain.00003",
+                "domain.00004",
+                "domain.00005",
+            ],
+        )
