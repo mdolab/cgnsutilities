@@ -81,19 +81,19 @@ class Grid(object):
             to the end of the family name. These need to be stripped. Default True.
         """
         if newBCType not in BC.keys():
-            raise ValueError('New BC type ', newBCType, ' is not in the cgnsutilities list of boundary conditions.')
+            raise ValueError("New BC type ", newBCType, " is not in the cgnsutilities list of boundary conditions.")
         nBCOverwritten = 0
         for iBlk, block in enumerate(self.blocks):
             if blocks is None or iBlk in blocks:
                 for boco in block.bocos:
-                    bocoFamily = boco.family.decode('utf-8')
-                    if rstrip: 
+                    bocoFamily = boco.family.decode("utf-8")
+                    if rstrip:
                         bocoFamily = bocoFamily.rstrip()
                     if bocoFamily == familyName:
                         boco.type = BC[newBCType]
                         nBCOverwritten += 1
 
-        print(str(nBCOverwritten), ' boundary condition overwritten.')
+        print(str(nBCOverwritten), " boundary condition overwritten.")
 
     def getTotalCellsNodes(self):
         """
