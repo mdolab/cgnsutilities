@@ -56,7 +56,7 @@ class Grid(object):
         """
         Overwrites all boundary conditions matching a given family name with a new boundary condition
 
-        This is useful because Pointwise specifies boundary conditions on CGNS grids in a way 
+        This is useful because Pointwise specifies boundary conditions on CGNS grids in a way
         that is incompatible with ADflow (family-defined) and these BC always need to be
         overwritten.
 
@@ -69,7 +69,6 @@ class Grid(object):
 
         Inputs
         ------
-        
         familyName : str
             The BC family to overwrite
         newBCType : str
