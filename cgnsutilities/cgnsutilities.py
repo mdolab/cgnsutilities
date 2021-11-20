@@ -24,6 +24,7 @@ BC = {
     "bcwallviscous": 22,
     "bcwallviscousheatflux": 23,
     "bcwallviscousisothermal": 24,
+    "familyspecified": 25,
     "bcoutflow": 13,
     "bcoutflowsubsonic": 14,
     "bcoutflowsupersonic": 15,
@@ -50,6 +51,49 @@ class Grid(object):
         self.topo = None
         self.name = "domain"
         self.cellDim = 3
+
+    def overwriteBCFamilyWithBC(self, familyName, newBCType, blocks=None, rstrip=True):
+        """
+        Overwrites all boundary conditions matching a given family name with a new boundary condition
+
+        This is useful because Pointwise specifies boundary conditions on CGNS grids in a way 
+        that is incompatible with ADflow (family-defined) and these BC always need to be
+        overwritten.
+
+        Example
+        -------
+        from cgnsutilities.cgnsutilities import Grid, readGrid
+        grid = readGrid("pointwise_vol_grid.cgns")
+        grid.overwriteBCFamilyWithBC('oversetfamily', 'bcoverset', [0,1,2,4])
+        grid.writeToCGNS("pointwise_vol_grid_converted.cgns")
+
+        Inputs
+        ------
+        
+        familyName : str
+            The BC family to overwrite
+        newBCType : str
+            The new boundary condition to apply
+        blocks : list of ints or None
+            The blocks to overwrite. Default None overwrites BC on all blocks.
+        rstrip : bool
+            It seems that the cgns reader always appends a large number of blank spaces
+            to the end of the family name. These need to be stripped. Default True.
+        """
+        if newBCType not in BC.keys():
+            raise ValueError('New BC type ', newBCType, ' is not in the cgnsutilities list of boundary conditions.')
+        nBCOverwritten = 0
+        for iBlk, block in enumerate(self.blocks):
+            if blocks is None or iBlk in blocks:
+                for boco in block.bocos:
+                    bocoFamily = boco.family.decode('utf-8')
+                    if rstrip: 
+                        bocoFamily = bocoFamily.rstrip()
+                    if bocoFamily == familyName:
+                        boco.type = BC[newBCType]
+                        nBCOverwritten += 1
+
+        print(str(nBCOverwritten), ' boundary condition overwritten.')
 
     def getTotalCellsNodes(self):
         """

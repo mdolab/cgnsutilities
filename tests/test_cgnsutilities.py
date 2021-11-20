@@ -58,6 +58,28 @@ class TestGrid(unittest.TestCase):
         self.assertEqual(self.grid.blocks[0].bocos[-1].family, "wall_inviscid")
         self.assertEqual(self.grid.blocks[0].bocos[-1].type, BC["bcwallinviscid"])
 
+    def test_overwriteBCfamily(self):
+        # Find a specific family and overwrite the BCs for the entire family
+        # Check the BC before overwriting
+        self.assertEqual(self.grid.blocks[0].bocos[1].family.strip().decode("utf-8"), 'Far')
+        self.assertEqual(self.grid.blocks[0].bocos[1].type, BC["bcfarfield"])
+        self.assertEqual(self.grid.blocks[1].bocos[1].family.strip().decode("utf-8"), 'Far')
+        self.assertEqual(self.grid.blocks[1].bocos[1].type, BC["bcfarfield"])
+        self.assertEqual(self.grid.blocks[1].bocos[0].family.strip().decode("utf-8"), 'wall')
+        self.assertEqual(self.grid.blocks[1].bocos[0].type, BC["bcwallviscous"])
+        self.grid.overwriteBCFamilyWithBC('Far', 'bcoverset', blocks=[1])
+
+        # block 0 should be unchanged evne though family matches
+        self.assertEqual(self.grid.blocks[0].bocos[1].family.strip().decode("utf-8"), 'Far')
+        self.assertEqual(self.grid.blocks[0].bocos[1].type, BC["bcfarfield"])
+
+        # block 1 wall family should be unchanged because family doesn't match
+        self.assertEqual(self.grid.blocks[1].bocos[0].family.strip().decode("utf-8"), 'wall')
+        self.assertEqual(self.grid.blocks[1].bocos[0].type, BC["bcwallviscous"])
+
+        # block 1 Far family should be overwritten with bcoverset
+        self.assertEqual(self.grid.blocks[1].bocos[1].family.strip().decode("utf-8"), 'Far')
+        self.assertEqual(self.grid.blocks[1].bocos[1].type, BC["bcoverset"])
 
 class TestCLI(unittest.TestCase):
     def setUp(self):
