@@ -366,7 +366,6 @@ class Grid(object):
             except ValueError:
                 return False
 
-
         with open(bcFile, "r") as f:
             for line in f:
                 if line.strip():
@@ -384,7 +383,6 @@ class Grid(object):
                         DirNeu = aux[6]
                         bocoDataSet = BocoDataSet(bocoSetName, BC[bocoDataSetType.lower()])
 
-                        # for i in range(7, len(aux), 2):
                         i = 7
                         while i < len(aux):
                             arrayName = aux[i]
@@ -418,6 +416,17 @@ class Grid(object):
                         dataSet.append(bocoDataSet)
 
                     self.blocks[blockID].overwriteBCs(face, bocoType, family, dataSet)
+
+    def writeBCs(self, bcFile):
+        """write BCs to file"""
+        if bcFile == None:
+            bcFile = self.name + ".bc"
+
+        with open(bcFile, "w") as fid:
+
+            for idx_block, block in enumerate(self.blocks):
+                blockID = idx_block + 1
+                block.writeBCs(blockID, fid)
 
     def autoOversetBC(self, sym, connectSelf, tol):
         """This is essentially a simplified version of autoBC that flags all
@@ -1632,25 +1641,19 @@ class Block(object):
             if self.dims[i] > 2:
                 new_dims[i] = (self.dims[i] + 1) // 2
         new_coords = numpy.zeros((new_dims[0], new_dims[1], new_dims[2], 3))
+
         # Loop over all directions
         s = slice(None)
         fine_slicer = [s] * 3
         for idx_dim in range(3):
-
             # can this direction be coarsened?
             if self.dims[idx_dim] > 2:
                 # set the slice in that direction to take every other point
                 fine_slicer[idx_dim] = slice(None, None, 2)
-            
-            # HACK: this sometimes fails
-            for boco in self.bocos:
-                boco.coarsen(idx_dim)
-            for b2b in self.B2Bs:
-                b2b.coarsen(idx_dim)
-                
+
         new_coords = self.coords[tuple(fine_slicer)]
 
-        # set the last ponint to be the same so we don't create any gaps if
+        # set the last point to be the same so we don't create any gaps if
         # the number of points in that direction isn't odd
         for idx_dim in range(3):
             end_fine_slicer = copy.deepcopy(fine_slicer)
@@ -1661,12 +1664,17 @@ class Block(object):
                 end_coarse_slicer[idx_dim] = -1
 
                 new_coords[tuple(end_coarse_slicer)] = self.coords[tuple(end_fine_slicer)]
-        
-        
+
+        # coarsen the bc and connectivity for the blk as well
+        for boco in self.bocos:
+            boco.coarsen()
+        for b2b in self.B2Bs:
+            b2b.coarsen()
+
         self.coords = new_coords
-        
+
         self.dims = new_dims
-        
+
     def refine(self, axes):
         """Refine the block uniformly. We will also update the
         boundary conditions and B2Bs if necessary"""
@@ -2142,6 +2150,69 @@ class Block(object):
         self.addBoco(Boco("boco_%d" % self.bocoCounter, BC[bocoType.lower()], ptRange, family, dataSet))
         self.bocoCounter += 1
 
+    def writeBCs(self, blk_num, file_handle):
+        """write the bc data to a file"""
+
+        d = self.dims
+
+        for boco in self.bocos:
+            # check the point range to see what face it is on
+            ptRange = boco.ptRange
+            if (ptRange[0] == [1, 1]).all():
+                face = "ilow"
+            elif (ptRange[0] == [d[0], d[0]]).all():
+                face = "ihigh"
+
+            elif (ptRange[1] == [1, 1]).all():
+                face = "jlow"
+            elif (ptRange[1] == [d[1], d[1]]).all():
+                face = "jhigh"
+
+            elif (ptRange[2] == [1, 1]).all():
+                face = "klow"
+            elif (ptRange[2] == [d[2], d[2]]).all():
+                face = "khigh"
+            else:
+                raise ValueError(
+                    f"Face could not be determined to be one of (iLow, iHigh, jLow, jHigh, kLow, or kHigh)"
+                )
+
+            data_arr_str = ""
+            for data_arr in boco.dataSets:
+                # print(data_arr.family)
+
+                # use the BC dictionary in revesrse to find the bc type string
+                for bctype in BC:
+                    if data_arr.type == BC[bctype]:
+                        bctype_str = bctype
+                        break
+
+                data_arr_str += " " + data_arr.name.decode("utf-8", "ignore")
+                data_arr_str += " " + bctype_str
+
+                if data_arr.dirichletArrays:
+                    data_arr_str += " Dirichlet"
+
+                    for d_arr in data_arr.dirichletArrays:
+                        data_arr_str += " " + d_arr.name.decode("utf-8", "ignore")
+                        data_arr_str += " " + " ".join([f"{data}" for data in d_arr.dataArr])
+
+                if data_arr.neumannArrays:
+                    data_arr_str += " Neumann"
+
+                    for n_arr in data_arr.neumannArrays:
+                        data_arr_str += " " + n_arr.name
+                        data_arr_str += " " + " ".join([f"{data}" for data in n_arr.dataArr])
+
+            # use the BC dictionary in revesrse to find the bc type string
+            for bctype in BC:
+                if boco.type == BC[bctype]:
+                    bctype_str = bctype
+                    break
+
+            fam_name = boco.family.strip().decode("utf-8", "ignore")
+            file_handle.write(f"{blk_num} {face} {bctype_str} {fam_name} {data_arr_str}\n")
+
     def isFaceInPtRange(self, face, ptRange):
         """
         Identifies if the provided face matches a given point range.
@@ -2322,17 +2393,29 @@ class Boco(object):
         """Add a boundary condition dataset to this bc"""
         self.dataSets.append(bocoDataSet)
 
-    def coarsen(self, direction):
-        """Coarsen the range of the BC along the specified direction"""
+    def coarsen(self):
+        """Coarsen the range of the BC in each direction"""
 
-        for j in range(2):
-            self.ptRange[direction, j] = (self.ptRange[direction, j] - 1) // 2 + 1
+        for idim in range(3):
+
+            self.ptRange[idim, 0] = (self.ptRange[idim, 0] - 1) // 2 + 1
+            if self.ptRange[idim, 1] > 2:
+                self.ptRange[idim, 1] = (self.ptRange[idim, 1] - 1) // 2 + 1
 
         # coarsen the data set if it is an array
         if self.dataSets:
             for data_set in self.dataSets:
                 for dir_arr in data_set.dirichletArrays:
+                    if numpy.prod(dir_arr.dataDimensions) == 1:
+                        # one value is being used for all points
+                        # thus, there is no need to coarseen the data
+                        continue
+
+                    # this assumes that the pt range starts at 1
+                    # it also assumes that the data dimensions are n_pts x 1 x 1
                     dir_arr.dataDimensions[0] = numpy.prod(self.ptRange[:, 1])
+
+                    # take the fisrt elements of the dataArray
                     data_size = numpy.prod(dir_arr.dataDimensions)
                     dir_arr.dataArr = dir_arr.dataArr[:data_size]
 
@@ -2408,12 +2491,19 @@ class B2B(object):
         self.donorRange = donorRange
         self.transform = transform
 
-    def coarsen(self, direction):
+    def coarsen(self):
         """Coarsen the range of the B2B along the specified direction"""
-        donorDir = abs(self.transform[direction]) - 1
-        for j in range(2):
-            self.ptRange[direction, j] = (self.ptRange[direction, j] + 1) // 2
-            self.donorRange[donorDir, j] = (self.donorRange[donorDir, j] + 1) // 2
+        for idim in range(3):
+
+            donorDir = abs(self.transform[idim]) - 1
+
+            for j in range(2):
+
+                if self.ptRange[idim, j] > 2:
+                    self.ptRange[idim, j] = (self.ptRange[idim, j] - 1) // 2 + 1
+
+                if self.donorRange[donorDir, j] > 2:
+                    self.donorRange[donorDir, j] = (self.donorRange[donorDir, j] + 1) // 2
 
     def refine(self, axes):
         """refine the range of the B2B"""

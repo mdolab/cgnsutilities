@@ -1,6 +1,7 @@
 import os
 import unittest
 from cgnsutilities.cgnsutilities import readGrid, BC
+import numpy as np
 
 baseDir = os.path.dirname(os.path.abspath(__file__))
 
@@ -49,7 +50,7 @@ class TestGrid(unittest.TestCase):
         self.grid.coarsen()
         self.grid.coarsen()
         self.grid.coarsen()
-        
+
         # 5 because there is one cell in each block
         totalCells = self.grid.getTotalCellsNodes()[0]
         self.assertEqual(5, totalCells)
@@ -71,6 +72,15 @@ class TestGrid(unittest.TestCase):
         self.grid.refine("j")
         totalCells = self.grid.getTotalCellsNodes()[0]
         self.assertEqual(15120 * 8, totalCells)
+
+    def test_overwriteBCs(self):
+        self.grid.removeBCs()
+        self.grid.overwriteBCs(os.path.abspath(os.path.join(baseDir, "hotwall_boco.info")))
+
+        self.assertEqual(self.grid.blocks[4].bocos[0].type, BC["bcwallviscousisothermal"])
+        np.testing.assert_array_equal(
+            self.grid.blocks[4].bocos[0].dataSets[0].dirichletArrays[0].dataArr, np.array(range(300, 300 + 19 * 3))
+        )
 
 
 if __name__ == "__main__":
