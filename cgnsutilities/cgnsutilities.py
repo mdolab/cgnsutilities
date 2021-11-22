@@ -358,6 +358,15 @@ class Grid(object):
 
     def overwriteBCs(self, bcFile):
         """Overwrite BCs with information given in the file"""
+
+        def isFloat(string):
+            try:
+                float(string)
+                return True
+            except ValueError:
+                return False
+
+
         with open(bcFile, "r") as f:
             for line in f:
                 if line.strip():
@@ -386,7 +395,7 @@ class Grid(object):
                             dataArr = []
 
                             for j in range(i, len(aux)):
-                                if aux[j].isnumeric():
+                                if isFloat(aux[j]):
                                     dataArr.append(aux[j])
                                     i += 1
                                 else:
@@ -1622,24 +1631,23 @@ class Block(object):
         for i in range(3):
             if self.dims[i] > 2:
                 new_dims[i] = (self.dims[i] + 1) // 2
-
         new_coords = numpy.zeros((new_dims[0], new_dims[1], new_dims[2], 3))
-
         # Loop over all directions
         s = slice(None)
         fine_slicer = [s] * 3
         for idx_dim in range(3):
 
             # can this direction be coarsened?
-            if new_dims[idx_dim] > 2:
-
+            if self.dims[idx_dim] > 2:
+                # set the slice in that direction to take every other point
                 fine_slicer[idx_dim] = slice(None, None, 2)
-
+            
+            # HACK: this sometimes fails
             for boco in self.bocos:
                 boco.coarsen(idx_dim)
             for b2b in self.B2Bs:
                 b2b.coarsen(idx_dim)
-
+                
         new_coords = self.coords[tuple(fine_slicer)]
 
         # set the last ponint to be the same so we don't create any gaps if
@@ -1653,10 +1661,12 @@ class Block(object):
                 end_coarse_slicer[idx_dim] = -1
 
                 new_coords[tuple(end_coarse_slicer)] = self.coords[tuple(end_fine_slicer)]
-
+        
+        
         self.coords = new_coords
+        
         self.dims = new_dims
-
+        
     def refine(self, axes):
         """Refine the block uniformly. We will also update the
         boundary conditions and B2Bs if necessary"""
