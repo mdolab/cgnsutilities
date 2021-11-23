@@ -60,6 +60,15 @@ class TestGrid(unittest.TestCase):
         self.assertEqual(self.grid.blocks[0].bocos[-1].family, "wall_inviscid")
         self.assertEqual(self.grid.blocks[0].bocos[-1].type, BC["bcwallinviscid"])
 
+    def test_overwriteBCs_array(self):
+        self.grid.removeBCs()
+        self.grid.overwriteBCs(os.path.abspath(os.path.join(baseDir, "hotwall_boco.info")))
+
+        self.assertEqual(self.grid.blocks[4].bocos[0].type, BC["bcwallviscousisothermal"])
+        np.testing.assert_array_equal(
+            self.grid.blocks[4].bocos[0].dataSets[0].dirichletArrays[0].dataArr, np.array(range(300, 300 + 19 * 3))
+        )
+
     def test_coarsen(self):
 
         self.grid.coarsen()
@@ -94,15 +103,6 @@ class TestGrid(unittest.TestCase):
         self.grid.refine("j")
         totalCells = self.grid.getTotalCellsNodes()[0]
         self.assertEqual(15120 * 8, totalCells)
-
-    def test_overwriteBCs(self):
-        self.grid.removeBCs()
-        self.grid.overwriteBCs(os.path.abspath(os.path.join(baseDir, "hotwall_boco.info")))
-
-        self.assertEqual(self.grid.blocks[4].bocos[0].type, BC["bcwallviscousisothermal"])
-        np.testing.assert_array_equal(
-            self.grid.blocks[4].bocos[0].dataSets[0].dirichletArrays[0].dataArr, np.array(range(300, 300 + 19 * 3))
-        )
 
 
 class TestCLI(unittest.TestCase):

@@ -442,7 +442,7 @@ class Grid(object):
 
     def writeBCs(self, bcFile):
         """write BCs to file"""
-        if bcFile == None:
+        if bcFile is None:
             bcFile = self.name + ".bc"
 
         with open(bcFile, "w") as fid:
@@ -2203,7 +2203,7 @@ class Block(object):
                 face = "khigh"
             else:
                 raise ValueError(
-                    f"Face could not be determined to be one of (iLow, iHigh, jLow, jHigh, kLow, or kHigh)"
+                    "Face could not be determined to be one of (iLow, iHigh, jLow, jHigh, kLow, or kHigh)"
                 )
 
             data_arr_str = ""
