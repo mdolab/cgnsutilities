@@ -906,7 +906,6 @@ def main():
     elif args.mode == "overwriteBC":
         curGrid.overwriteBCs(args.bcFile)
 
-
     elif args.mode == "writebcinfo":
         curGrid.writeBCs(args.bcOutFile)
         sys.exit(0)
