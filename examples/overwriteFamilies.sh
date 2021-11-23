@@ -2,7 +2,7 @@
 
 # This script demonstrates how to run and use the family option
 CGNS_INFILE="717_wl_L2.cgns"
-CGNS_OUTFILE="717_wl_L2_family.cgns"
+CGNS_OUTFILE="717_wl_L2_overwriteFamilies.cgns"
 FAMFILE="family_famFile"
 WRITEFILE=true
 
@@ -16,4 +16,4 @@ EOF
 fi
 
 # Run the command
-cgns_utils family $CGNS_INFILE $FAMFILE $CGNS_OUTFILE
+cgns_utils overwriteFamilies $CGNS_INFILE $FAMFILE $CGNS_OUTFILE

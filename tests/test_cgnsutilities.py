@@ -1,7 +1,10 @@
 import os
+import subprocess
 import unittest
-from cgnsutilities.cgnsutilities import readGrid, BC
 import numpy as np
+from baseclasses import BaseRegTest
+from cgnsutilities.cgnsutilities import readGrid, BC, combineGrids
+
 
 baseDir = os.path.dirname(os.path.abspath(__file__))
 
@@ -10,15 +13,34 @@ class TestGrid(unittest.TestCase):
     def setUp(self):
         self.grid = readGrid(os.path.abspath(os.path.join(baseDir, "../examples/717_wl_L2.cgns")))
 
-    def test_getTotalCellsNodes(self):
+    def test_getTotalCellsNodes(self, train=False):
         totalCells, totalNodes = self.grid.getTotalCellsNodes()
-        self.assertEqual(totalCells, 15120)
-        self.assertEqual(totalNodes, 18753)
+        refFile = os.path.join(baseDir, "ref", "totalCellsNodes.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_add_val("Total cells", totalCells, tol=0)
+            handler.root_add_val("Total nodes", totalNodes, tol=0)
 
-    def test_getWallCellsNodes(self):
+    def train_getTotalCellsNodes(self):
+        self.test_getTotalCellsNodes(train=True)
+
+    def test_getWallCellsNodes(self, train=False):
         nWallCells, nWallNodes = self.grid.getWallCellsNodes()
-        self.assertEqual(nWallCells, 756)
-        self.assertEqual(nWallNodes, 893)
+        refFile = os.path.join(baseDir, "ref", "wallCellsNodes.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_add_val("Wall cells", nWallCells, tol=0)
+            handler.root_add_val("Wall nodes", nWallNodes, tol=0)
+
+    def train_getWallCellsNodes(self):
+        self.test_getWallCellsNodes(train=True)
+
+    def test_getBlockInfo(self, train=False):
+        blockInfo = self.grid.getBlockInfo()
+        refFile = os.path.join(baseDir, "ref", "blockInfo.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_add_dict("Block info", blockInfo, tol=0)
+
+    def train_getBlockInfo(self):
+        self.test_getBlockInfo(train=True)
 
     def test_overwriteFamilies(self):
         # Find a specific BC and overwrite the family
@@ -83,5 +105,115 @@ class TestGrid(unittest.TestCase):
         )
 
 
+class TestCLI(unittest.TestCase):
+    def setUp(self):
+        self.grid = os.path.abspath(os.path.join(baseDir, "../examples/717_wl_L2.cgns"))
+
+    def test_overwriteBCs_CLI(self):
+        if os.path.isfile("717_wl_L2_overwriteBCs.cgns"):
+            os.remove("717_wl_L2_overwriteBCs.cgns")
+
+        cmd = "cgns_utils overwriteBC "
+        cmd += self.grid + " "
+        cmd += os.path.abspath(os.path.join(baseDir, "../examples/overwriteBCs_bcFile")) + " "
+        cmd += "717_wl_L2_overwriteBCs.cgns"
+
+        out = subprocess.run(cmd, shell=True)
+        self.assertFalse(out.returncode)
+        self.assertTrue(os.path.isfile("717_wl_L2_overwriteBCs.cgns"))
+        os.remove("717_wl_L2_overwriteBCs.cgns")
+
+    def test_overwriteFamilies(self):
+        if os.path.isfile("717_wl_L2_overwriteFamilies.cgns"):
+            os.remove("717_wl_L2_overwriteFamilies.cgns")
+
+        cmd = "cgns_utils overwriteFamilies "
+        cmd += self.grid + " "
+        cmd += os.path.abspath(os.path.join(baseDir, "../examples/family_famFile")) + " "
+        cmd += "717_wl_L2_overwriteFamilies.cgns"
+
+        out = subprocess.run(cmd, shell=True)
+        self.assertFalse(out.returncode)
+        self.assertTrue(os.path.isfile("717_wl_L2_overwriteFamilies.cgns"))
+        os.remove("717_wl_L2_overwriteFamilies.cgns")
+
+
+class TestBlock(unittest.TestCase):
+    def setUp(self):
+        self.grid = readGrid(os.path.abspath(os.path.join(baseDir, "../examples/717_wl_L2.cgns")))
+
+    def test_getNumCells(self, train=False):
+        refFile = os.path.join(baseDir, "ref", "block_getNumCells.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            # Just pick the first block from the grid to test
+            numCells = self.grid.blocks[0].getNumCells()
+            handler.root_add_val("Number of cells", numCells, tol=0)
+
+    def train_getNumCells(self):
+        self.test_getNumCells(train=True)
+
+    def test_getNumNodes(self, train=False):
+        refFile = os.path.join(baseDir, "ref", "block_getNumNodes.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            # Just pick the first block from the grid to test
+            numCells = self.grid.blocks[0].getNumNodes()
+            handler.root_add_val("Number of nodes in the first block", numCells, tol=0)
+
+    def train_getNumNodes(self):
+        self.test_getNumNodes(train=True)
+
+
+class TestReturnFuncs(unittest.TestCase):
+    def setUp(self):
+        # Use the same grid file with different names
+        self.grid1 = readGrid(os.path.abspath(os.path.join(baseDir, "../examples/717_wl_L2.cgns")))
+        self.grid1.name = "grid1"
+        self.grid2 = readGrid(os.path.abspath(os.path.join(baseDir, "../examples/717_wl_L2.cgns")))
+        self.grid2.name = "grid2"
+        self.grids = [self.grid1, self.grid2]
+
+    def test_combineGrids(self, train=False):
+
+        combinedNewNames = combineGrids(self.grids)
+        combinedOldNames = combineGrids(self.grids, useOldNames=True)
+
+        newNames = [blk.name for blk in combinedNewNames.blocks]
+        oldNames = [blk.name for blk in combinedOldNames.blocks]
+
+        # Blocks are named after the grid name
+        self.assertEqual(
+            newNames,
+            [
+                "grid1.00001",
+                "grid1.00002",
+                "grid1.00003",
+                "grid1.00004",
+                "grid1.00005",
+                "grid2.00001",
+                "grid2.00002",
+                "grid2.00003",
+                "grid2.00004",
+                "grid2.00005",
+            ],
+        )
+
+        # Block names from original grids are preserved
+        self.assertEqual(
+            oldNames,
+            [
+                "domain.00001",
+                "domain.00002",
+                "domain.00003",
+                "domain.00004",
+                "domain.00005",
+                "domain.00001",
+                "domain.00002",
+                "domain.00003",
+                "domain.00004",
+                "domain.00005",
+            ],
+        )
+
+        
 if __name__ == "__main__":
     unittest.main()

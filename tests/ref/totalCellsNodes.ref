@@ -1,0 +1,12 @@
+{
+    "Total cells": {
+        "__ndarray__": 15120,
+        "dtype": "int64",
+        "shape": []
+    },
+    "Total nodes": {
+        "__ndarray__": 18753,
+        "dtype": "int64",
+        "shape": []
+    }
+}

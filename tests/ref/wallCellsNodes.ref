@@ -1,0 +1,12 @@
+{
+    "Wall cells": {
+        "__ndarray__": 756,
+        "dtype": "int64",
+        "shape": []
+    },
+    "Wall nodes": {
+        "__ndarray__": 893,
+        "dtype": "int64",
+        "shape": []
+    }
+}

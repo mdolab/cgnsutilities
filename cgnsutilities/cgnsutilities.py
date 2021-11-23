@@ -65,8 +65,8 @@ class Grid(object):
         totalCells = 0
         totalNodes = 0
         for blk in self.blocks:
-            totalCells += (blk.dims[0] - 1) * (blk.dims[1] - 1) * (blk.dims[2] - 1)
-            totalNodes += blk.dims[0] * blk.dims[1] * blk.dims[2]
+            totalCells += blk.getNumCells()
+            totalNodes += blk.getNumNodes()
 
         return totalCells, totalNodes
 
@@ -127,26 +127,49 @@ class Grid(object):
         print("Wall Boundary Cells:", boundaryCells)
         print("Wall Boundary Nodes:", boundaryNodes)
 
-    def printBlockInfo(self):
-        """Print some information on each block to screen.
-        This info can be helpful assessing overset meshes"""
+    def getBlockInfo(self):
+        """Get the number of nodes, number of cells, BCs, and
+        the dimensions for each block. This info can be helpful
+        for assessing overset meshes."""
 
-        totalCells = 0
-        totalNodes = 0
         counter = 1
+        allBlocksInfo = {}
+
         for blk in self.blocks:
-            nCells = (blk.dims[0] - 1) * (blk.dims[1] - 1) * (blk.dims[2] - 1)
-            nNodes = blk.dims[0] * blk.dims[1] * blk.dims[2]
-            print("Block Number:", counter)
-            print("Number of Cells:", nCells)
-            print("Number of Nodes:", nNodes)
-            print("Block dimensions:", list(blk.dims))
-            totalCells += nCells
-            totalNodes += nNodes
+            blockInfo = {}
+            blockInfo["nCells"] = blk.getNumCells()
+            blockInfo["nNodes"] = blk.getNumNodes()
+            blockInfo["dims"] = list(blk.dims)
+            blockInfo["BCs"] = [boco.type for boco in blk.bocos]
+            allBlocksInfo[f"{counter}"] = blockInfo
             counter += 1
-        print("Total Zones:", len(self.blocks))
-        print("Total Cells:", totalCells)
-        print("Total Nodes:", totalNodes)
+
+        totalCells, totalNodes = self.getTotalCellsNodes()
+
+        allBlocksInfo["totalZones"] = len(self.blocks)
+        allBlocksInfo["totalCells"] = totalCells
+        allBlocksInfo["totalNodes"] = totalNodes
+
+        return allBlocksInfo
+
+    def printBlockInfo(self):
+        """Print the number of nodes, number of cells, and
+        the dimensions for each block. This info can be helpful
+        for assessing overset meshes."""
+
+        allBlocksInfo = self.getBlockInfo()
+
+        for i in range(len(self.blocks)):
+            blockNumber = str(i + 1)
+            print("Block Number:", blockNumber)
+            blockInfo = allBlocksInfo[blockNumber]
+            print("Number of Cells:", blockInfo["nCells"])
+            print("Number of Nodes:", blockInfo["nNodes"])
+            print("Block dimensions:", blockInfo["dims"])
+
+        print("Total Zones:", allBlocksInfo["totalZones"])
+        print("Total Cells:", allBlocksInfo["totalCells"])
+        print("Total Nodes:", allBlocksInfo["totalNodes"])
 
     def addBlock(self, blk):
 
@@ -577,7 +600,7 @@ class Grid(object):
             blk.double2D()
 
     def simpleCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile):
-        """Generates a cartesian mesh around the provided grid"""
+        """Generates a Cartesian mesh around the provided grid"""
 
         # Get the bounds of each grid.
         xMin = 1e20 * numpy.ones(3)
@@ -593,9 +616,11 @@ class Grid(object):
         # Call the generic routine
         return simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile)
 
-    def simpleOCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile, comm=None):
-        """Generates a cartesian mesh around the provided grid, surrounded by
-        an O-Mesh"""
+    def simpleOCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile, userOptions=None):
+        """Generates a Cartesian mesh around the provided grid, surrounded by an O-mesh.
+        This function requires pyHyp to be installed. If this function is run with MPI,
+        pyHyp will be run in parallel.
+        """
 
         # First run simpleCart with no extension:
         X, dx = self.simpleCart(dh, 0.0, 0, sym, mgcycle, outFile=None)
@@ -620,7 +645,7 @@ class Grid(object):
         if "z" not in sym and "zmin" not in sym:
             patches.append(X[:, :, 0, :][::-1, :, :])
 
-        # Set up the generic input for pyHyp:
+        # Set up the generic input for pyHyp
         hypOptions = {
             "patches": patches,
             "unattachedEdgesAreSymmetry": True,
@@ -632,6 +657,10 @@ class Grid(object):
             "marchDist": hExtra,
             "cmax": 3.0,
         }
+
+        # Use user-defined options if provided
+        if userOptions is not None:
+            hypOptions.update(userOptions)
 
         # Run pyHyp
         from pyhyp import pyHyp
@@ -671,13 +700,13 @@ class Grid(object):
             os.remove(fName)
 
     def cartesian(self, cartFile, outFile):
-        """Generates a cartesian mesh around the provided grid"""
+        """Generates a Cartesian mesh around the provided grid"""
 
         # PARAMETERS
         inLayer = 2  # How many layers of the overset interpolation
         # faces will be used for volume computation
 
-        print("Running cartesian grid generator")
+        print("Running Cartesian grid generator")
 
         # Preallocate arrays
         extensions = numpy.zeros((2, 3), order="F")
@@ -2369,6 +2398,14 @@ class Block(object):
 
         return libcgns_utils.utils.computefacecoords(self.coords, nFace, blockID)
 
+    def getNumCells(self):
+        """Computes and returns the number of cells for this block"""
+        return (self.dims[0] - 1) * (self.dims[1] - 1) * (self.dims[2] - 1)
+
+    def getNumNodes(self):
+        """Computes and returns the number of nodes for this block"""
+        return self.dims[0] * self.dims[1] * self.dims[2]
+
 
 class Boco(object):
 
@@ -2551,7 +2588,7 @@ def getS(N, s0, S):
 
     fa = S - f(a)
 
-    for i in range(100):
+    for _i in range(100):
         c = 0.5 * (a + b)
         ff = S - f(c)
         if abs(ff) < 1e-6:
@@ -2629,7 +2666,7 @@ def inRange(ptRange, chkRange):
 
 def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
     """
-    Generates a cartesian mesh
+    Generates a Cartesian mesh
 
     Parameters
     ----------
@@ -2827,7 +2864,7 @@ def readGrid(fileName):
                     ) = libcgns_utils.utils.getbcdatasetinfo(inFile, iBlock, iBoco, iBocoDataSet)
                     bcDSet = BocoDataSet(bocoDatasetName, bocoType)
 
-                    def getBocoDataSetArray(flagDirNeu):
+                    def getBocoDataSetArray(flagDirNeu, iDir):
                         # Get data information
                         (
                             dataArrayName,
@@ -2856,7 +2893,7 @@ def readGrid(fileName):
                         for iDir in range(1, nDirichletArrays + 1):
 
                             # Get the data set
-                            bcDSetArr = getBocoDataSetArray(BCDATATYPE["Dirichlet"])
+                            bcDSetArr = getBocoDataSetArray(BCDATATYPE["Dirichlet"], iDir)
 
                             # Append a BocoDataSetArray to the datasets
                             bcDSet.addDirichletDataSet(bcDSetArr)
@@ -2866,10 +2903,10 @@ def readGrid(fileName):
 
                     if nNeumannArrays > 0:
                         # Loop over Neumann data sets
-                        for nDir in range(1, nNeumannArrays + 1):
+                        for iDir in range(1, nNeumannArrays + 1):
 
                             # Get the data set
-                            bcDSetArr = getBocoDataSetArray(BCDATATYPE["Neumann"])
+                            bcDSetArr = getBocoDataSetArray(BCDATATYPE["Neumann"], iDir)
 
                             # Append a BocoDataSetArray to the datasets
                             bcDSet.addNeumannDataSet(bcDSetArr)
@@ -3272,10 +3309,10 @@ def combineGrids(grids, useOldNames=False):
     # Create a dictionary to contain grid objects with their names
     # as the corresponding keys
     gridDict = {}
-    for j, grid in enumerate(grids):
+    for grid in grids:
 
-        # Get the name of the grid
-        gridDict[grid.name] = grid
+        # Create a dictionary of copies so the original grids are not modified
+        gridDict[grid.name] = copy.deepcopy(grid)
 
     # Alphabetically sort the list of grid object names
     nameList = list(sorted(gridDict.keys()))
@@ -3300,9 +3337,13 @@ def combineGrids(grids, useOldNames=False):
         for blk in grid.blocks:
             nBlock += 1
             if not useOldNames:
-                newName = name + ".%5.5d" % nBlock
+                blockName = name
             else:
-                newName = blk.name.split(".")[0] + ".%5.5d" % nBlock
+                try:
+                    blockName = blk.name.split(".")[0]
+                except TypeError:
+                    blockName = blk.name.decode().split(".")[0]
+            newName = blockName + f".{nBlock:05}"
             zoneMap[blk.name] = newName
             blk.name = newName
 
