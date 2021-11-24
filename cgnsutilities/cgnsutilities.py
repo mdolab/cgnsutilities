@@ -2202,9 +2202,7 @@ class Block(object):
             elif (ptRange[2] == [d[2], d[2]]).all():
                 face = "khigh"
             else:
-                raise ValueError(
-                    "Face could not be determined to be one of (iLow, iHigh, jLow, jHigh, kLow, or kHigh)"
-                )
+                raise ValueError("Face could not be determined to be one of (iLow, iHigh, jLow, jHigh, kLow, or kHigh)")
 
             data_arr_str = ""
             for data_arr in boco.dataSets:
