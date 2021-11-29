@@ -253,7 +253,7 @@ where:
     BCSetType     - bc dataset type. This is in most cases the same type as the BCType specified
     DirNeuArr     - can have one of two options: Dirichlet or Neumann
     DataArrNameN  - name of first property specified. This can be a range of things. Refer to ICEM or ADflow for supported BC properties
-    dataArrN      - the actual data for the property. either a scalar or a nodal array.
+    dataArrN      - the actual data for the property. either a scalar or an ordered nodal array.
 
 Examples:
 
@@ -267,7 +267,7 @@ Examples:
     # ------------ Options for 'writebcinfo' mode --------------------
     p_sub = subparsers.add_parser(
         "writebcinfo",
-        help="Overwrite boundary condition information. BC data can be a scalar or nodal array",
+        help="Overwrite boundary condition information. BC data can be a scalar or an ordered nodal array",
         formatter_class=argparse.RawTextHelpFormatter,
     )
     p_sub.add_argument("gridFile", help="Name of input CGNS file")

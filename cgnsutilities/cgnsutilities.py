@@ -2431,28 +2431,38 @@ class Boco(object):
     def coarsen(self):
         """Coarsen the range of the BC in each direction"""
 
+        old_ptRange = self.ptRange.copy()
         for idim in range(3):
 
-            self.ptRange[idim, 0] = (self.ptRange[idim, 0] - 1) // 2 + 1
+            self.ptRange[idim, 0] = int(numpy.ceil((self.ptRange[idim, 1]) / 2))
             if self.ptRange[idim, 1] > 2:
-                self.ptRange[idim, 1] = (self.ptRange[idim, 1] - 1) // 2 + 1
 
-        # coarsen the data set if it is an array
-        if self.dataSets:
-            for data_set in self.dataSets:
-                for dir_arr in data_set.dirichletArrays:
-                    if numpy.prod(dir_arr.dataDimensions) == 1:
-                        # one value is being used for all points
-                        # thus, there is no need to coarseen the data
-                        continue
+                # coarsen the data set if it is an array
+                if self.dataSets:
+                    for data_set in self.dataSets:
+                        for dir_arr in data_set.dirichletArrays:
+                            if numpy.prod(dir_arr.dataDimensions) == 1:
+                                # one value is being used for all points
+                                # thus, there is no need to coarseen the data
+                                continue
 
-                    # this assumes that the pt range starts at 1
-                    # it also assumes that the data dimensions are n_pts x 1 x 1
-                    dir_arr.dataDimensions[0] = numpy.prod(self.ptRange[:, 1])
+                            slicer = [slice(None)] * 3
+                            slicer[idim] = slice(None, None, 2)
 
-                    # take the fisrt elements of the dataArray
-                    data_size = numpy.prod(dir_arr.dataDimensions)
-                    dir_arr.dataArr = dir_arr.dataArr[:data_size]
+                            data_mat = dir_arr.dataArr.reshape(self.ptRange[:, 1])
+                            new_data_mat = data_mat[tuple(slicer)]
+
+                            # make sure the last data point is always copied
+                            slicer[idim] = -1
+
+                            new_data_mat[tuple(slicer)] = data_mat[tuple(slicer)]
+
+                            dir_arr.dataDimensions[0] = numpy.prod(new_data_mat.shape)
+
+                            data_size = numpy.prod(dir_arr.dataDimensions)
+                            dir_arr.dataArr = new_data_mat.flatten()
+
+                self.ptRange[idim, 1] = int(numpy.ceil((self.ptRange[idim, 1]) / 2))
 
     def refine(self, axes):
         """refine the range of the BC"""
