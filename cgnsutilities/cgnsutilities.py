@@ -2431,7 +2431,6 @@ class Boco(object):
     def coarsen(self):
         """Coarsen the range of the BC in each direction"""
 
-        old_ptRange = self.ptRange.copy()
         for idim in range(3):
 
             self.ptRange[idim, 0] = int(numpy.ceil((self.ptRange[idim, 1]) / 2))
@@ -2459,7 +2458,6 @@ class Boco(object):
 
                             dir_arr.dataDimensions[0] = numpy.prod(new_data_mat.shape)
 
-                            data_size = numpy.prod(dir_arr.dataDimensions)
                             dir_arr.dataArr = new_data_mat.flatten()
 
                 self.ptRange[idim, 1] = int(numpy.ceil((self.ptRange[idim, 1]) / 2))

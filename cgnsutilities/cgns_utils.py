@@ -253,7 +253,7 @@ where:
     BCSetType     - bc dataset type. This is in most cases the same type as the BCType specified
     DirNeuArr     - can have one of two options: Dirichlet or Neumann
     DataArrNameN  - name of first property specified. This can be a range of things. Refer to ICEM or ADflow for supported BC properties
-    dataArrN      - the actual data for the property. either a scalar or an ordered nodal array.
+    dataArrN      - the actual data for the property. either a scalar or a flattened nodal array. if an array is passed, the solver will convert the 1D array to the (possibly) 2D BC face.
 
 Examples:
 
