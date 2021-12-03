@@ -1663,14 +1663,24 @@ class Block(object):
         conditions and B2B if necessary"""
         # We will coarsen one direction at a time. We do this to check if the block
         # is already 1-cell wide, which can't be coarsened any further
-
+        
         # the new dimensions are half rounded up of the old dimensions
         new_dims = copy.deepcopy(self.dims)
         for i in range(3):
             if self.dims[i] > 2:
-                new_dims[i] = (self.dims[i] + 1) // 2
+                
+                if self.dims[i] % 2 == 0:
+                    print(f"INFO: unevenly coarsing block {self.name.decode('utf-8', 'ignore')} along dimension {i} (size {self.dims[i]}) ")
+                
+                # The RHS takes odd numbers to *1/2 rounded up and even numbers to *1/2 
+                # for example 
+                # old dim: 0 1 2 3 4 5 6 7 8 9
+                # new dim: 1 1 1 2 2 3 3 4 4 5
+                new_dims[i] = int(numpy.ceil((self.dims[i]) / 2))
+                
+                
         new_coords = numpy.zeros((new_dims[0], new_dims[1], new_dims[2], 3))
-
+        
         # Loop over all directions
         s = slice(None)
         fine_slicer = [s] * 3
@@ -1688,11 +1698,10 @@ class Block(object):
             end_fine_slicer = copy.deepcopy(fine_slicer)
             end_coarse_slicer = [s] * 3
 
-            if new_dims[idx_dim] != 2:
-                end_fine_slicer[idx_dim] = -1
-                end_coarse_slicer[idx_dim] = -1
+            end_fine_slicer[idx_dim] = -1
+            end_coarse_slicer[idx_dim] = -1
 
-                new_coords[tuple(end_coarse_slicer)] = self.coords[tuple(end_fine_slicer)]
+            new_coords[tuple(end_coarse_slicer)] = self.coords[tuple(end_fine_slicer)]
 
         # coarsen the bc and connectivity for the blk as well
         for boco in self.bocos:
@@ -2206,9 +2215,8 @@ class Block(object):
 
             data_arr_str = ""
             for data_arr in boco.dataSets:
-                # print(data_arr.family)
 
-                # use the BC dictionary in revesrse to find the bc type string
+                # use the BC dictionary in reverse to find the bc type string
                 for bctype in BC:
                     if data_arr.type == BC[bctype]:
                         bctype_str = bctype
@@ -2231,7 +2239,7 @@ class Block(object):
                         data_arr_str += " " + n_arr.name
                         data_arr_str += " " + " ".join([f"{data}" for data in n_arr.dataArr])
 
-            # use the BC dictionary in revesrse to find the bc type string
+            # use the BC dictionary in reverse to find the bc type string
             for bctype in BC:
                 if boco.type == BC[bctype]:
                     bctype_str = bctype
@@ -2429,12 +2437,12 @@ class Boco(object):
         self.dataSets.append(bocoDataSet)
 
     def coarsen(self):
-        """Coarsen the range of the BC in each direction"""
+        """Coarsen the range of the BC"""
 
         old_ptRange = self.ptRange.copy()
         for idim in range(3):
 
-            self.ptRange[idim, 0] = int(numpy.ceil((self.ptRange[idim, 1]) / 2))
+            self.ptRange[idim, 0] = int(numpy.floor((self.ptRange[idim, 1]) / 2)) + 1
             if self.ptRange[idim, 1] > 2:
 
                 # coarsen the data set if it is an array
@@ -2443,7 +2451,7 @@ class Boco(object):
                         for dir_arr in data_set.dirichletArrays:
                             if numpy.prod(dir_arr.dataDimensions) == 1:
                                 # one value is being used for all points
-                                # thus, there is no need to coarseen the data
+                                # thus, there is no need to coarsen the data
                                 continue
 
                             slicer = [slice(None)] * 3

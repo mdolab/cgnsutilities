@@ -228,9 +228,8 @@ Examples:
         "overwriteBC", help="Overwrite boundary condition information", formatter_class=argparse.RawTextHelpFormatter
     )
     p_sub.add_argument("gridFile", help="Name of input CGNS file")
-    p_sub.add_argument(
-        "bcFile",
-        help="""File containing additional bc info. The file must consist of one or more lines contaning the following data:
+    bcFile_txt = """
+The file must consist of one or more lines contaning the following data:
 <blockID> <faceID> <BCType> <family> [dataset]
 
 where:
@@ -253,58 +252,31 @@ where:
     BCSetType     - bc dataset type. This is in most cases the same type as the BCType specified
     DirNeuArr     - can have one of two options: Dirichlet or Neumann
     DataArrNameN  - name of first property specified. This can be a range of things. Refer to ICEM or ADflow for supported BC properties
-    dataArrN      - the actual data for the property. either a scalar or an ordered nodal array.
+    dataArrN      - the actual data for the property (either a scalar or an ordered nodal array).
 
 Examples:
 
     7 kLow bcwallviscous wing
     4 jHigh bcsymmetryplane sym
     5 khigh bcoutflowsubsonic turb_inlet BCDataSet_1 BCInFlowSubsonic Dirichlet PressureStagnation 1234.0 TemperatureStagnation 4556.0
-""",
+"""
+    p_sub.add_argument(
+        "bcFile",
+        help="File containing additional bc info." + bcFile_txt,
     )
     p_sub.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
     # ------------ Options for 'writebcinfo' mode --------------------
     p_sub = subparsers.add_parser(
         "writebcinfo",
-        help="Overwrite boundary condition information. BC data can be a scalar or an ordered nodal array",
+        help="Writes boundary condition information to a file.",
         formatter_class=argparse.RawTextHelpFormatter,
     )
     p_sub.add_argument("gridFile", help="Name of input CGNS file")
     p_sub.add_argument(
         "bcOutFile",
         default=None,
-        help="""File containing additional bc info. The file consists of one or more lines contaning the following data:
-<blockID> <faceID> <BCType> <family> [dataset]
-
-where:
-    blockID - is the block index *IN 1 BASED NUMBERING*
-    faceID  - one of iLow, iHigh jLow, jHigh, kLow or kHigh
-    BCType  - one of the supported CGNS boundary conditions. See below for supported types
-    family  - the family name.
-
-Supported BC types are : bcfarfield, bcsymmetryplane bcwall, bcwallinviscid, bcwallviscous
-bcwallviscousheatflux, bcwallviscousisothermal, bcoutflow, bcoutflowsubsonic
-bcinflow, bcinflowsubsonic, bcinflowsupersonic
-
-Optionally, additional datasets may be specified. These
-can be used to set additional boundary condition data.
-The format of the dataset line is as follows:
-<BCSetName> <BCSetType> <DirNeuArr> <DataArrName1> <dataArr1>, ..., <DataArrNameN> <dataArrN>
-
-where:
-    BCSetName     - bc dataset name
-    BCSetType     - bc dataset type. This is in most cases the same type as the BCType specified
-    DirNeuArr     - can have one of two options: Dirichlet or Neumann
-    DataArrNameN  - name of first property specified. This can be a range of things. Refer to ICEM or ADflow for supported BC properties
-    dataArrN      - the actual data for the property. either a scalar or a nodal array.
-
-Examples:
-
-    7 kLow bcwallviscous wing
-    4 jHigh bcsymmetryplane sym
-    5 khigh bcoutflowsubsonic turb_inlet BCDataSet_1 BCInFlowSubsonic Dirichlet PressureStagnation 1234.0 TemperatureStagnation 4556.0
-""",
+        help="A file containing bc info." + bcFile_txt,
     )
 
     # ------------ Options for 'rebunch' mode --------------------
