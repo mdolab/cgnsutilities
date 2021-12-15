@@ -8,7 +8,7 @@ WRITEFILE=true
 
 # Prepare the family file input. Each line has the following format:
 # <block number> <faceID> <family>
-# If using a volume mesh, then <block number> is the domain number from tecplot, not the zone number
+# If using a volume mesh, then <block number> is the domain number under Zone Name in Tecplot, not the Zone Number
 
 if [[ $WRITEFILE -eq true ]]; then
 cat << 'EOF' > $FAMFILE
