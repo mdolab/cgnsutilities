@@ -104,21 +104,20 @@ class TestGrid(unittest.TestCase):
         totalCells = self.grid.getTotalCellsNodes()[0]
         self.assertEqual(15120 * 8, totalCells)
 
+
 class TestSimpleGrid(unittest.TestCase):
     def setUp(self):
         self.grid = readGrid(os.path.abspath(os.path.join(baseDir, "../examples/block_4x2x3.cgns")))
-
 
     def test_coarsen(self):
 
         self.grid.coarsen()
         for iDim in range(3):
             self.assertEqual(2, self.grid.blocks[0].dims[iDim])
-            
+
         self.grid.coarsen()
         for iDim in range(3):
             self.assertEqual(2, self.grid.blocks[0].dims[iDim])
-
 
 
 class TestCLI(unittest.TestCase):
