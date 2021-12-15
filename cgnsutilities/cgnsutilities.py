@@ -1663,24 +1663,25 @@ class Block(object):
         conditions and B2B if necessary"""
         # We will coarsen one direction at a time. We do this to check if the block
         # is already 1-cell wide, which can't be coarsened any further
-        
+
         # the new dimensions are half rounded up of the old dimensions
         new_dims = copy.deepcopy(self.dims)
         for i in range(3):
             if self.dims[i] > 2:
-                
+
                 if self.dims[i] % 2 == 0:
-                    print(f"INFO: unevenly coarsing block {self.name.decode('utf-8', 'ignore')} along dimension {i} (size {self.dims[i]}) ")
-                
-                # The RHS takes odd numbers to *1/2 rounded up and even numbers to *1/2 
-                # for example 
+                    print(
+                        f"INFO: unevenly coarsing block {self.name.decode('utf-8', 'ignore')} along dimension {i} (size {self.dims[i]}) "
+                    )
+
+                # The RHS takes odd numbers to *1/2 rounded up and even numbers to *1/2
+                # for example
                 # old dim: 0 1 2 3 4 5 6 7 8 9
                 # new dim: 1 1 1 2 2 3 3 4 4 5
                 new_dims[i] = int(numpy.ceil((self.dims[i]) / 2))
-                
-                
+
         new_coords = numpy.zeros((new_dims[0], new_dims[1], new_dims[2], 3))
-        
+
         # Loop over all directions
         s = slice(None)
         fine_slicer = [s] * 3
