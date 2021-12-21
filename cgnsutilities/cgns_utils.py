@@ -183,6 +183,10 @@ where:
     faceID  - one of iLow, iHigh jLow, jHigh, kLow, or kHigh
     family  - the family name.
 
+To find blockID of any mesh using Tecplot,
+1. Load the mesh with Advanced options > One Tecplot zone per non-poly CGNS zone/solution
+2. Use the Zone Number for the blockID
+
 Examples:
     7 kLow wing
     4 jHigh sym
@@ -256,6 +260,10 @@ where:
     dataArrN      - the actual data for the property
 
 Note that only scalar values are supported at the moment for dataArrN.
+
+To find blockID of any mesh using Tecplot,
+1. Load the mesh with Advanced options > One Tecplot zone per non-poly CGNS zone/solution
+2. Use the Zone Number for the blockID
 
 Examples:
 
