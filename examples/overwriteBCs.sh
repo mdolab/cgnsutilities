@@ -9,6 +9,10 @@ WRITE_FILE=true
 # Prepare the BC input file we want to use. Each line has the following format:
 # <block number> <faceID> <BCType> <family> [dataset]
 
+# To find blockID of any mesh using Tecplot,
+# 1. Load the mesh with Advanced options > One Tecplot zone per non-poly CGNS zone/solution
+# 2. Use the Zone Number for the blockID
+
 if [[ $WRITE_FILE -eq true ]]; then
 cat << 'EOF' > $BC_FILE
 1 kLow bcwallinviscid wall_inviscid
