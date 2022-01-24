@@ -183,6 +183,10 @@ where:
     faceID  - one of iLow, iHigh jLow, jHigh, kLow, or kHigh
     family  - the family name.
 
+To find blockID of any mesh using Tecplot,
+1. Load the mesh with Advanced options > One Tecplot zone per non-poly CGNS zone/solution
+2. Use the Zone Number for the blockID
+
 Examples:
     7 kLow wing
     4 jHigh sym
@@ -253,6 +257,10 @@ where:
     DirNeuArr     - can have one of two options: Dirichlet or Neumann
     DataArrNameN  - name of first property specified. This can be a range of things. Refer to ICEM or ADflow for supported BC properties
     dataArrN      - the actual data for the property. Either a scalar or a flattened nodal array. If an array is passed, the solver will convert the 1D array to the (possibly) 2D BC face.
+
+To find blockID of any mesh using Tecplot,
+1. Load the mesh with Advanced options > One Tecplot zone per non-poly CGNS zone/solution
+2. Use the Zone Number for the blockID
 
 Examples:
 
