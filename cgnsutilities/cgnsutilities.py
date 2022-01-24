@@ -2442,7 +2442,7 @@ class Boco(object):
 
         for idim in range(3):
 
-            self.ptRange[idim, 0] = int(numpy.floor((self.ptRange[idim, 1]) / 2)) + 1
+            self.ptRange[idim, 0] = int(numpy.floor((self.ptRange[idim, 0]) / 2)) + 1
             if self.ptRange[idim, 1] > 2:
 
                 # coarsen the data set if it is an array

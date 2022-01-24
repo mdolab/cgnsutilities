@@ -1,10 +1,11 @@
 import os
 import subprocess
+from turtle import pd
 import unittest
 import numpy as np
 from baseclasses import BaseRegTest
 from cgnsutilities.cgnsutilities import readGrid, BC, combineGrids
-
+import copy
 
 baseDir = os.path.dirname(os.path.abspath(__file__))
 
@@ -62,7 +63,7 @@ class TestGrid(unittest.TestCase):
 
     def test_overwriteBCs_array(self):
         self.grid.removeBCs()
-        self.grid.overwriteBCs(os.path.abspath(os.path.join(baseDir, "hotwall_boco.info")))
+        self.grid.overwriteBCs(os.path.abspath(os.path.join(baseDir, "../examples/hotwall_boco.info")))
 
         self.assertEqual(self.grid.blocks[4].bocos[0].type, BC["bcwallviscousisothermal"])
         np.testing.assert_array_equal(
@@ -70,13 +71,34 @@ class TestGrid(unittest.TestCase):
         )
 
     def test_coarsen(self):
-
+        
+        coarse_bc_pt_range = {}
+        
+        for block in self.grid.blocks:
+            coarse_bc_pt_range[block.name] = {}
+            for boco in block.bocos:
+                coarse_bc_pt_range[block.name][boco.name] = copy.deepcopy(boco.ptRange)
+                
+                # make new variable for convenience.
+                # Base variable will be modified too because it is a mutable type
+                c_range = coarse_bc_pt_range[block.name][boco.name]
+                for idim in range(3):
+                    c_range[idim, 0] = int(np.floor((c_range[idim, 0]) / 2)) + 1
+                    c_range[idim, 1] = int(np.ceil((c_range[idim, 1]) / 2))
+            
+                
         self.grid.coarsen()
         totalCells = self.grid.getTotalCellsNodes()[0]
         self.assertEqual(15120 // 8, totalCells)
+        
+        # test that the point range was coarsened correctly.
+        
+        for block in self.grid.blocks:
+            for boco in block.bocos:
+                np.testing.assert_array_equal(coarse_bc_pt_range[block.name][boco.name], boco.ptRange)
 
         # we should be able to coarsen to a single cell in each block
-        # and a block already has a single cell, it should be skipped
+        # and if a block already has a single cell, it should be skipped
         self.grid.coarsen()
         self.grid.coarsen()
         self.grid.coarsen()
@@ -85,7 +107,7 @@ class TestGrid(unittest.TestCase):
         # 5 because there is one cell in each block
         totalCells = self.grid.getTotalCellsNodes()[0]
         self.assertEqual(5, totalCells)
-
+        
     def test_refine(self):
         self.grid.refine("ijk")
         totalCells = self.grid.getTotalCellsNodes()[0]
