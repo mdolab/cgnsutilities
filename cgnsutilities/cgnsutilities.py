@@ -2714,7 +2714,7 @@ def readGrid(fileName):
             bocoName, bocoType, ptRange, family, nDataSets = libcgns_utils.utils.getbcinfo(
                 inFile, iBlock, iBoco, cellDim
             )
-            bc = Boco(bocoName.decode(), bocoType, ptRange, family)
+            bc = Boco(bocoName.decode(), bocoType, ptRange, family.strip().decode())
 
             # Get the BCDataSets
             if nDataSets != 0:
