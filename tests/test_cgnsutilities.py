@@ -1,8 +1,10 @@
 import os
 import subprocess
 import unittest
+import numpy as np
 from baseclasses import BaseRegTest
 from cgnsutilities.cgnsutilities import readGrid, BC, combineGrids
+import copy
 
 baseDir = os.path.dirname(os.path.abspath(__file__))
 
@@ -57,6 +59,84 @@ class TestGrid(unittest.TestCase):
         self.grid.overwriteBCs(bcFile)
         self.assertEqual(self.grid.blocks[0].bocos[-1].family, "wall_inviscid")
         self.assertEqual(self.grid.blocks[0].bocos[-1].type, BC["bcwallinviscid"])
+
+    def test_overwriteBCs_array(self):
+        self.grid.removeBCs()
+        self.grid.overwriteBCs(os.path.abspath(os.path.join(baseDir, "../examples/hotwall_boco.info")))
+
+        self.assertEqual(self.grid.blocks[4].bocos[0].type, BC["bcwallviscousisothermal"])
+        np.testing.assert_array_equal(
+            self.grid.blocks[4].bocos[0].dataSets[0].dirichletArrays[0].dataArr, np.array(range(300, 300 + 19 * 3))
+        )
+
+    def test_coarsen(self):
+        coarse_bc_pt_range = {}
+
+        for block in self.grid.blocks:
+            coarse_bc_pt_range[block.name] = {}
+            for boco in block.bocos:
+                coarse_bc_pt_range[block.name][boco.name] = copy.deepcopy(boco.ptRange)
+
+                # make new variable for convenience.
+                # Base variable will be modified too because it is a mutable type
+                c_range = coarse_bc_pt_range[block.name][boco.name]
+                for idim in range(3):
+                    c_range[idim, 0] = int(np.floor((c_range[idim, 0]) / 2)) + 1
+                    c_range[idim, 1] = int(np.ceil((c_range[idim, 1]) / 2))
+
+        self.grid.coarsen()
+        totalCells = self.grid.getTotalCellsNodes()[0]
+        self.assertEqual(15120 // 8, totalCells)
+
+        # test that the point range was coarsened correctly.
+
+        for block in self.grid.blocks:
+            for boco in block.bocos:
+                np.testing.assert_array_equal(coarse_bc_pt_range[block.name][boco.name], boco.ptRange)
+
+        # we should be able to coarsen to a single cell in each block
+        # and if a block already has a single cell, it should be skipped
+        self.grid.coarsen()
+        self.grid.coarsen()
+        self.grid.coarsen()
+        self.grid.coarsen()
+
+        # 5 because there is one cell in each block
+        totalCells = self.grid.getTotalCellsNodes()[0]
+        self.assertEqual(5, totalCells)
+
+    def test_refine(self):
+        self.grid.refine("ijk")
+        totalCells = self.grid.getTotalCellsNodes()[0]
+        self.assertEqual(15120 * 8, totalCells)
+
+    def test_refine_axes(self):
+        self.grid.refine("i")
+        totalCells = self.grid.getTotalCellsNodes()[0]
+        self.assertEqual(15120 * 2, totalCells)
+
+        self.grid.refine("k")
+        totalCells = self.grid.getTotalCellsNodes()[0]
+        self.assertEqual(15120 * 4, totalCells)
+
+        self.grid.refine("j")
+        totalCells = self.grid.getTotalCellsNodes()[0]
+        self.assertEqual(15120 * 8, totalCells)
+
+
+class TestSimpleGrid(unittest.TestCase):
+    def setUp(self):
+        self.grid = readGrid(os.path.abspath(os.path.join(baseDir, "../examples/block_4x2x3.cgns")))
+
+    def test_coarsen(self):
+
+        self.grid.coarsen()
+        for iDim in range(3):
+            self.assertEqual(2, self.grid.blocks[0].dims[iDim])
+
+        self.grid.coarsen()
+        for iDim in range(3):
+            self.assertEqual(2, self.grid.blocks[0].dims[iDim])
 
 
 class TestCLI(unittest.TestCase):
@@ -167,3 +247,7 @@ class TestReturnFuncs(unittest.TestCase):
                 "domain.00005",
             ],
         )
+
+
+if __name__ == "__main__":
+    unittest.main()
