@@ -1670,9 +1670,7 @@ class Block(object):
             if self.dims[i] > 2:
 
                 if self.dims[i] % 2 == 0:
-                    print(
-                        f"INFO: unevenly coarsing block {self.name.decode('utf-8', 'ignore')} along dimension {i} (size {self.dims[i]}) "
-                    )
+                    print(f"INFO: unevenly coarsing block {self.name} along dimension {i} (size {self.dims[i]}) ")
 
                 # The RHS takes odd numbers to *1/2 rounded up and even numbers to *1/2
                 # for example
@@ -2223,14 +2221,14 @@ class Block(object):
                         bctype_str = bctype
                         break
 
-                data_arr_str += " " + data_arr.name.decode("utf-8", "ignore")
+                data_arr_str += " " + data_arr.name
                 data_arr_str += " " + bctype_str
 
                 if data_arr.dirichletArrays:
                     data_arr_str += " Dirichlet"
 
                     for d_arr in data_arr.dirichletArrays:
-                        data_arr_str += " " + d_arr.name.decode("utf-8", "ignore")
+                        data_arr_str += " " + d_arr.name
                         data_arr_str += " " + " ".join([f"{data}" for data in d_arr.dataArr])
 
                 if data_arr.neumannArrays:
@@ -2246,7 +2244,7 @@ class Block(object):
                     bctype_str = bctype
                     break
 
-            fam_name = boco.family.strip().decode("utf-8", "ignore")
+            fam_name = boco.family
             file_handle.write(f"{blk_num} {face} {bctype_str} {fam_name} {data_arr_str}\n")
 
     def isFaceInPtRange(self, face, ptRange):
