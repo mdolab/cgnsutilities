@@ -173,6 +173,10 @@ where:
     faceID  - one of iLow, iHigh jLow, jHigh, kLow, or kHigh
     family  - the family name.
 
+To find blockID of any mesh using Tecplot,
+1. Load the mesh with Advanced options > One Tecplot zone per non-poly CGNS zone/solution
+2. Use the Zone Number for the blockID
+
 Examples:
     7 kLow wing
     4 jHigh sym
@@ -215,9 +219,8 @@ Examples:
         "overwriteBC", help="Overwrite boundary condition information", formatter_class=argparse.RawTextHelpFormatter
     )
     p_sub.add_argument("gridFile", help="Name of input CGNS file")
-    p_sub.add_argument(
-        "bcFile",
-        help="""File containing additional bc info. The file must consist of one or more lines contaning the following data:
+    bcFile_txt = """
+The file must consist of one or more lines contaning the following data:
 <blockID> <faceID> <BCType> <family> [dataset]
 
 where:
@@ -240,18 +243,36 @@ where:
     BCSetType     - bc dataset type. This is in most cases the same type as the BCType specified
     DirNeuArr     - can have one of two options: Dirichlet or Neumann
     DataArrNameN  - name of first property specified. This can be a range of things. Refer to ICEM or ADflow for supported BC properties
-    dataArrN      - the actual data for the property
+    dataArrN      - the actual data for the property. Either a scalar or a flattened nodal array. If an array is passed, the solver will convert the 1D array to the (possibly) 2D BC face.
 
-Note that only scalar values are supported at the moment for dataArrN.
+To find blockID of any mesh using Tecplot,
+1. Load the mesh with Advanced options > One Tecplot zone per non-poly CGNS zone/solution
+2. Use the Zone Number for the blockID
 
 Examples:
 
     7 kLow bcwallviscous wing
     4 jHigh bcsymmetryplane sym
     5 khigh bcoutflowsubsonic turb_inlet BCDataSet_1 BCInFlowSubsonic Dirichlet PressureStagnation 1234.0 TemperatureStagnation 4556.0
-""",
+"""
+    p_sub.add_argument(
+        "bcFile",
+        help="File containing additional bc info." + bcFile_txt,
     )
     p_sub.add_argument("outFile", nargs="?", default=None, help="Optional output file")
+
+    # ------------ Options for 'writebcinfo' mode --------------------
+    p_sub = subparsers.add_parser(
+        "writebcinfo",
+        help="Writes boundary condition information to a file.",
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    p_sub.add_argument("gridFile", help="Name of input CGNS file")
+    p_sub.add_argument(
+        "bcOutFile",
+        default=None,
+        help="A file containing bc info." + bcFile_txt,
+    )
 
     # ------------ Options for 'rebunch' mode --------------------
     p_bunch = subparsers.add_parser("rebunch", help="Rebunch offwall spacing (experimental)")
@@ -847,7 +868,11 @@ def main():
     elif args.mode == "overwriteBC":
         curGrid.overwriteBCs(args.bcFile)
 
-    elif args.mode == "removeBC":
+    elif args.mode == "writebcinfo":
+        curGrid.writeBCs(args.bcOutFile)
+        sys.exit(0)
+
+    elif args.mode == "removebc":
         curGrid.removeBCs()
 
     elif args.mode == "rebunch":
