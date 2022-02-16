@@ -1713,9 +1713,7 @@ class Block(object):
             if self.dims[i] > 2:
 
                 if self.dims[i] % 2 == 0:
-                    print(
-                        f"INFO: unevenly coarsing block {self.name.decode('utf-8', 'ignore')} along dimension {i} (size {self.dims[i]}) "
-                    )
+                    print(f"INFO: unevenly coarsing block {self.name} along dimension {i} (size {self.dims[i]}) ")
 
                 # The RHS takes odd numbers to *1/2 rounded up and even numbers to *1/2
                 # for example
@@ -2266,14 +2264,14 @@ class Block(object):
                         bctype_str = bctype
                         break
 
-                data_arr_str += " " + data_arr.name.decode("utf-8", "ignore")
+                data_arr_str += " " + data_arr.name
                 data_arr_str += " " + bctype_str
 
                 if data_arr.dirichletArrays:
                     data_arr_str += " Dirichlet"
 
                     for d_arr in data_arr.dirichletArrays:
-                        data_arr_str += " " + d_arr.name.decode("utf-8", "ignore")
+                        data_arr_str += " " + d_arr.name
                         data_arr_str += " " + " ".join([f"{data}" for data in d_arr.dataArr])
 
                 if data_arr.neumannArrays:
@@ -2289,7 +2287,7 @@ class Block(object):
                     bctype_str = bctype
                     break
 
-            fam_name = boco.family.strip().decode("utf-8", "ignore")
+            fam_name = boco.family
             file_handle.write(f"{blk_num} {face} {bctype_str} {fam_name} {data_arr_str}\n")
 
     def isFaceInPtRange(self, face, ptRange):
@@ -2900,14 +2898,14 @@ def readGrid(fileName):
         if cellDim == 2:
             dims[2] = 1
         coords = libcgns_utils.utils.getcoordinates(inFile, iBlock, dims[0], dims[1], dims[2])
-        blk = Block(zoneName, dims, coords)
+        blk = Block(zoneName.decode(), dims, coords)
 
         for iBoco in range(1, nBoco + 1):
             # Get the BCs
             bocoName, bocoType, ptRange, family, nDataSets = libcgns_utils.utils.getbcinfo(
                 inFile, iBlock, iBoco, cellDim
             )
-            bc = Boco(bocoName, bocoType, ptRange, family)
+            bc = Boco(bocoName.decode(), bocoType, ptRange, family.strip().decode())
 
             # Get the BCDataSets
             if nDataSets != 0:
@@ -2920,7 +2918,7 @@ def readGrid(fileName):
                         nDirichletArrays,
                         nNeumannArrays,
                     ) = libcgns_utils.utils.getbcdatasetinfo(inFile, iBlock, iBoco, iBocoDataSet)
-                    bcDSet = BocoDataSet(bocoDatasetName, bocoType)
+                    bcDSet = BocoDataSet(bocoDatasetName.decode(), bocoType)
 
                     def getBocoDataSetArray(flagDirNeu, iDir):
                         # Get data information
@@ -2944,7 +2942,9 @@ def readGrid(fileName):
                         )
 
                         # Create a BocoDataSetArray object and return
-                        return BocoDataSetArray(dataArrayName, dataType, nDimensions, dataDimensionVector, dataArr)
+                        return BocoDataSetArray(
+                            dataArrayName.decode(), dataType, nDimensions, dataDimensionVector, dataArr
+                        )
 
                     if nDirichletArrays > 0:
                         # Loop over Dirichlet data and get the actual data
@@ -2978,7 +2978,7 @@ def readGrid(fileName):
             connectName, donorName, ptRange, donorRange, transform = libcgns_utils.utils.getb2binfo(
                 inFile, iBlock, iB2B
             )
-            blk.addB2B(B2B(connectName, donorName, ptRange, donorRange, transform))
+            blk.addB2B(B2B(connectName.decode(), donorName.decode(), ptRange, donorRange, transform))
 
         newGrid.addBlock(blk)
 
@@ -2989,7 +2989,7 @@ def readGrid(fileName):
             arrayName, arrayData = libcgns_utils.utils.getconvarray(inFile, nIterations, arrayID + 1)
 
             # Remove blank spaces
-            arrayName = arrayName.strip()
+            arrayName = arrayName.decode().strip()
 
             # Store results in the newGrid.convArray dictionary
             newGrid.addConvArray(arrayName, arrayData)
@@ -3397,10 +3397,7 @@ def combineGrids(grids, useOldNames=False):
             if not useOldNames:
                 blockName = name
             else:
-                try:
-                    blockName = blk.name.split(".")[0]
-                except TypeError:
-                    blockName = blk.name.decode().split(".")[0]
+                blockName = blk.name.split(".")[0]
             newName = blockName + f".{nBlock:05}"
             zoneMap[blk.name] = newName
             blk.name = newName
