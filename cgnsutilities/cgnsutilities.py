@@ -52,7 +52,7 @@ class Grid(object):
         self.name = "domain"
         self.cellDim = 3
 
-    def overwriteBCFamilyWithBC(self, familyName, newBCType, blocks=None, rstrip=True):
+    def overwriteBCFamilyWithBC(self, familyName, newBCType, blocks=None):
         """
         Overwrites all boundary conditions matching a given family name with a new boundary condition
 
@@ -75,9 +75,7 @@ class Grid(object):
             The new boundary condition to apply
         blocks : list of ints or None
             The blocks to overwrite. Default None overwrites BC on all blocks.
-        rstrip : bool
-            It seems that the cgns reader always appends a large number of blank spaces
-            to the end of the family name. These need to be stripped. Default True.
+
         """
         if newBCType not in BC.keys():
             raise ValueError("New BC type ", newBCType, " is not in the cgnsutilities list of boundary conditions.")
@@ -85,9 +83,7 @@ class Grid(object):
         for iBlk, block in enumerate(self.blocks):
             if blocks is None or iBlk in blocks:
                 for boco in block.bocos:
-                    bocoFamily = boco.family.decode("utf-8")
-                    if rstrip:
-                        bocoFamily = bocoFamily.rstrip()
+                    bocoFamily = boco.family
                     if bocoFamily == familyName:
                         boco.type = BC[newBCType]
                         nBCOverwritten += 1
