@@ -54,11 +54,9 @@ class Grid(object):
 
     def overwriteBCFamilyWithBC(self, familyName, newBCType, blocks=None):
         """
-        Overwrites all boundary conditions matching a given family name with a new boundary condition
-
+        Overwrites all boundary conditions matching a given family name with a new boundary condition.
         This is useful because Pointwise specifies boundary conditions on CGNS grids in a way
-        that is incompatible with ADflow (family-defined) and these BC always need to be
-        overwritten.
+        that is incompatible with ADflow (family-defined) and these BCs always need to be overwritten.
 
         Example
         -------
@@ -78,7 +76,7 @@ class Grid(object):
 
         """
         if newBCType not in BC.keys():
-            raise ValueError("New BC type ", newBCType, " is not in the cgnsutilities list of boundary conditions.")
+            raise ValueError(f"New BC type '{newBCType}' is not in the cgnsUtilities list of boundary conditions.")
         nBCOverwritten = 0
         for iBlk, block in enumerate(self.blocks):
             if blocks is None or iBlk in blocks:
@@ -88,7 +86,7 @@ class Grid(object):
                         boco.type = BC[newBCType]
                         nBCOverwritten += 1
 
-        print(str(nBCOverwritten), " boundary condition overwritten.")
+        print(f"{nBCOverwritten} boundary condition(s) overwritten.")
 
     def getTotalCellsNodes(self):
         """
