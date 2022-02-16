@@ -2946,7 +2946,7 @@ def readGrid(fileName):
             arrayName, arrayData = libcgns_utils.utils.getconvarray(inFile, nIterations, arrayID + 1)
 
             # Remove blank spaces
-            arrayName = arrayName.strip()
+            arrayName = arrayName.decode().strip()
 
             # Store results in the newGrid.convArray dictionary
             newGrid.addConvArray(arrayName, arrayData)
