@@ -194,6 +194,20 @@ class TestCLI(unittest.TestCase):
         self.assertTrue(os.path.isfile("717_wl_L2_overwriteFamilies.cgns"))
         os.remove("717_wl_L2_overwriteFamilies.cgns")
 
+    def test_overwriteBCFamilyWithBC(self):
+        if os.path.isfile("717_wl_L2_overwriteBCFamilyWithBC.cgns"):
+            os.remove("717_wl_L2_overwriteBCFamilyWithBC.cgns")
+
+        cmd = "cgns_utils overwriteBCFamilyWithBC "
+        cmd += self.grid + " Far bcoverset "
+        cmd += "717_wl_L2_overwriteBCFamilyWithBC.cgns "
+        cmd += "--blockIDs 2 4"
+
+        out = subprocess.run(cmd, shell=True)
+        self.assertFalse(out.returncode)
+        self.assertTrue(os.path.isfile("717_wl_L2_overwriteBCFamilyWithBC.cgns"))
+        os.remove("717_wl_L2_overwriteBCFamilyWithBC.cgns")
+
 
 class TestBlock(unittest.TestCase):
     def setUp(self):

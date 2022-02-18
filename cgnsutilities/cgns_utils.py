@@ -214,6 +214,24 @@ Examples:
     p_rem.add_argument("gridFile", help="Name of input CGNS file")
     p_rem.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
+    # ------------ Options for 'overwriteBCFamilyWithBC' mode --------------------
+    p_sub = subparsers.add_parser(
+        "overwriteBCFamilyWithBC",
+        help="Overwrite boundary conditions based on family name",
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    p_sub.add_argument("gridFile", help="Name of input CGNS file")
+    p_sub.add_argument("familyName", help="The BC family to overwrite")
+    p_sub.add_argument("newBCType", help="The new boundary condition to apply")
+    p_sub.add_argument("outFile", nargs="?", default=None, help="Optional output file")
+    p_sub.add_argument(
+        "--blockIDs",
+        type=int,
+        nargs="+",
+        default=None,
+        help="The 1-based indices of the blocks to overwrite. By default, BCs are overwritten on all blocks.",
+    )
+
     # ------------ Options for 'overwriteBC' mode --------------------
     p_sub = subparsers.add_parser(
         "overwriteBC", help="Overwrite boundary condition information", formatter_class=argparse.RawTextHelpFormatter
@@ -864,6 +882,9 @@ def main():
     elif args.mode == "copyFamilyInfo":
         sourceGrid = readGrid(args.sourceFile)
         curGrid.copyFamilyInfo(sourceGrid)
+
+    elif args.mode == "overwriteBCFamilyWithBC":
+        curGrid.overwriteBCFamilyWithBC(args.familyName, args.newBCType, args.blockIDs)
 
     elif args.mode == "overwriteBC":
         curGrid.overwriteBCs(args.bcFile)
