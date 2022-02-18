@@ -69,7 +69,7 @@ class TestGrid(unittest.TestCase):
         self.assertEqual(self.grid.blocks[1].bocos[1].type, BC["bcfarfield"])
         self.assertEqual(self.grid.blocks[1].bocos[0].family, "wall")
         self.assertEqual(self.grid.blocks[1].bocos[0].type, BC["bcwallviscous"])
-        self.grid.overwriteBCFamilyWithBC("Far", "bcoverset", blocks=[1])
+        self.grid.overwriteBCFamilyWithBC("Far", "bcoverset", blockIDs=[2])
 
         # block 0 should be unchanged even though family matches
         self.assertEqual(self.grid.blocks[0].bocos[1].family, "Far")

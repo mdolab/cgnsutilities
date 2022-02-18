@@ -52,7 +52,7 @@ class Grid(object):
         self.name = "domain"
         self.cellDim = 3
 
-    def overwriteBCFamilyWithBC(self, familyName, newBCType, blocks=None):
+    def overwriteBCFamilyWithBC(self, familyName, newBCType, blockIDs=None):
         """
         Overwrites all boundary conditions matching a given family name with a new boundary condition.
         This is useful because Pointwise specifies boundary conditions on CGNS grids in a way
@@ -71,15 +71,16 @@ class Grid(object):
             The BC family to overwrite
         newBCType : str
             The new boundary condition to apply
-        blocks : list of ints or None
-            The blocks to overwrite. Default None overwrites BC on all blocks.
+        blockIDs : list of int or None
+            The 1-based indices of the blocks to overwrite. None overwrites BCs on all blocks.
 
         """
         if newBCType not in BC.keys():
             raise ValueError(f"New BC type '{newBCType}' is not in the cgnsUtilities list of boundary conditions.")
         nBCOverwritten = 0
-        for iBlk, block in enumerate(self.blocks):
-            if blocks is None or iBlk in blocks:
+        # iBlk starts at 1 for 1-based indexing
+        for iBlk, block in enumerate(self.blocks, 1):
+            if blockIDs is None or iBlk in blockIDs:
                 for boco in block.bocos:
                     bocoFamily = boco.family
                     if bocoFamily == familyName:
