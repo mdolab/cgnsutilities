@@ -77,15 +77,28 @@ class Grid(object):
         """
         if newBCType not in BC.keys():
             raise ValueError(f"New BC type '{newBCType}' is not in the cgnsUtilities list of boundary conditions.")
+
         nBCOverwritten = 0
+        blockHits = set()
+
         # iBlk starts at 1 for 1-based indexing
         for iBlk, block in enumerate(self.blocks, 1):
             if blockIDs is None or iBlk in blockIDs:
+                # Add the current block index to a set tracking which blocks have been affected
+                blockHits.add(iBlk)
+
+                # Overwrite all BCs that have the provided family name
                 for boco in block.bocos:
                     bocoFamily = boco.family
                     if bocoFamily == familyName:
                         boco.type = BC[newBCType]
                         nBCOverwritten += 1
+
+        # Check if the user provided any unused blockIDs
+        if blockIDs is not None:
+            blockMisses = set(blockIDs) - blockHits
+            if len(blockMisses) != 0:
+                raise IndexError(f"The following blockIDs had no effect: {blockMisses}")
 
         print(f"{nBCOverwritten} boundary condition(s) overwritten.")
 

@@ -83,6 +83,10 @@ class TestGrid(unittest.TestCase):
         self.assertEqual(self.grid.blocks[1].bocos[1].family, "Far")
         self.assertEqual(self.grid.blocks[1].bocos[1].type, BC["bcoverset"])
 
+        # Check that using a non-existent blockID gives an error
+        with self.assertRaises(IndexError):
+            self.grid.overwriteBCFamilyWithBC("Far", "bcoverset", blockIDs=[0, 2])
+
     def test_overwriteBCs_array(self):
         self.grid.removeBCs()
         self.grid.overwriteBCs(os.path.abspath(os.path.join(baseDir, "../examples/hotwall_boco.info")))
