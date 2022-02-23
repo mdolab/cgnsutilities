@@ -62,7 +62,7 @@ class Grid(object):
         -------
         from cgnsutilities.cgnsutilities import Grid, readGrid
         grid = readGrid("pointwise_vol_grid.cgns")
-        grid.overwriteBCFamilyWithBC('oversetfamily', 'bcoverset', [0,1,2,4])
+        grid.overwriteBCFamilyWithBC('oversetfamily', 'bcoverset', [1,2,4])
         grid.writeToCGNS("pointwise_vol_grid_converted.cgns")
 
         Inputs
