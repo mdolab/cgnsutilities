@@ -248,6 +248,22 @@ class TestReturnFuncs(unittest.TestCase):
             ],
         )
 
+class TestExamples(unittest.TestCase):
+
+    def test_allExamples(self):
+        # Extract all examples from the examples folder
+        # We assume that they all have the .sh extension. Note that, this test
+        # does not guarantee that they make sense, only that they run
+
+        exampleDir = os.path.abspath(os.path.join(baseDir, "../examples"))
+        for root, _, files in os.walk(exampleDir):
+            for file in files:
+                if file.endswith(".sh"):
+                    # cd into dir as each script assumes to be run in current folder
+                    cmd = f"cd {root} && bash {file}"
+                    out = subprocess.run(cmd, shell=True)
+                    self.assertFalse(out.returncode)
+
 
 if __name__ == "__main__":
     unittest.main()

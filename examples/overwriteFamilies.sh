@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # This script demonstrates how to run and use the family option
 CGNS_INFILE="717_wl_L2.cgns"
