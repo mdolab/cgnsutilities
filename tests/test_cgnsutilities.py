@@ -248,12 +248,14 @@ class TestReturnFuncs(unittest.TestCase):
             ],
         )
 
-class TestExamples(unittest.TestCase):
 
+class TestExamples(unittest.TestCase):
     def test_allExamples(self):
-        # Extract all examples from the examples folder
-        # We assume that they all have the .sh extension. Note that, this test
-        # does not guarantee that they make sense, only that they run
+        """
+        Extract and run all examples from the examples folder.
+        We assume that all have a .sh extension. Note that this test
+        does not guarantee that they make sense, only that they run.
+        """
 
         exampleDir = os.path.abspath(os.path.join(baseDir, "../examples"))
         for root, _, files in os.walk(exampleDir):
