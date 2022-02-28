@@ -24,6 +24,7 @@ BC = {
     "bcwallviscous": 22,
     "bcwallviscousheatflux": 23,
     "bcwallviscousisothermal": 24,
+    "familyspecified": 25,
     "bcoutflow": 13,
     "bcoutflowsubsonic": 14,
     "bcoutflowsupersonic": 15,
@@ -50,6 +51,56 @@ class Grid(object):
         self.topo = None
         self.name = "domain"
         self.cellDim = 3
+
+    def overwriteBCFamilyWithBC(self, familyName, newBCType, blockIDs=None):
+        """
+        Overwrites all boundary conditions matching a given family name with a new boundary condition.
+        This is useful because Pointwise specifies boundary conditions on CGNS grids in a way
+        that is incompatible with ADflow (family-defined) and these BCs always need to be overwritten.
+
+        Example
+        -------
+        from cgnsutilities.cgnsutilities import Grid, readGrid
+        grid = readGrid("pointwise_vol_grid.cgns")
+        grid.overwriteBCFamilyWithBC('oversetfamily', 'bcoverset', [1,2,4])
+        grid.writeToCGNS("pointwise_vol_grid_converted.cgns")
+
+        Inputs
+        ------
+        familyName : str
+            The BC family to overwrite
+        newBCType : str
+            The new boundary condition to apply
+        blockIDs : list of int or None
+            The 1-based indices of the blocks to overwrite. None overwrites BCs on all blocks.
+
+        """
+        if newBCType not in BC.keys():
+            raise ValueError(f"New BC type '{newBCType}' is not in the cgnsUtilities list of boundary conditions.")
+
+        nBCOverwritten = 0
+        blockHits = set()
+
+        # iBlk starts at 1 for 1-based indexing
+        for iBlk, block in enumerate(self.blocks, 1):
+            if blockIDs is None or iBlk in blockIDs:
+                # Add the current block index to a set tracking which blocks have been affected
+                blockHits.add(iBlk)
+
+                # Overwrite all BCs that have the provided family name
+                for boco in block.bocos:
+                    bocoFamily = boco.family
+                    if bocoFamily == familyName:
+                        boco.type = BC[newBCType]
+                        nBCOverwritten += 1
+
+        # Check if the user provided any unused blockIDs
+        if blockIDs is not None:
+            blockMisses = set(blockIDs) - blockHits
+            if len(blockMisses) != 0:
+                raise IndexError(f"The following blockIDs had no effect: {blockMisses}")
+
+        print(f"{nBCOverwritten} boundary condition(s) overwritten.")
 
     def getTotalCellsNodes(self):
         """
