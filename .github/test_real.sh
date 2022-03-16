@@ -2,6 +2,7 @@
 set -e
 
 # Run tests
+cd tests
 testflo -v -n 1 --coverage --coverpkg cgnsutilities
 
 # Check that we can run the command line script

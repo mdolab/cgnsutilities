@@ -55,15 +55,9 @@ def get_parser():
     p_scale.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
     # ------------- Options for 'flip' mode --------------------
-    p_flip = subparsers.add_parser(
-        "flip",
-        help="Flip a grid about a plane defined by an axis",
-    )
+    p_flip = subparsers.add_parser("flip", help="Flip a grid about a plane defined by an axis")
     p_flip.add_argument("gridFile", help="Name of input CGNS file")
-    p_flip.add_argument(
-        "axis",
-        help="Flip the mesh about plane defined by axis: 'x', 'y', 'z'",
-    )
+    p_flip.add_argument("axis", help="Flip the mesh about plane defined by axis: 'x', 'y', 'z'")
     p_flip.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
     # ------------- Options for 'coarsen' mode --------------------
@@ -103,8 +97,7 @@ def get_parser():
 
     # ------------- Options for 'mirror' mode --------------------
     p_mirror = subparsers.add_parser(
-        "mirror",
-        help="Mirror a grid about a plane defined by an axis. This doubles the grid size",
+        "mirror", help="Mirror a grid about a plane defined by an axis. This doubles the grid size"
     )
     p_mirror.add_argument("gridFile", help="Name of input CGNS file")
     p_mirror.add_argument("axis", help="Mirror about plane defined by axis: 'x', 'y', 'z'")
@@ -113,8 +106,7 @@ def get_parser():
 
     # ------------- Options for 'split' mode --------------------
     p_split = subparsers.add_parser(
-        "split",
-        help="Face-match a grid. If the grid is already faced matched, this will have no effect",
+        "split", help="Face-match a grid. If the grid is already faced matched, this will have no effect"
     )
     p_split.add_argument("gridFile", help="Name of input CGNS file")
     p_split.add_argument("outFile", nargs="?", default=None, help="Optional output file")
@@ -137,8 +129,7 @@ def get_parser():
 
     # ------------- Options for 'connect' mode --------------------
     p_connect = subparsers.add_parser(
-        "connect",
-        help="Determine the block-to-block connectivity information for a point-matched grid",
+        "connect", help="Determine the block-to-block connectivity information for a point-matched grid"
     )
     p_connect.add_argument("gridFile", help="Name of input CGNS file")
     p_connect.add_argument("tol", nargs="?", default=1e-12, help="Tolerance for node merge")
@@ -158,8 +149,7 @@ def get_parser():
 
     # ------------- Options for 'autoBC' mode --------------------
     p_bc = subparsers.add_parser(
-        "autoBC",
-        help="Try to determine boundary conditions for blocks. Only suitable for external flow applications.",
+        "autoBC", help="Try to determine boundary conditions for blocks. Only suitable for external flow applications."
     )
     p_bc.add_argument("gridFile", help="Name of input CGNS file")
     p_bc.add_argument("sym", help="Normal for possible symmetry plane.", choices=["x", "y", "z"])
@@ -183,6 +173,10 @@ where:
     faceID  - one of iLow, iHigh jLow, jHigh, kLow, or kHigh
     family  - the family name.
 
+To find blockID of any mesh using Tecplot,
+1. Load the mesh with Advanced options > One Tecplot zone per non-poly CGNS zone/solution
+2. Use the Zone Number for the blockID
+
 Examples:
     7 kLow wing
     4 jHigh sym
@@ -192,10 +186,7 @@ Examples:
     p_fam.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
     # ------------ Options for 'writeSubfaceFamily' mode --------------------
-    p_fam = subparsers.add_parser(
-        "writeSubfaceFamiliy",
-        help="""Overwrite the family information on a subface.""",
-    )
+    p_fam = subparsers.add_parser("writeSubfaceFamiliy", help="""Overwrite the family information on a subface.""")
     p_fam.add_argument("gridFile", help="Name of inputCGNS file")
     p_fam.add_argument(
         "familyFile",
@@ -223,14 +214,31 @@ Examples:
     p_rem.add_argument("gridFile", help="Name of input CGNS file")
     p_rem.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
+    # ------------ Options for 'overwriteBCFamilyWithBC' mode --------------------
+    p_sub = subparsers.add_parser(
+        "overwriteBCFamilyWithBC",
+        help="Overwrite boundary conditions based on family name",
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    p_sub.add_argument("gridFile", help="Name of input CGNS file")
+    p_sub.add_argument("familyName", help="The BC family to overwrite")
+    p_sub.add_argument("newBCType", help="The new boundary condition to apply")
+    p_sub.add_argument("outFile", nargs="?", default=None, help="Optional output file")
+    p_sub.add_argument(
+        "--blockIDs",
+        type=int,
+        nargs="+",
+        default=None,
+        help="The 1-based indices of the blocks to overwrite. By default, BCs are overwritten on all blocks.",
+    )
+
     # ------------ Options for 'overwriteBC' mode --------------------
     p_sub = subparsers.add_parser(
         "overwriteBC", help="Overwrite boundary condition information", formatter_class=argparse.RawTextHelpFormatter
     )
     p_sub.add_argument("gridFile", help="Name of input CGNS file")
-    p_sub.add_argument(
-        "bcFile",
-        help="""File containing additional bc info. The file must consist of one or more lines contaning the following data:
+    bcFile_txt = """
+The file must consist of one or more lines contaning the following data:
 <blockID> <faceID> <BCType> <family> [dataset]
 
 where:
@@ -253,18 +261,36 @@ where:
     BCSetType     - bc dataset type. This is in most cases the same type as the BCType specified
     DirNeuArr     - can have one of two options: Dirichlet or Neumann
     DataArrNameN  - name of first property specified. This can be a range of things. Refer to ICEM or ADflow for supported BC properties
-    dataArrN      - the actual data for the property
+    dataArrN      - the actual data for the property. Either a scalar or a flattened nodal array. If an array is passed, the solver will convert the 1D array to the (possibly) 2D BC face.
 
-Note that only scalar values are supported at the moment for dataArrN.
+To find blockID of any mesh using Tecplot,
+1. Load the mesh with Advanced options > One Tecplot zone per non-poly CGNS zone/solution
+2. Use the Zone Number for the blockID
 
 Examples:
 
     7 kLow bcwallviscous wing
     4 jHigh bcsymmetryplane sym
     5 khigh bcoutflowsubsonic turb_inlet BCDataSet_1 BCInFlowSubsonic Dirichlet PressureStagnation 1234.0 TemperatureStagnation 4556.0
-""",
+"""
+    p_sub.add_argument(
+        "bcFile",
+        help="File containing additional bc info." + bcFile_txt,
     )
     p_sub.add_argument("outFile", nargs="?", default=None, help="Optional output file")
+
+    # ------------ Options for 'writebcinfo' mode --------------------
+    p_sub = subparsers.add_parser(
+        "writebcinfo",
+        help="Writes boundary condition information to a file.",
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    p_sub.add_argument("gridFile", help="Name of input CGNS file")
+    p_sub.add_argument(
+        "bcOutFile",
+        default=None,
+        help="A file containing bc info." + bcFile_txt,
+    )
 
     # ------------ Options for 'rebunch' mode --------------------
     p_bunch = subparsers.add_parser("rebunch", help="Rebunch offwall spacing (experimental)")
@@ -277,12 +303,7 @@ Examples:
         type=int,
         default=0,
     )
-    p_bunch.add_argument(
-        "--nodes",
-        help="Only rebunch the first 'nodes' in the offwall direction",
-        type=int,
-        default=1,
-    )
+    p_bunch.add_argument("--nodes", help="Only rebunch the first 'nodes' in the offwall direction", type=int, default=1)
 
     # ------------ Options for 'cgns2plot3d' mode --------------------
     p3d = subparsers.add_parser("cgns2plot3d", help="Convert a cgns file to a plain plot3d file")
@@ -862,10 +883,17 @@ def main():
         sourceGrid = readGrid(args.sourceFile)
         curGrid.copyFamilyInfo(sourceGrid)
 
+    elif args.mode == "overwriteBCFamilyWithBC":
+        curGrid.overwriteBCFamilyWithBC(args.familyName, args.newBCType, args.blockIDs)
+
     elif args.mode == "overwriteBC":
         curGrid.overwriteBCs(args.bcFile)
 
-    elif args.mode == "removeBC":
+    elif args.mode == "writebcinfo":
+        curGrid.writeBCs(args.bcOutFile)
+        sys.exit(0)
+
+    elif args.mode == "removebc":
         curGrid.removeBCs()
 
     elif args.mode == "rebunch":

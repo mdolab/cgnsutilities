@@ -24,6 +24,7 @@ BC = {
     "bcwallviscous": 22,
     "bcwallviscousheatflux": 23,
     "bcwallviscousisothermal": 24,
+    "familyspecified": 25,
     "bcoutflow": 13,
     "bcoutflowsubsonic": 14,
     "bcoutflowsupersonic": 15,
@@ -50,6 +51,56 @@ class Grid(object):
         self.topo = None
         self.name = "domain"
         self.cellDim = 3
+
+    def overwriteBCFamilyWithBC(self, familyName, newBCType, blockIDs=None):
+        """
+        Overwrites all boundary conditions matching a given family name with a new boundary condition.
+        This is useful because Pointwise specifies boundary conditions on CGNS grids in a way
+        that is incompatible with ADflow (family-defined) and these BCs always need to be overwritten.
+
+        Example
+        -------
+        from cgnsutilities.cgnsutilities import Grid, readGrid
+        grid = readGrid("pointwise_vol_grid.cgns")
+        grid.overwriteBCFamilyWithBC('oversetfamily', 'bcoverset', [1,2,4])
+        grid.writeToCGNS("pointwise_vol_grid_converted.cgns")
+
+        Inputs
+        ------
+        familyName : str
+            The BC family to overwrite
+        newBCType : str
+            The new boundary condition to apply
+        blockIDs : list of int or None
+            The 1-based indices of the blocks to overwrite. None overwrites BCs on all blocks.
+
+        """
+        if newBCType not in BC.keys():
+            raise ValueError(f"New BC type '{newBCType}' is not in the cgnsUtilities list of boundary conditions.")
+
+        nBCOverwritten = 0
+        blockHits = set()
+
+        # iBlk starts at 1 for 1-based indexing
+        for iBlk, block in enumerate(self.blocks, 1):
+            if blockIDs is None or iBlk in blockIDs:
+                # Add the current block index to a set tracking which blocks have been affected
+                blockHits.add(iBlk)
+
+                # Overwrite all BCs that have the provided family name
+                for boco in block.bocos:
+                    bocoFamily = boco.family
+                    if bocoFamily == familyName:
+                        boco.type = BC[newBCType]
+                        nBCOverwritten += 1
+
+        # Check if the user provided any unused blockIDs
+        if blockIDs is not None:
+            blockMisses = set(blockIDs) - blockHits
+            if len(blockMisses) != 0:
+                raise IndexError(f"The following blockIDs had no effect: {blockMisses}")
+
+        print(f"{nBCOverwritten} boundary condition(s) overwritten.")
 
     def getTotalCellsNodes(self):
         """
@@ -382,6 +433,13 @@ class Grid(object):
     def overwriteBCs(self, bcFile):
         """Overwrite BCs with information given in the file"""
 
+        def isFloat(string):
+            try:
+                float(string)
+                return True
+            except ValueError:
+                return False
+
         with open(bcFile, "r") as f:
             for line in f:
                 if line.strip():
@@ -399,13 +457,27 @@ class Grid(object):
                         DirNeu = aux[6]
                         bocoDataSet = BocoDataSet(bocoSetName, BC[bocoDataSetType.lower()])
 
-                        for i in range(7, len(aux), 2):
+                        i = 7
+                        while i < len(aux):
                             arrayName = aux[i]
+                            i += 1
                             dType = CGNSDATATYPES["RealDouble"]
                             nDims = 1
+
+                            dataArr = []
+
+                            for j in range(i, len(aux)):
+                                if isFloat(aux[j]):
+                                    dataArr.append(aux[j])
+                                    i += 1
+                                else:
+                                    break
+
+                            dataArr = numpy.array(dataArr, dtype=numpy.float64)
+
+                            nDims = 1
                             dataDims = numpy.ones(3, dtype=numpy.int32, order="F")
-                            dataArr = numpy.zeros(1, dtype=numpy.float64, order="F")
-                            dataArr[0] = float(aux[i + 1])
+                            dataDims[0] = dataArr.size
 
                             bcDataArr = BocoDataSetArray(arrayName, dType, nDims, dataDims, dataArr)
                             if DirNeu == "Dirichlet":
@@ -418,6 +490,17 @@ class Grid(object):
                         dataSet.append(bocoDataSet)
 
                     self.blocks[blockID].overwriteBCs(face, bocoType, family, dataSet)
+
+    def writeBCs(self, bcFile):
+        """write BCs to file"""
+        if bcFile is None:
+            bcFile = self.name + ".bc"
+
+        with open(bcFile, "w") as fid:
+
+            for idx_block, block in enumerate(self.blocks):
+                blockID = idx_block + 1
+                block.writeBCs(blockID, fid)
 
     def autoOversetBC(self, sym, connectSelf, tol):
         """This is essentially a simplified version of autoBC that flags all
@@ -568,7 +651,7 @@ class Grid(object):
             blk.double2D()
 
     def simpleCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile):
-        """Generates a cartesian mesh around the provided grid"""
+        """Generates a Cartesian mesh around the provided grid"""
 
         # Get the bounds of each grid.
         xMin = 1e20 * numpy.ones(3)
@@ -584,9 +667,11 @@ class Grid(object):
         # Call the generic routine
         return simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile)
 
-    def simpleOCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile, comm=None):
-        """Generates a cartesian mesh around the provided grid, surrounded by
-        an O-Mesh"""
+    def simpleOCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile, userOptions=None):
+        """Generates a Cartesian mesh around the provided grid, surrounded by an O-mesh.
+        This function requires pyHyp to be installed. If this function is run with MPI,
+        pyHyp will be run in parallel.
+        """
 
         # First run simpleCart with no extension:
         X, dx = self.simpleCart(dh, 0.0, 0, sym, mgcycle, outFile=None)
@@ -611,7 +696,7 @@ class Grid(object):
         if "z" not in sym and "zmin" not in sym:
             patches.append(X[:, :, 0, :][::-1, :, :])
 
-        # Set up the generic input for pyHyp:
+        # Set up the generic input for pyHyp
         hypOptions = {
             "patches": patches,
             "unattachedEdgesAreSymmetry": True,
@@ -623,6 +708,10 @@ class Grid(object):
             "marchDist": hExtra,
             "cmax": 3.0,
         }
+
+        # Use user-defined options if provided
+        if userOptions is not None:
+            hypOptions.update(userOptions)
 
         # Run pyHyp
         from pyhyp import pyHyp
@@ -662,13 +751,13 @@ class Grid(object):
             os.remove(fName)
 
     def cartesian(self, cartFile, outFile):
-        """Generates a cartesian mesh around the provided grid"""
+        """Generates a Cartesian mesh around the provided grid"""
 
         # PARAMETERS
         inLayer = 2  # How many layers of the overset interpolation
         # faces will be used for volume computation
 
-        print("Running cartesian grid generator")
+        print("Running Cartesian grid generator")
 
         # Preallocate arrays
         extensions = numpy.zeros((2, 3), order="F")
@@ -1625,34 +1714,54 @@ class Block(object):
         conditions and B2B if necessary"""
         # We will coarsen one direction at a time. We do this to check if the block
         # is already 1-cell wide, which can't be coarsened any further
-        if self.dims[0] != 2:
-            self.coords = self.coords[0::2, :, :, :]
-            # Update BCs and B2B
-            for boco in self.bocos:
-                boco.coarsen(0)
-            for b2b in self.B2Bs:
-                b2b.coarsen(0)
 
-        if self.dims[1] != 2:
-            self.coords = self.coords[:, 0::2, :, :]
-            # Update BCs and B2B
-            for boco in self.bocos:
-                boco.coarsen(1)
-            for b2b in self.B2Bs:
-                b2b.coarsen(1)
+        # the new dimensions are half rounded up of the old dimensions
+        new_dims = copy.deepcopy(self.dims)
+        for i in range(3):
+            if self.dims[i] > 2:
 
-        if self.dims[2] != 2:
-            self.coords = self.coords[:, :, 0::2, :]
-            # Update BCs and B2B
-            for boco in self.bocos:
-                boco.coarsen(2)
-            for b2b in self.B2Bs:
-                b2b.coarsen(2)
+                if self.dims[i] % 2 == 0:
+                    print(f"INFO: unevenly coarsing block {self.name} along dimension {i} (size {self.dims[i]}) ")
 
-        # Update dimensions
-        self.dims[0] = self.coords.shape[0]
-        self.dims[1] = self.coords.shape[1]
-        self.dims[2] = self.coords.shape[2]
+                # The RHS takes odd numbers to *1/2 rounded up and even numbers to *1/2
+                # for example
+                # old dim: 0 1 2 3 4 5 6 7 8 9
+                # new dim: 1 1 1 2 2 3 3 4 4 5
+                new_dims[i] = int(numpy.ceil((self.dims[i]) / 2))
+
+        new_coords = numpy.zeros((new_dims[0], new_dims[1], new_dims[2], 3))
+
+        # Loop over all directions
+        s = slice(None)
+        fine_slicer = [s] * 3
+        for idx_dim in range(3):
+            # can this direction be coarsened?
+            if self.dims[idx_dim] > 2:
+                # set the slice in that direction to take every other point
+                fine_slicer[idx_dim] = slice(None, None, 2)
+
+        new_coords = self.coords[tuple(fine_slicer)]
+
+        # set the last point to be the same so we don't create any gaps if
+        # the number of points in that direction isn't odd
+        for idx_dim in range(3):
+            end_fine_slicer = copy.deepcopy(fine_slicer)
+            end_coarse_slicer = [s] * 3
+
+            end_fine_slicer[idx_dim] = -1
+            end_coarse_slicer[idx_dim] = -1
+
+            new_coords[tuple(end_coarse_slicer)] = self.coords[tuple(end_fine_slicer)]
+
+        # coarsen the bc and connectivity for the blk as well
+        for boco in self.bocos:
+            boco.coarsen()
+        for b2b in self.B2Bs:
+            b2b.coarsen()
+
+        self.coords = new_coords
+
+        self.dims = new_dims
 
     def refine(self, axes):
         """Refine the block uniformly. We will also update the
@@ -2129,6 +2238,66 @@ class Block(object):
         self.addBoco(Boco("boco_%d" % self.bocoCounter, BC[bocoType.lower()], ptRange, family, dataSet))
         self.bocoCounter += 1
 
+    def writeBCs(self, blk_num, file_handle):
+        """write the bc data to a file"""
+
+        d = self.dims
+
+        for boco in self.bocos:
+            # check the point range to see what face it is on
+            ptRange = boco.ptRange
+            if (ptRange[0] == [1, 1]).all():
+                face = "ilow"
+            elif (ptRange[0] == [d[0], d[0]]).all():
+                face = "ihigh"
+
+            elif (ptRange[1] == [1, 1]).all():
+                face = "jlow"
+            elif (ptRange[1] == [d[1], d[1]]).all():
+                face = "jhigh"
+
+            elif (ptRange[2] == [1, 1]).all():
+                face = "klow"
+            elif (ptRange[2] == [d[2], d[2]]).all():
+                face = "khigh"
+            else:
+                raise ValueError("Face could not be determined to be one of (iLow, iHigh, jLow, jHigh, kLow, or kHigh)")
+
+            data_arr_str = ""
+            for data_arr in boco.dataSets:
+
+                # use the BC dictionary in reverse to find the bc type string
+                for bctype in BC:
+                    if data_arr.type == BC[bctype]:
+                        bctype_str = bctype
+                        break
+
+                data_arr_str += " " + data_arr.name
+                data_arr_str += " " + bctype_str
+
+                if data_arr.dirichletArrays:
+                    data_arr_str += " Dirichlet"
+
+                    for d_arr in data_arr.dirichletArrays:
+                        data_arr_str += " " + d_arr.name
+                        data_arr_str += " " + " ".join([f"{data}" for data in d_arr.dataArr])
+
+                if data_arr.neumannArrays:
+                    data_arr_str += " Neumann"
+
+                    for n_arr in data_arr.neumannArrays:
+                        data_arr_str += " " + n_arr.name
+                        data_arr_str += " " + " ".join([f"{data}" for data in n_arr.dataArr])
+
+            # use the BC dictionary in reverse to find the bc type string
+            for bctype in BC:
+                if boco.type == BC[bctype]:
+                    bctype_str = bctype
+                    break
+
+            fam_name = boco.family
+            file_handle.write(f"{blk_num} {face} {bctype_str} {fam_name} {data_arr_str}\n")
+
     def isFaceInPtRange(self, face, ptRange):
         """
         Identifies if the provided face matches a given point range.
@@ -2317,10 +2486,39 @@ class Boco(object):
         """Add a boundary condition dataset to this bc"""
         self.dataSets.append(bocoDataSet)
 
-    def coarsen(self, direction):
-        """Coarsen the range of the BC along the specified direction"""
-        for j in range(2):
-            self.ptRange[direction, j] = (self.ptRange[direction, j] - 1) // 2 + 1
+    def coarsen(self):
+        """Coarsen the range of the BC"""
+
+        for idim in range(3):
+
+            self.ptRange[idim, 0] = int(numpy.floor((self.ptRange[idim, 0]) / 2)) + 1
+            if self.ptRange[idim, 1] > 2:
+
+                # coarsen the data set if it is an array
+                if self.dataSets:
+                    for data_set in self.dataSets:
+                        for dir_arr in data_set.dirichletArrays:
+                            if numpy.prod(dir_arr.dataDimensions) == 1:
+                                # one value is being used for all points
+                                # thus, there is no need to coarsen the data
+                                continue
+
+                            slicer = [slice(None)] * 3
+                            slicer[idim] = slice(None, None, 2)
+
+                            data_mat = dir_arr.dataArr.reshape(self.ptRange[:, 1])
+                            new_data_mat = data_mat[tuple(slicer)]
+
+                            # make sure the last data point is always copied
+                            slicer[idim] = -1
+
+                            new_data_mat[tuple(slicer)] = data_mat[tuple(slicer)]
+
+                            dir_arr.dataDimensions[0] = numpy.prod(new_data_mat.shape)
+
+                            dir_arr.dataArr = new_data_mat.flatten()
+
+                self.ptRange[idim, 1] = int(numpy.ceil((self.ptRange[idim, 1]) / 2))
 
     def refine(self, axes):
         """refine the range of the BC"""
@@ -2394,12 +2592,19 @@ class B2B(object):
         self.donorRange = donorRange
         self.transform = transform
 
-    def coarsen(self, direction):
+    def coarsen(self):
         """Coarsen the range of the B2B along the specified direction"""
-        donorDir = abs(self.transform[direction]) - 1
-        for j in range(2):
-            self.ptRange[direction, j] = (self.ptRange[direction, j] - 1) // 2 + 1
-            self.donorRange[donorDir, j] = (self.donorRange[donorDir, j] - 1) // 2 + 1
+        for idim in range(3):
+
+            donorDir = abs(self.transform[idim]) - 1
+
+            for j in range(2):
+
+                if self.ptRange[idim, j] > 2:
+                    self.ptRange[idim, j] = (self.ptRange[idim, j] - 1) // 2 + 1
+
+                if self.donorRange[donorDir, j] > 2:
+                    self.donorRange[donorDir, j] = (self.donorRange[donorDir, j] + 1) // 2
 
     def refine(self, axes):
         """refine the range of the B2B"""
@@ -2447,7 +2652,7 @@ def getS(N, s0, S):
 
     fa = S - f(a)
 
-    for i in range(100):
+    for _i in range(100):
         c = 0.5 * (a + b)
         ff = S - f(c)
         if abs(ff) < 1e-6:
@@ -2525,7 +2730,7 @@ def inRange(ptRange, chkRange):
 
 def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
     """
-    Generates a cartesian mesh
+    Generates a Cartesian mesh
 
     Parameters
     ----------
@@ -2701,14 +2906,14 @@ def readGrid(fileName):
         if cellDim == 2:
             dims[2] = 1
         coords = libcgns_utils.utils.getcoordinates(inFile, iBlock, dims[0], dims[1], dims[2])
-        blk = Block(zoneName, dims, coords)
+        blk = Block(zoneName.decode(), dims, coords)
 
         for iBoco in range(1, nBoco + 1):
             # Get the BCs
             bocoName, bocoType, ptRange, family, nDataSets = libcgns_utils.utils.getbcinfo(
                 inFile, iBlock, iBoco, cellDim
             )
-            bc = Boco(bocoName, bocoType, ptRange, family)
+            bc = Boco(bocoName.decode(), bocoType, ptRange, family.strip().decode())
 
             # Get the BCDataSets
             if nDataSets != 0:
@@ -2721,9 +2926,9 @@ def readGrid(fileName):
                         nDirichletArrays,
                         nNeumannArrays,
                     ) = libcgns_utils.utils.getbcdatasetinfo(inFile, iBlock, iBoco, iBocoDataSet)
-                    bcDSet = BocoDataSet(bocoDatasetName, bocoType)
+                    bcDSet = BocoDataSet(bocoDatasetName.decode(), bocoType)
 
-                    def getBocoDataSetArray(flagDirNeu):
+                    def getBocoDataSetArray(flagDirNeu, iDir):
                         # Get data information
                         (
                             dataArrayName,
@@ -2745,14 +2950,16 @@ def readGrid(fileName):
                         )
 
                         # Create a BocoDataSetArray object and return
-                        return BocoDataSetArray(dataArrayName, dataType, nDimensions, dataDimensionVector, dataArr)
+                        return BocoDataSetArray(
+                            dataArrayName.decode(), dataType, nDimensions, dataDimensionVector, dataArr
+                        )
 
                     if nDirichletArrays > 0:
                         # Loop over Dirichlet data and get the actual data
                         for iDir in range(1, nDirichletArrays + 1):
 
                             # Get the data set
-                            bcDSetArr = getBocoDataSetArray(BCDATATYPE["Dirichlet"])
+                            bcDSetArr = getBocoDataSetArray(BCDATATYPE["Dirichlet"], iDir)
 
                             # Append a BocoDataSetArray to the datasets
                             bcDSet.addDirichletDataSet(bcDSetArr)
@@ -2762,10 +2969,10 @@ def readGrid(fileName):
 
                     if nNeumannArrays > 0:
                         # Loop over Neumann data sets
-                        for nDir in range(1, nNeumannArrays + 1):
+                        for iDir in range(1, nNeumannArrays + 1):
 
                             # Get the data set
-                            bcDSetArr = getBocoDataSetArray(BCDATATYPE["Neumann"])
+                            bcDSetArr = getBocoDataSetArray(BCDATATYPE["Neumann"], iDir)
 
                             # Append a BocoDataSetArray to the datasets
                             bcDSet.addNeumannDataSet(bcDSetArr)
@@ -2779,7 +2986,7 @@ def readGrid(fileName):
             connectName, donorName, ptRange, donorRange, transform = libcgns_utils.utils.getb2binfo(
                 inFile, iBlock, iB2B
             )
-            blk.addB2B(B2B(connectName, donorName, ptRange, donorRange, transform))
+            blk.addB2B(B2B(connectName.decode(), donorName.decode(), ptRange, donorRange, transform))
 
         newGrid.addBlock(blk)
 
@@ -2790,7 +2997,7 @@ def readGrid(fileName):
             arrayName, arrayData = libcgns_utils.utils.getconvarray(inFile, nIterations, arrayID + 1)
 
             # Remove blank spaces
-            arrayName = arrayName.strip()
+            arrayName = arrayName.decode().strip()
 
             # Store results in the newGrid.convArray dictionary
             newGrid.addConvArray(arrayName, arrayData)
@@ -3168,10 +3375,10 @@ def combineGrids(grids, useOldNames=False):
     # Create a dictionary to contain grid objects with their names
     # as the corresponding keys
     gridDict = {}
-    for j, grid in enumerate(grids):
+    for grid in grids:
 
-        # Get the name of the grid
-        gridDict[grid.name] = grid
+        # Create a dictionary of copies so the original grids are not modified
+        gridDict[grid.name] = copy.deepcopy(grid)
 
     # Alphabetically sort the list of grid object names
     nameList = list(sorted(gridDict.keys()))
@@ -3196,9 +3403,10 @@ def combineGrids(grids, useOldNames=False):
         for blk in grid.blocks:
             nBlock += 1
             if not useOldNames:
-                newName = name + ".%5.5d" % nBlock
+                blockName = name
             else:
-                newName = blk.name.split(".")[0] + ".%5.5d" % nBlock
+                blockName = blk.name.split(".")[0]
+            newName = blockName + f".{nBlock:05}"
             zoneMap[blk.name] = newName
             blk.name = newName
 
