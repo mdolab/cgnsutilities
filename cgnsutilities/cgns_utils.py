@@ -516,16 +516,6 @@ The input mesh is not included and BCs are applied.""",
     p_sub.add_argument("mgcycle", help="Minimum MG cycle to enforce", type=int)
     p_sub.add_argument("outFile", help="Name of output CGNS file")
 
-    # ------------ Options for 'simpleOCart' mode --------------------
-    p_sub = subparsers.add_parser("simpleOCart", help="Generates a background cartesian mesh surrounding by an OMesh")
-    p_sub.add_argument("gridFile", help="Name of input CGNS file")
-    p_sub.add_argument("dh", help="Uniform cartesian spacing size", type=float)
-    p_sub.add_argument("hExtra", help='Extension in "O" dimension', type=float)
-    p_sub.add_argument("nExtra", help="Number of nodes to use for extension", type=int)
-    p_sub.add_argument("sym", help="Normal for possible sym plane", type=str)
-    p_sub.add_argument("mgcycle", help="Minimum MG cycle to enforce", type=int)
-    p_sub.add_argument("outFile", help="Name of output CGNS file")
-
     # ------------ Options for 'translate' mode  --------------------
     p_t = subparsers.add_parser("translate", help="Translate a grid.")
     p_t.add_argument("gridFile", help="Name of input CGNS file")
@@ -931,10 +921,6 @@ def main():
 
     elif args.mode == "simpleCart":
         curGrid.simpleCart(args.dh, args.hExtra, args.nExtra, args.sym, args.mgcycle, args.outFile)
-        sys.exit(0)
-
-    elif args.mode == "simpleOCart":
-        curGrid.simpleOCart(args.dh, args.hExtra, args.nExtra, args.sym, args.mgcycle, args.outFile)
         sys.exit(0)
 
     elif args.mode == "translate":

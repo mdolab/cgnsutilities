@@ -11,7 +11,6 @@ Developed by Dr. Gaetan K. W. Kenway
 """
 import os
 import copy
-import tempfile
 import numpy
 from . import libcgns_utils
 
@@ -666,89 +665,6 @@ class Grid(object):
 
         # Call the generic routine
         return simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile)
-
-    def simpleOCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile, userOptions=None):
-        """Generates a Cartesian mesh around the provided grid, surrounded by an O-mesh.
-        This function requires pyHyp to be installed. If this function is run with MPI,
-        pyHyp will be run in parallel.
-        """
-
-        # First run simpleCart with no extension:
-        X, dx = self.simpleCart(dh, 0.0, 0, sym, mgcycle, outFile=None)
-
-        # Pull out the patches. Note that we have to pay attention to
-        # the symmetry and the ordering of the patches to make sure
-        # that all the normals are pointing out.
-        patches = []
-
-        # First take patches that are opposite from the origin planes
-        if "xmax" not in sym:
-            patches.append(X[-1, :, :, :])
-        if "ymax" not in sym:
-            patches.append(X[:, -1, :, :][::-1, :, :])
-        if "zmax" not in sym:
-            patches.append(X[:, :, -1, :])
-
-        if "x" not in sym and "xmin" not in sym:
-            patches.append(X[0, :, :, :][::-1, :, :])
-        if "y" not in sym and "ymin" not in sym:
-            patches.append(X[:, 0, :, :])
-        if "z" not in sym and "zmin" not in sym:
-            patches.append(X[:, :, 0, :][::-1, :, :])
-
-        # Set up the generic input for pyHyp
-        hypOptions = {
-            "patches": patches,
-            "unattachedEdgesAreSymmetry": True,
-            "outerFaceBC": "farfield",
-            "autoConnect": True,
-            "BC": {},
-            "N": nExtra,
-            "s0": numpy.average(dx),
-            "marchDist": hExtra,
-            "cmax": 3.0,
-        }
-
-        # Use user-defined options if provided
-        if userOptions is not None:
-            hypOptions.update(userOptions)
-
-        # Run pyHyp
-        from pyhyp import pyHyp
-
-        hyp = pyHyp(options=hypOptions)
-        hyp.run()
-
-        from mpi4py import MPI
-
-        fName = None
-        if MPI.COMM_WORLD.rank == 0:
-            dirpath = tempfile.mkdtemp()
-            fName = os.path.join(dirpath, "tmp.cgns")
-
-        hyp.writeCGNS(MPI.COMM_WORLD.bcast(fName))
-
-        # Reset symmetry to single axis
-        if "x" in sym or "xmin" in sym or "xmax" in sym:
-            sym = "x"
-        elif "y" in sym or "ymin" in sym or "ymax" in sym:
-            sym = "y"
-        elif "z" in sym or "zmin" in sym or "zmax" in sym:
-            sym = "z"
-
-        if MPI.COMM_WORLD.rank == 0:
-            # Read the pyhyp mesh back in and add our additional "X" from above.
-            grid = readGrid(fName)
-            dims = X.shape[0:3]
-            grid.addBlock(Block("interiorBlock", dims, X))
-            grid.renameBlocks()
-            grid.connect()
-            grid.BCs = []
-            grid.autoFarfieldBC(sym)
-            grid.writeToCGNS(outFile)
-
-            # Delete the temp file
-            os.remove(fName)
 
     def cartesian(self, cartFile, outFile):
         """Generates a Cartesian mesh around the provided grid"""
