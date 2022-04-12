@@ -10,6 +10,7 @@ read cngs file -> Do some operations on it -> |     .or.
 Developed by Dr. Gaetan K. W. Kenway
 """
 import os
+import re
 import copy
 import numpy
 from . import libcgns_utils
@@ -838,8 +839,6 @@ class Grid(object):
             # Sp2: final spacing (within the [0,1] interval)
             # N: number of nodes
 
-            # IMPORTS
-            from numpy import tan, arange, pi
             from scipy.optimize import minimize
 
             # Convert number of nodes to number of cells, because I derived the equations using
@@ -855,9 +854,9 @@ class Grid(object):
                 # Find b
                 b = e - c
                 # Equations
-                Eq1 = a * (tan(b + c) - tan(c)) - 1
-                Eq2 = a * (tan(b / N + c) - tan(c)) - Sp1
-                Eq3 = a * (tan(b + c) - tan(b * (1 - 1 / N) + c)) - Sp2
+                Eq1 = a * (numpy.tan(b + c) - numpy.tan(c)) - 1
+                Eq2 = a * (numpy.tan(b / N + c) - numpy.tan(c)) - Sp1
+                Eq3 = a * (numpy.tan(b + c) - numpy.tan(b * (1 - 1 / N) + c)) - Sp2
                 # Cost function
                 J = Eq1**2 + Eq2**2 + Eq3**2
                 # Return
@@ -865,14 +864,14 @@ class Grid(object):
 
             # Define bounds for the problem
             a_bounds = [(0, None)]
-            e_bounds = [(0, pi / 2)]
-            c_bounds = [(-pi / 2, 0)]
+            e_bounds = [(0, numpy.pi / 2)]
+            c_bounds = [(-numpy.pi / 2, 0)]
             bounds = a_bounds + e_bounds + c_bounds
 
             # Define initial guess
             a_start = 1.0
-            e_start = pi / 4
-            c_start = -pi / 4
+            e_start = numpy.pi / 4
+            c_start = -numpy.pi / 4
             x_start = [a_start, e_start, c_start]
 
             # Optimize
@@ -887,11 +886,11 @@ class Grid(object):
 
             # Find other parameters
             b = e - c
-            d = -a * tan(c)
+            d = -a * numpy.tan(c)
 
             # Generate spacing
-            index = arange(N + 1)
-            S = a * tan(b * index / N + c) + d
+            index = numpy.arange(N + 1)
+            S = a * numpy.tan(b * index / N + c) + d
 
             # Force the extremes to 0 and 1 so that we always meet the bounds
             # (this is to avoid numerical issues with symmetry planes)
@@ -919,8 +918,6 @@ class Grid(object):
             #                            If weightGR = 1, the optimizer will not care about the bounding box resolution
             #                            and will just try to get an uniform growth ratio. This results in an uniform mesh.
 
-            # IMPORTS
-            from numpy import array, mean
             from scipy.optimize import minimize
 
             # Compute farfield coordinates
@@ -962,7 +959,7 @@ class Grid(object):
                     bolEdges = E[bol]
                     # print bol
                     # Compute edge mismatch and increment variable
-                    edgeError = edgeError + mean((bolEdges - binEdge[binIndex]) ** 2) / 2
+                    edgeError = edgeError + numpy.mean((bolEdges - binEdge[binIndex]) ** 2) / 2
 
                 # Compute term regarding growing ratios at the ends
                 if nNodes > 3:
@@ -973,13 +970,13 @@ class Grid(object):
                     growthRatio = 0
 
                 # Return objective function
-                return (1 - weightGR) * edgeError / mean(binEdge) + weightGR * growthRatio
+                return (1 - weightGR) * edgeError / numpy.mean(binEdge) + weightGR * growthRatio
                 # Note that the edgeError is normalized so that the weighed average makes sense
 
             # Define initial guess based on uniform spacing
             Sp1_start = 1 / (nNodes - 1)
             Sp2_start = 1 / (nNodes - 1)
-            x_start = array([Sp1_start, Sp2_start])
+            x_start = numpy.array([Sp1_start, Sp2_start])
 
             # Optimize
             res = minimize(
@@ -1360,9 +1357,6 @@ class Grid(object):
         Zone1, Zone11, Zone12, ..., Zone19, Zone2, Zone21, ...
         This method will add extra digits to the zone names to give the correct ordering.
         """
-
-        # IMPORTS
-        import re
 
         # Initialize list of names
         nameList = []

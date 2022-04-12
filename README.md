@@ -36,6 +36,10 @@ To install, type
 or optionally with the `--user` flag if you are not using a virtual environment.
 A console script called `cgns_utils` is provided, which should be installed automatically and available without modifying your `$PATH`.
 
+Advanced features require additional dependencies, which can be checked with
+
+    pip install .[advanced]
+
 ## Usage
 
 All of the `cgnsUtilties` functionality is accessible through the `cgns_utils` command.
