@@ -950,7 +950,7 @@ class Grid(object):
                 Eq2 = a * (tan(b / N + c) - tan(c)) - Sp1
                 Eq3 = a * (tan(b + c) - tan(b * (1 - 1 / N) + c)) - Sp2
                 # Cost function
-                J = Eq1 ** 2 + Eq2 ** 2 + Eq3 ** 2
+                J = Eq1**2 + Eq2**2 + Eq3**2
                 # Return
                 return J
 
@@ -1515,7 +1515,7 @@ class Grid(object):
         """
 
         # Normalize the components of the rotation vector
-        normV = numpy.sqrt(vx ** 2 + vy ** 2 + vz ** 2)
+        normV = numpy.sqrt(vx**2 + vy**2 + vz**2)
         uu = vx / normV
         vv = vy / normV
         ww = vz / normV
