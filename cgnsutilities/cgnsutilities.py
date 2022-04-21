@@ -45,11 +45,11 @@ CG_MODE_WRITE = 1
 class Grid(object):
     """Represent a complete 3D multiblock grid"""
 
-    def __init__(self,nameTrue=True):
+    def __init__(self, nameTrue=True):
         self.blocks = []
         self.convArray = {}
         self.topo = None
-        
+
         if nameTrue:
             self.name = []
         else:
@@ -302,9 +302,9 @@ class Grid(object):
             # This is to keep the behavior consistent with previous
             # cgns_utils operations while allowing for different naming
             # for use in pyWarpMulti.
-            name=self.name
+            name = self.name
             if actualName:
-                blk.name = name[i-1] + ".%5.5d" % i
+                blk.name = name[i - 1] + ".%5.5d" % i
                 print(blk.name)
             else:
                 blk.name = "domain.%5.5d" % i
@@ -3048,11 +3048,10 @@ def mirrorGrid(grid, axis, tol):
         newGrid.addBlock(mirrorBlk)
 
         # add the new mirrored block name to the new grid
-        mirrorBlk.name=blk.name+"_mirror"
+        mirrorBlk.name = blk.name + "_mirror"
         newGrid.name.append(mirrorBlk.name)
 
-        print("Mirroring block: %s  to  %s" %(blk.name,mirrorBlk.name) )
-
+        print("Mirroring block: %s  to  %s" % (blk.name, mirrorBlk.name))
 
     # Now rename the blocks and redo-connectivity
     newGrid.renameBlocks()
