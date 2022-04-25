@@ -146,15 +146,14 @@ class TestGrid(unittest.TestCase):
         for blk in self.grid.blocks:
             blk.removeSymBCs()
             blk.B2Bs = []
-        
+
             newGrid.name.append(blk.name)
 
             mirrorBlk = copy.deepcopy(blk)
-            mirrorBlk.flip('z')
-  
+            mirrorBlk.flip("z")
+
             mirrorBlk.name = blk.name + "_mirror"
             newGrid.name.append(mirrorBlk.name)
-            
 
         newMirrorGrid = mirrorGrid(self.grid, "z", 1e-12, actualName=True)
         newNames = [blk.name for blk in newMirrorGrid.blocks]
