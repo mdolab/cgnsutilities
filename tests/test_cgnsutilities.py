@@ -137,10 +137,9 @@ class TestGrid(unittest.TestCase):
         self.grid.refine("ijk")
         totalCells = self.grid.getTotalCellsNodes()[0]
         self.assertEqual(15120 * 8, totalCells)
-    
+
     def test_mirror(self):
-        newMirrorGrid = mirrorGrid(self.grid, 'z', 1e-12,actualName=True)
-        
+        newMirrorGrid = mirrorGrid(self.grid, "z", 1e-12, actualName=True)
 
     def test_refine_axes(self):
         self.grid.refine("i")
