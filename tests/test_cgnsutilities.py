@@ -2,7 +2,6 @@ import os
 import subprocess
 from tkinter import Grid
 import unittest
-from matplotlib.pyplot import grid
 from parameterized import parameterized
 import numpy as np
 from baseclasses import BaseRegTest
