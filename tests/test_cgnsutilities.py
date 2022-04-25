@@ -1,6 +1,8 @@
 import os
 import subprocess
+from tkinter import Grid
 import unittest
+from matplotlib.pyplot import grid
 from parameterized import parameterized
 import numpy as np
 from baseclasses import BaseRegTest
@@ -139,7 +141,24 @@ class TestGrid(unittest.TestCase):
         self.assertEqual(15120 * 8, totalCells)
 
     def test_mirror(self):
+        newGrid = Grid()
+        newGrid.name = []
+        for blk in self.grid.blocks:
+            blk.removeSymBCs()
+            blk.B2Bs = []
+        
+            newGrid.name.append(blk.name)
+
+            mirrorBlk = copy.deepcopy(blk)
+            mirrorBlk.flip('z')
+  
+            mirrorBlk.name = blk.name + "_mirror"
+            newGrid.name.append(mirrorBlk.name)
+            
+
         newMirrorGrid = mirrorGrid(self.grid, "z", 1e-12, actualName=True)
+        newNames = [blk.name for blk in newMirrorGrid.blocks]
+        self.assertEqual(newNames, newGrid.name)
 
     def test_refine_axes(self):
         self.grid.refine("i")

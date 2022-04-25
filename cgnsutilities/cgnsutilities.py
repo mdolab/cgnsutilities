@@ -297,10 +297,8 @@ class Grid(object):
             # This is to keep the behavior consistent with previous
             # cgns_utils operations while allowing for different naming
             # for use in pyWarpMulti.
-            name = self.name
             if actualName:
-                blk.name = name[i - 1] + ".%5.5d" % i
-                print(blk.name)
+                blk.name = self.name + ".%5.5d" % i
             else:
                 blk.name = "domain.%5.5d" % i
             i += 1
@@ -3030,14 +3028,18 @@ def mirrorGrid(grid, axis, tol, actualName=False):
 
     # Now copy original blocks
     newGrid = Grid()
+
+    # create list for block names
+    if actualName:
+            newGrid.name = []
+
     for blk in grid.blocks:
         blk.removeSymBCs()
         blk.B2Bs = []
         newGrid.addBlock(blk)
 
-        if actualName:
-            newGrid.name = []
 
+        if actualName:
             # add the current block name to the new grid
             newGrid.name.append(blk.name)
 
@@ -3049,13 +3051,14 @@ def mirrorGrid(grid, axis, tol, actualName=False):
             # add the new mirrored block name to the new grid
             mirrorBlk.name = blk.name + "_mirror"
             newGrid.name.append(mirrorBlk.name)
-
+            
             print("Mirroring block: %s  to  %s" % (blk.name, mirrorBlk.name))
-        else:
-            # rename the block
-            newGrid.renameBlocks()
+        
 
     # Now rename the blocks and redo-connectivity
+    if not actualName:
+        newGrid.renameBlocks()
+
     newGrid.renameBCs()
     newGrid.connect(tol)
 
