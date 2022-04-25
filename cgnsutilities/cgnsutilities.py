@@ -45,16 +45,11 @@ CG_MODE_WRITE = 1
 class Grid(object):
     """Represent a complete 3D multiblock grid"""
 
-    def __init__(self, nameTrue=True):
+    def __init__(self):
         self.blocks = []
         self.convArray = {}
         self.topo = None
-
-        if nameTrue:
-            self.name = []
-        else:
-            self.name = "domain"
-
+        self.name = "domain"
         self.cellDim = 3
 
     def overwriteBCFamilyWithBC(self, familyName, newBCType, blockIDs=None):
@@ -3026,7 +3021,7 @@ def convertPlot3d(plot3dFile, cgnsFile):
     libcgns_utils.utils.convertplot3d(plot3dFile, cgnsFile)
 
 
-def mirrorGrid(grid, axis, tol):
+def mirrorGrid(grid, axis, tol, actualName=False):
     """Method that takes a grid and mirrors about the axis. Boundary
     condition information is retained if possible"""
 
@@ -3040,21 +3035,27 @@ def mirrorGrid(grid, axis, tol):
         blk.B2Bs = []
         newGrid.addBlock(blk)
 
-        # add the current block name to the new grid
-        newGrid.name.append(blk.name)
+        if actualName:
+            newGrid.name = []
+
+            # add the current block name to the new grid
+            newGrid.name.append(blk.name)
 
         mirrorBlk = copy.deepcopy(blk)
         mirrorBlk.flip(axis)
         newGrid.addBlock(mirrorBlk)
 
-        # add the new mirrored block name to the new grid
-        mirrorBlk.name = blk.name + "_mirror"
-        newGrid.name.append(mirrorBlk.name)
+        if actualName:
+            # add the new mirrored block name to the new grid
+            mirrorBlk.name = blk.name + "_mirror"
+            newGrid.name.append(mirrorBlk.name)
 
-        print("Mirroring block: %s  to  %s" % (blk.name, mirrorBlk.name))
+            print("Mirroring block: %s  to  %s" % (blk.name, mirrorBlk.name))
+        else:
+            # rename the block
+            newGrid.renameBlocks()
 
     # Now rename the blocks and redo-connectivity
-    newGrid.renameBlocks()
     newGrid.renameBCs()
     newGrid.connect(tol)
 

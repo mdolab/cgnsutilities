@@ -4,7 +4,7 @@ import unittest
 from parameterized import parameterized
 import numpy as np
 from baseclasses import BaseRegTest
-from cgnsutilities.cgnsutilities import readGrid, BC, combineGrids
+from cgnsutilities.cgnsutilities import readGrid, BC, combineGrids, mirrorGrid
 import copy
 
 baseDir = os.path.dirname(os.path.abspath(__file__))
@@ -137,6 +137,10 @@ class TestGrid(unittest.TestCase):
         self.grid.refine("ijk")
         totalCells = self.grid.getTotalCellsNodes()[0]
         self.assertEqual(15120 * 8, totalCells)
+    
+    def test_mirror(self):
+        newMirrorGrid = mirrorGrid(self.grid, 'z', 1e-12,actualName=True)
+        
 
     def test_refine_axes(self):
         self.grid.refine("i")
