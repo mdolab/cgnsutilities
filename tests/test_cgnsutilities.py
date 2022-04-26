@@ -143,20 +143,21 @@ class TestGrid(unittest.TestCase):
         newGrid = Grid()
         newGrid.name = []
         for blk in self.grid.blocks:
-            blk.removeSymBCs()
-            blk.B2Bs = []
 
-            newGrid.name.append(blk.name)
+            newGrid.name.append(blk.name.split(".")[0])
 
-            mirrorBlk = copy.deepcopy(blk)
-            mirrorBlk.flip("z")
+            mirrorBlkName = blk.name.split(".")[0] + "_mirror"
+            newGrid.name.append(mirrorBlkName)
 
-            mirrorBlk.name = blk.name + "_mirror"
-            newGrid.name.append(mirrorBlk.name)
+        i = 1
+        newNameList = []
+        for name in newGrid.name:
+            newNameList.append(name + ".%5.5d" % i)
+            i += 1
 
         newMirrorGrid = mirrorGrid(self.grid, "z", 1e-12, actualName=True)
         newNames = [blk.name for blk in newMirrorGrid.blocks]
-        self.assertEqual(newNames, newGrid.name)
+        self.assertEqual(newNames, newNameList)
 
     def test_refine_axes(self):
         self.grid.refine("i")
