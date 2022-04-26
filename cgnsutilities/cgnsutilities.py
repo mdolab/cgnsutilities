@@ -3029,10 +3029,6 @@ def mirrorGrid(grid, axis, tol, actualName=False):
     # Now copy original blocks
     newGrid = Grid()
 
-    # create list for block names
-    if actualName:
-        newGrid.name = []
-
     for blk in grid.blocks:
         blk.removeSymBCs()
         blk.B2Bs = []
@@ -3040,18 +3036,17 @@ def mirrorGrid(grid, axis, tol, actualName=False):
 
         if actualName:
             # add the current block name to the new grid
-            newGrid.name.append(blk.name.split(".")[0])
+            blk.name = blk.name.split(".")[0]
 
         mirrorBlk = copy.deepcopy(blk)
         mirrorBlk.flip(axis)
         newGrid.addBlock(mirrorBlk)
-
+        newGrid.blocks[-1].name = blk.name.split(".")[0] + "_mirror"
         if actualName:
             # add the new mirrored block name to the new grid
-            mirrorBlk.name = blk.name.split(".")[0] + "_mirror"
-            newGrid.name.append(mirrorBlk.name)
+            newGrid.blocks[-1].name = blk.name.split(".")[0] + "_mirror"
 
-            print("Mirroring block: %s  to  %s" % (blk.name, mirrorBlk.name))
+            print("Mirroring block: %s  to  %s" % (blk.name, newGrid.blocks[-1].name))
 
     # Now rename the blocks and redo-connectivity
     if actualName:

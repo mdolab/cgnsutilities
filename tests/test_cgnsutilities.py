@@ -1,6 +1,5 @@
 import os
 import subprocess
-from tkinter import Grid
 import unittest
 from parameterized import parameterized
 import numpy as np
@@ -138,26 +137,6 @@ class TestGrid(unittest.TestCase):
         self.grid.refine("ijk")
         totalCells = self.grid.getTotalCellsNodes()[0]
         self.assertEqual(15120 * 8, totalCells)
-
-    def test_mirror(self):
-        newGrid = Grid()
-        newGrid.name = []
-        for blk in self.grid.blocks:
-
-            newGrid.name.append(blk.name.split(".")[0])
-
-            mirrorBlkName = blk.name.split(".")[0] + "_mirror"
-            newGrid.name.append(mirrorBlkName)
-
-        i = 1
-        newNameList = []
-        for name in newGrid.name:
-            newNameList.append(name + ".%5.5d" % i)
-            i += 1
-
-        newMirrorGrid = mirrorGrid(self.grid, "z", 1e-12, actualName=True)
-        newNames = [blk.name for blk in newMirrorGrid.blocks]
-        self.assertEqual(newNames, newNameList)
 
     def test_refine_axes(self):
         self.grid.refine("i")
@@ -310,6 +289,28 @@ class TestReturnFuncs(unittest.TestCase):
                 "domain.00005",
             ],
         )
+
+    def test_mirror(self):
+
+        # Test mirroring function
+        newNameList = [
+            "domain.00001",
+            "domain_mirror.00002",
+            "domain.00003",
+            "domain_mirror.00004",
+            "domain.00005",
+            "domain_mirror.00006",
+            "domain.00007",
+            "domain_mirror.00008",
+            "domain.00009",
+            "domain_mirror.00010",
+        ]
+        newMirrorGrid = mirrorGrid(self.grid1, "z", 1e-12, actualName=True)
+        newNames = [blk.name for blk in newMirrorGrid.blocks]
+        self.assertEqual(newNames, newNameList)
+
+        totalCells = newMirrorGrid.getTotalCellsNodes()[0]
+        self.assertEqual(15120 * 2, totalCells)
 
 
 class TestExamples(unittest.TestCase):
