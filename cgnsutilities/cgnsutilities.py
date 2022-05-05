@@ -3035,18 +3035,18 @@ def mirrorGrid(grid, axis, tol, useOldNames=False):
         newGrid.addBlock(blk)
 
         if useOldNames:
-            # add the current block name to the new grid
+            # Add the current block name to the new grid
             blk.name = blk.name.split(".")[0]
 
         mirrorBlk = copy.deepcopy(blk)
         mirrorBlk.flip(axis)
         newGrid.addBlock(mirrorBlk)
-        newGrid.blocks[-1].name = blk.name.split(".")[0] + "_mirror"
+
         if useOldNames:
-            # add the new mirrored block name to the new grid
+            # Add the new mirrored block name to the new grid
             newGrid.blocks[-1].name = blk.name.split(".")[0] + "_mirror"
 
-            print("Mirroring block: %s  to  %s" % (blk.name, newGrid.blocks[-1].name))
+            print(f"Mirroring block: {blk.name} to {newGrid.blocks[-1].name}")
 
     # Now rename the blocks and redo-connectivity
     newGrid.renameBlocks(useOldNames=useOldNames)
