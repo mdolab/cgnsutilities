@@ -288,15 +288,17 @@ class Grid(object):
             blk.refine(axes)
 
     def renameBlocks(self, useOldNames=False):
-        """Rename all blocks in a consistent fashion"""
+        """Rename all blocks in a consistent fashion
+
+        Parameters
+        ----------
+        useOldNames : bool
+            If True, we use the name stored in the block and redo only the numbering.
+            Otherwise, we use 'domain' as the base name for all blocks.
+
+        """
         i = 1
         for blk in self.blocks:
-
-            # If we the actualName flag is true, then we use the name stored
-            # in the block. Otherwise, we use 'domain' as the base of the name.
-            # This is to keep the behavior consistent with previous
-            # cgns_utils operations while allowing for different naming
-            # for use in pyWarpMulti.
             if useOldNames:
                 blk.name = blk.name.split(".")[0] + ".%5.5d" % i
             else:
