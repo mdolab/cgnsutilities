@@ -292,7 +292,7 @@ class TestReturnFuncs(unittest.TestCase):
 
     def test_mirror(self):
 
-        # Test mirroring function
+        # Test mirroring function with useOldNames=True option
         newNameList = [
             "domain.00001",
             "domain_mirror.00002",
@@ -305,7 +305,27 @@ class TestReturnFuncs(unittest.TestCase):
             "domain.00009",
             "domain_mirror.00010",
         ]
-        newMirrorGrid = mirrorGrid(self.grid1, "z", 1e-12, actualName=True)
+        newMirrorGrid = mirrorGrid(self.grid1, "z", 1e-12, useOldNames=True)
+        newNames = [blk.name for blk in newMirrorGrid.blocks]
+        self.assertEqual(newNames, newNameList)
+
+        totalCells = newMirrorGrid.getTotalCellsNodes()[0]
+        self.assertEqual(15120 * 2, totalCells)
+
+        # Test mirroring function  with useOldNames=False option
+        newNameList = [
+            "domain.00001",
+            "domain.00002",
+            "domain.00003",
+            "domain.00004",
+            "domain.00005",
+            "domain.00006",
+            "domain.00007",
+            "domain.00008",
+            "domain.00009",
+            "domain.00010",
+        ]
+        newMirrorGrid = mirrorGrid(self.grid1, "z", 1e-12, useOldNames=False)
         newNames = [blk.name for blk in newMirrorGrid.blocks]
         self.assertEqual(newNames, newNameList)
 

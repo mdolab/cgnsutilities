@@ -287,7 +287,7 @@ class Grid(object):
         for blk in self.blocks:
             blk.refine(axes)
 
-    def renameBlocks(self, actualName=False):
+    def renameBlocks(self, useOldNames=False):
         """Rename all blocks in a consistent fashion"""
         i = 1
         for blk in self.blocks:
@@ -297,7 +297,7 @@ class Grid(object):
             # This is to keep the behavior consistent with previous
             # cgns_utils operations while allowing for different naming
             # for use in pyWarpMulti.
-            if actualName:
+            if useOldNames:
                 blk.name = blk.name.split(".")[0] + ".%5.5d" % i
             else:
                 blk.name = "domain.%5.5d" % i
@@ -3019,7 +3019,7 @@ def convertPlot3d(plot3dFile, cgnsFile):
     libcgns_utils.utils.convertplot3d(plot3dFile, cgnsFile)
 
 
-def mirrorGrid(grid, axis, tol, actualName=False):
+def mirrorGrid(grid, axis, tol, useOldNames=False):
     """Method that takes a grid and mirrors about the axis. Boundary
     condition information is retained if possible"""
 
@@ -3034,7 +3034,7 @@ def mirrorGrid(grid, axis, tol, actualName=False):
         blk.B2Bs = []
         newGrid.addBlock(blk)
 
-        if actualName:
+        if useOldNames:
             # add the current block name to the new grid
             blk.name = blk.name.split(".")[0]
 
@@ -3042,18 +3042,14 @@ def mirrorGrid(grid, axis, tol, actualName=False):
         mirrorBlk.flip(axis)
         newGrid.addBlock(mirrorBlk)
         newGrid.blocks[-1].name = blk.name.split(".")[0] + "_mirror"
-        if actualName:
+        if useOldNames:
             # add the new mirrored block name to the new grid
             newGrid.blocks[-1].name = blk.name.split(".")[0] + "_mirror"
 
             print("Mirroring block: %s  to  %s" % (blk.name, newGrid.blocks[-1].name))
 
     # Now rename the blocks and redo-connectivity
-    if actualName:
-        newGrid.renameBlocks(actualName=True)
-    else:
-        newGrid.renameBlocks(actualName=False)
-
+    newGrid.renameBlocks(useOldNames=useOldNames)
     newGrid.renameBCs()
     newGrid.connect(tol)
 
@@ -3504,7 +3500,7 @@ def explodeByZoneName(grid):
     for name in nameList:
 
         # Now rename the blocks, bcs and redo-connectivity, only if we have full mesh
-        gridDict[name].renameBlocks(actualName=True)
+        gridDict[name].renameBlocks(useOldNames=True)
         gridDict[name].renameBCs()
         gridDict[name].connect()
 
