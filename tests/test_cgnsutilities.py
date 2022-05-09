@@ -4,7 +4,7 @@ import unittest
 from parameterized import parameterized
 import numpy as np
 from baseclasses import BaseRegTest
-from cgnsutilities.cgnsutilities import readGrid, BC, combineGrids
+from cgnsutilities.cgnsutilities import readGrid, BC, combineGrids, mirrorGrid
 import copy
 
 baseDir = os.path.dirname(os.path.abspath(__file__))
@@ -289,6 +289,48 @@ class TestReturnFuncs(unittest.TestCase):
                 "domain.00005",
             ],
         )
+
+    def test_mirror(self):
+
+        # Test mirroring function with useOldNames=True option
+        newNameList = [
+            "domain.00001",
+            "domain_mirror.00002",
+            "domain.00003",
+            "domain_mirror.00004",
+            "domain.00005",
+            "domain_mirror.00006",
+            "domain.00007",
+            "domain_mirror.00008",
+            "domain.00009",
+            "domain_mirror.00010",
+        ]
+        newMirrorGrid = mirrorGrid(self.grid1, "z", 1e-12, useOldNames=True)
+        newNames = [blk.name for blk in newMirrorGrid.blocks]
+        self.assertEqual(newNames, newNameList)
+
+        totalCells = newMirrorGrid.getTotalCellsNodes()[0]
+        self.assertEqual(15120 * 2, totalCells)
+
+        # Test mirroring function  with useOldNames=False option
+        newNameList = [
+            "domain.00001",
+            "domain.00002",
+            "domain.00003",
+            "domain.00004",
+            "domain.00005",
+            "domain.00006",
+            "domain.00007",
+            "domain.00008",
+            "domain.00009",
+            "domain.00010",
+        ]
+        newMirrorGrid = mirrorGrid(self.grid1, "z", 1e-12, useOldNames=False)
+        newNames = [blk.name for blk in newMirrorGrid.blocks]
+        self.assertEqual(newNames, newNameList)
+
+        totalCells = newMirrorGrid.getTotalCellsNodes()[0]
+        self.assertEqual(15120 * 2, totalCells)
 
 
 class TestExamples(unittest.TestCase):
