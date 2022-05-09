@@ -287,18 +287,20 @@ class Grid(object):
         for blk in self.blocks:
             blk.refine(axes)
 
-    def renameBlocks(self, actualName=False):
-        """Rename all blocks in a consistent fashion"""
+    def renameBlocks(self, useOldNames=False):
+        """Rename all blocks in a consistent fashion
+
+        Parameters
+        ----------
+        useOldNames : bool
+            If True, we use the name stored in the block and redo only the numbering.
+            Otherwise, we use 'domain' as the base name for all blocks.
+
+        """
         i = 1
         for blk in self.blocks:
-
-            # If we the actualName flag is true, then we use the name stored
-            # in the block. Otherwise, we use 'domain' as the base of the name.
-            # This is to keep the behavior consistent with previous
-            # cgns_utils operations while allowing for different naming
-            # for use in pyWarpMulti.
-            if actualName:
-                blk.name = self.name + ".%5.5d" % i
+            if useOldNames:
+                blk.name = blk.name.split(".")[0] + ".%5.5d" % i
             else:
                 blk.name = "domain.%5.5d" % i
             i += 1
@@ -2929,7 +2931,7 @@ def convertPlot3d(plot3dFile, cgnsFile):
     libcgns_utils.utils.convertplot3d(plot3dFile, cgnsFile)
 
 
-def mirrorGrid(grid, axis, tol):
+def mirrorGrid(grid, axis, tol, useOldNames=False):
     """Method that takes a grid and mirrors about the axis. Boundary
     condition information is retained if possible"""
 
@@ -2938,17 +2940,28 @@ def mirrorGrid(grid, axis, tol):
 
     # Now copy original blocks
     newGrid = Grid()
+
     for blk in grid.blocks:
         blk.removeSymBCs()
         blk.B2Bs = []
         newGrid.addBlock(blk)
 
+        if useOldNames:
+            # Add the current block name to the new grid
+            blk.name = blk.name.split(".")[0]
+
         mirrorBlk = copy.deepcopy(blk)
         mirrorBlk.flip(axis)
         newGrid.addBlock(mirrorBlk)
 
+        if useOldNames:
+            # Add the new mirrored block name to the new grid
+            newGrid.blocks[-1].name = blk.name.split(".")[0] + "_mirror"
+
+            print(f"Mirroring block: {blk.name} to {newGrid.blocks[-1].name}")
+
     # Now rename the blocks and redo-connectivity
-    newGrid.renameBlocks()
+    newGrid.renameBlocks(useOldNames=useOldNames)
     newGrid.renameBCs()
     newGrid.connect(tol)
 
@@ -3399,7 +3412,7 @@ def explodeByZoneName(grid):
     for name in nameList:
 
         # Now rename the blocks, bcs and redo-connectivity, only if we have full mesh
-        gridDict[name].renameBlocks(actualName=True)
+        gridDict[name].renameBlocks(useOldNames=True)
         gridDict[name].renameBCs()
         gridDict[name].connect()
 
