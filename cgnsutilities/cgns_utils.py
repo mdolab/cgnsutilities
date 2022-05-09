@@ -17,7 +17,7 @@ import shutil
 import tempfile
 import argparse
 import pickle
-import numpy
+import numpy as np
 
 from cgnsutilities.cgnsutilities import (
     Block,
@@ -732,7 +732,7 @@ def main():
 
         # Now we make a character array of the file names, and hand if off to
         # fortran for all the actual reading/writing.
-        fileNames = numpy.zeros((len(files), 256), "c")
+        fileNames = np.zeros((len(files), 256), "c")
         for i in range(len(files)):
             fileNames[i, 0 : len(files[i])] = files[i]
 
@@ -743,12 +743,12 @@ def main():
         nx = args.nx
         ny = args.ny
         nz = args.nz
-        X = numpy.zeros((nx, ny, nz, 3))
+        X = np.zeros((nx, ny, nz, 3))
         Xcart = []
-        Xcart.append(numpy.linspace(0, 1, nx))
-        Xcart.append(numpy.linspace(0, 1, ny))
-        Xcart.append(numpy.linspace(0, 1, nz))
-        Xx, Xy, Xz = numpy.meshgrid(Xcart[0], Xcart[1], Xcart[2], indexing="ij")
+        Xcart.append(np.linspace(0, 1, nx))
+        Xcart.append(np.linspace(0, 1, ny))
+        Xcart.append(np.linspace(0, 1, nz))
+        Xx, Xy, Xz = np.meshgrid(Xcart[0], Xcart[1], Xcart[2], indexing="ij")
         X[:, :, :, 0] = Xx
         X[:, :, :, 1] = Xy
         X[:, :, :, 2] = Xz
@@ -954,7 +954,7 @@ def main():
                 end = int(spec)
             for i in range(start, end + 1):
                 toWrite.append(i)
-        toWrite = numpy.unique(toWrite)
+        toWrite = np.unique(toWrite)
         toWrite.sort()
         curGrid.writeToCGNSSelected(args.outFile, toWrite)
         sys.exit(0)
@@ -1073,7 +1073,7 @@ def main():
                 data.append(curGrid.convArray[entry])
 
             # Convert data to array
-            data = numpy.array(data).T
+            data = np.array(data).T
 
             # Write tecplot results
             write_tecplot_file(outFile, "Convergence", ["Iteration"] + curGrid.convArray.keys(), data)
