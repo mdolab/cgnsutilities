@@ -21,5 +21,5 @@ project = "CGNS Utilities"
 # We have to mock some stuff
 # and sphinxarg.ext does NOT use the autodoc mock feature
 
-for mod in ["cgnsutilities.libcgns_utils"]:
+for mod in ["cgnsutilities.libcgns_utils", "numpy"]:
     sys.modules[mod] = MagicMock()
