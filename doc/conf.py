@@ -7,6 +7,7 @@ from sphinx_mdolab_theme.config import *
 #
 import os
 import sys
+from unittest.mock import MagicMock
 
 sys.path.insert(0, os.path.abspath("../"))
 
@@ -15,3 +16,10 @@ extensions.extend(["sphinxarg.ext"])
 # -- Project information -----------------------------------------------------
 
 project = "CGNS Utilities"
+
+
+# We have to mock some stuff
+# and sphinxarg.ext does NOT use the autodoc mock feature
+
+for mod in ["libcgns_utils"]:
+    sys.modules[mod] = MagicMock()

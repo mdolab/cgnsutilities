@@ -2,6 +2,6 @@ Command Line Interface
 ======================
 
 .. argparse::
-   :filename: ../cgnsutilities/cgns_utils.py
+   :module: cgnsutilities.cgns_utils
    :func: get_parser
    :prog: cgns_utils
