@@ -14,4 +14,5 @@ cgnsUtilities is a collection of CLI program and utility functions for working w
    :caption: Contents:
 
    install
+   API
    CLI
