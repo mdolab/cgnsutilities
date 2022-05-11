@@ -935,7 +935,7 @@ class Grid(object):
             binVol : float
                 Average volume of the bounding box cells (foreground mesh)
 
-            weightGR: 0 < float < 1
+            weightGR : float
                 Weight between 0 and 1 used to balance growth ratio and cell volume during the optimization.
                 If weightGR = 0, the optimizer will not care about the growth ratios at the
                 farfield and will just try to match the bounding box resolution.
