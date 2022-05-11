@@ -833,14 +833,21 @@ class Grid(object):
         # Define tangent bunching law
         def tanDist(Sp1, Sp2, N):
 
-            # This is the tangential spacing developed by Ney Secco
-            # This bunching law is coarse at the ends an fine at the middle
-            # of the interval, just like shown below:
-            # |    |   |  | || |  |   |    |
+            """
+            This is the tangential spacing developed by Ney Secco.
+            This bunching law is coarse at the ends and fine at the middle
+            of the interval, just like shown below:
+            |    |   |  | || |  |   |    |
 
-            # Sp1: initial spacing (within the [0,1] interval)
-            # Sp2: final spacing (within the [0,1] interval)
-            # N: number of nodes
+            Parameters
+            ----------
+            Sp1 : float
+                Initial spacing (within the [0,1] interval
+            Sp2 : float
+                Final spacing within the [0,1] interval
+            N : int
+                Number of nodes
+            """
 
             # Convert number of nodes to number of cells, because I derived the equations using
             # N the as number of cells =P.
@@ -901,23 +908,41 @@ class Grid(object):
             # Return spacing
             return S
 
-        # Define function that optimizes bunching law to match grid resolution
-
         def generateGrid(xmin, xmax, extension1, extension2, nNodes, binVol, weightGR):
 
-            # xmin: float -> position where the bounding box begins
-            # xmax: float -> position where the bounding box ends
-            # extension1: float > 0 -> ratio between the negative farfield distance and the bounding box length:
-            #                          extension1 = (xmin-negative_farfield_position)/(xmax-xmin)
-            # extension2: float > 0 -> ratio between the positive farfield distance and the bounding box length:
-            #                          extension2 = (positive_farfield_position-xmax)/(xmax-xmin)
-            # nNodes: integer > 0 -> Number of nodes along the edge
-            # binVol: float > 0 -> Average volume of the bounding box cells (foreground mesh)
-            # weightGR: 0 < float < 1 -> Weight used to balance growth ratio and cell volume during the optimization.
-            #                            If weightGR = 0, the optimizer will not care about the growth ratios at the
-            #                            farfield and will just try to match the bounding box resolution.
-            #                            If weightGR = 1, the optimizer will not care about the bounding box resolution
-            #                            and will just try to get an uniform growth ratio. This results in an uniform mesh.
+            """
+            Function that optimizes bunching law to match grid resolution
+
+            Parameters
+            ----------
+            xmin : float
+                Position where the bounding box begins
+
+            xmax : float
+                Position where the bounding box ends
+
+            extension1 : float
+                Ratio between the negative farfield distance and the bounding box length:
+                extension1 = (xmin-negative_farfield_position)/(xmax-xmin)
+
+            extension2 : float
+                Ratio between the positive farfield distance and the bounding box length:
+                extension2 = (positive_farfield_position-xmax)/(xmax-xmin)
+
+            nNodes : int
+                Number of nodes along the edge
+
+            binVol : float
+                Average volume of the bounding box cells (foreground mesh)
+
+            weightGR: 0 < float < 1
+                Weight between 0 and 1 used to balance growth ratio and cell volume during the optimization.
+                If weightGR = 0, the optimizer will not care about the growth ratios at the
+                farfield and will just try to match the bounding box resolution.
+                If weightGR = 1, the optimizer will not care about the bounding box resolution
+                and will just try to get an uniform growth ratio. This results in an uniform mesh.
+
+            """
 
             # Compute farfield coordinates
             x0 = xmin - (xmax - xmin) * extension1
