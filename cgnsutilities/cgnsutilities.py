@@ -13,6 +13,7 @@ import os
 import re
 import copy
 import numpy as np
+from scipy.optimize import minimize
 from . import libcgns_utils
 
 # These are taken from the CGNS include file (cgnslib_f.h in your cgns library folder)
@@ -841,8 +842,6 @@ class Grid(object):
             # Sp2: final spacing (within the [0,1] interval)
             # N: number of nodes
 
-            from scipy.optimize import minimize
-
             # Convert number of nodes to number of cells, because I derived the equations using
             # N the as number of cells =P.
             N = N - 1
@@ -919,8 +918,6 @@ class Grid(object):
             #                            farfield and will just try to match the bounding box resolution.
             #                            If weightGR = 1, the optimizer will not care about the bounding box resolution
             #                            and will just try to get an uniform growth ratio. This results in an uniform mesh.
-
-            from scipy.optimize import minimize
 
             # Compute farfield coordinates
             x0 = xmin - (xmax - xmin) * extension1
