@@ -3,7 +3,7 @@ Installation Instructions
 
 First, copy the default configuration file to the required name. For example, to use gfortran:
 
-.. prompt::bash
+.. prompt:: bash
 
     cp config/defaults/config.LINUX_GFORTRAN.mk config/config.mk
 
@@ -16,7 +16,7 @@ It has been tested with both Intel and GNU Fortran compilers.
 
 To compile, simply type
 
-.. prompt::bash
+.. prompt:: bash
 
     make 
 
@@ -29,7 +29,7 @@ which indicates a successful compilation.
 
 To install, type
 
-.. prompt::bash
+.. prompt:: bash
 
     pip install .
 
