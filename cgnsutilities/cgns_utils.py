@@ -17,7 +17,7 @@ import shutil
 import tempfile
 import argparse
 import pickle
-import numpy
+import numpy as np
 
 from cgnsutilities.cgnsutilities import (
     Block,
@@ -517,16 +517,6 @@ The input mesh is not included and BCs are applied.""",
     p_sub.add_argument("mgcycle", help="Minimum MG cycle to enforce", type=int)
     p_sub.add_argument("outFile", help="Name of output CGNS file")
 
-    # ------------ Options for 'simpleOCart' mode --------------------
-    p_sub = subparsers.add_parser("simpleOCart", help="Generates a background cartesian mesh surrounding by an OMesh")
-    p_sub.add_argument("gridFile", help="Name of input CGNS file")
-    p_sub.add_argument("dh", help="Uniform cartesian spacing size", type=float)
-    p_sub.add_argument("hExtra", help='Extension in "O" dimension', type=float)
-    p_sub.add_argument("nExtra", help="Number of nodes to use for extension", type=int)
-    p_sub.add_argument("sym", help="Normal for possible sym plane", type=str)
-    p_sub.add_argument("mgcycle", help="Minimum MG cycle to enforce", type=int)
-    p_sub.add_argument("outFile", help="Name of output CGNS file")
-
     # ------------ Options for 'translate' mode  --------------------
     p_t = subparsers.add_parser("translate", help="Translate a grid.")
     p_t.add_argument("gridFile", help="Name of input CGNS file")
@@ -742,7 +732,7 @@ def main():
 
         # Now we make a character array of the file names, and hand if off to
         # fortran for all the actual reading/writing.
-        fileNames = numpy.zeros((len(files), 256), "c")
+        fileNames = np.zeros((len(files), 256), "c")
         for i in range(len(files)):
             fileNames[i, 0 : len(files[i])] = files[i]
 
@@ -753,12 +743,12 @@ def main():
         nx = args.nx
         ny = args.ny
         nz = args.nz
-        X = numpy.zeros((nx, ny, nz, 3))
+        X = np.zeros((nx, ny, nz, 3))
         Xcart = []
-        Xcart.append(numpy.linspace(0, 1, nx))
-        Xcart.append(numpy.linspace(0, 1, ny))
-        Xcart.append(numpy.linspace(0, 1, nz))
-        Xx, Xy, Xz = numpy.meshgrid(Xcart[0], Xcart[1], Xcart[2], indexing="ij")
+        Xcart.append(np.linspace(0, 1, nx))
+        Xcart.append(np.linspace(0, 1, ny))
+        Xcart.append(np.linspace(0, 1, nz))
+        Xx, Xy, Xz = np.meshgrid(Xcart[0], Xcart[1], Xcart[2], indexing="ij")
         X[:, :, :, 0] = Xx
         X[:, :, :, 1] = Xy
         X[:, :, :, 2] = Xz
@@ -934,10 +924,6 @@ def main():
         curGrid.simpleCart(args.dh, args.hExtra, args.nExtra, args.sym, args.mgcycle, args.outFile)
         sys.exit(0)
 
-    elif args.mode == "simpleOCart":
-        curGrid.simpleOCart(args.dh, args.hExtra, args.nExtra, args.sym, args.mgcycle, args.outFile)
-        sys.exit(0)
-
     elif args.mode == "translate":
         curGrid.translate(args.dx, args.dy, args.dz)
 
@@ -968,7 +954,7 @@ def main():
                 end = int(spec)
             for i in range(start, end + 1):
                 toWrite.append(i)
-        toWrite = numpy.unique(toWrite)
+        toWrite = np.unique(toWrite)
         toWrite.sort()
         curGrid.writeToCGNSSelected(args.outFile, toWrite)
         sys.exit(0)
@@ -1087,7 +1073,7 @@ def main():
                 data.append(curGrid.convArray[entry])
 
             # Convert data to array
-            data = numpy.array(data).T
+            data = np.array(data).T
 
             # Write tecplot results
             write_tecplot_file(outFile, "Convergence", ["Iteration"] + curGrid.convArray.keys(), data)

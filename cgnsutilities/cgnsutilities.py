@@ -1,7 +1,8 @@
 import os
+import re
 import copy
-import tempfile
-import numpy
+import numpy as np
+from scipy.optimize import minimize
 from . import libcgns_utils
 
 # These are taken from the CGNS include file (cgnslib_f.h in your cgns library folder)
@@ -396,7 +397,7 @@ class Grid(object):
             # Parse out the familyFile info
             aux = line.split()
             if len(aux) == 2:
-                ptRanges = numpy.array(aux[0].split(","), dtype=float).reshape(3, 2)
+                ptRanges = np.array(aux[0].split(","), dtype=float).reshape(3, 2)
                 famName = aux[1]
             else:
                 raise ValueError("familyFile is incorrectly formatted.")
@@ -463,10 +464,10 @@ class Grid(object):
                                 else:
                                     break
 
-                            dataArr = numpy.array(dataArr, dtype=numpy.float64)
+                            dataArr = np.array(dataArr, dtype=np.float64)
 
                             nDims = 1
-                            dataDims = numpy.ones(3, dtype=numpy.int32, order="F")
+                            dataDims = np.ones(3, dtype=np.int32, order="F")
                             dataDims[0] = dataArr.size
 
                             bcDataArr = BocoDataSetArray(arrayName, dType, nDims, dataDims, dataArr)
@@ -527,7 +528,7 @@ class Grid(object):
 
             if types[i] == 0:  # Boco
                 coor_check = abs(faceAvg[symAxis, i]) < 1e-3
-                dp_check = abs(numpy.dot(faceNormal[:, i], symNormal)) > 0.98
+                dp_check = abs(np.dot(faceNormal[:, i], symNormal)) > 0.98
                 if dp_check and coor_check and checkSym:
                     bocoType = BC["bcsymmetryplane"]
                     famName = "sym"
@@ -576,7 +577,7 @@ class Grid(object):
 
             if types[i] == 0:  # Boco
                 coor_check = abs(faceAvg[symAxis, i]) < 1e-3
-                dp_check = abs(numpy.dot(faceNormal[:, i], symNormal)) > 0.98
+                dp_check = abs(np.dot(faceNormal[:, i], symNormal)) > 0.98
                 if dp_check and coor_check:
                     bocoType = BC["bcsymmetryplane"]
                     famName = "sym"
@@ -619,7 +620,7 @@ class Grid(object):
 
             if types[i] == 0:  # Boco
                 coor_check = abs(faceAvg[symAxis, i]) < 1e-3
-                dp_check = abs(numpy.dot(faceNormal[:, i], symNormal)) > 0.98
+                dp_check = abs(np.dot(faceNormal[:, i], symNormal)) > 0.98
                 if dp_check and coor_check:
                     bocoType = BC["bcsymmetryplane"]
                     famName = "sym"
@@ -644,101 +645,18 @@ class Grid(object):
         """Generates a Cartesian mesh around the provided grid"""
 
         # Get the bounds of each grid.
-        xMin = 1e20 * numpy.ones(3)
-        xMax = -1.0 * numpy.ones(3)
+        xMin = 1e20 * np.ones(3)
+        xMax = -1.0 * np.ones(3)
 
         for blk in self.blocks:
-            tmp1 = numpy.min(blk.coords, axis=(0, 1, 2))
-            tmp2 = numpy.max(blk.coords, axis=(0, 1, 2))
+            tmp1 = np.min(blk.coords, axis=(0, 1, 2))
+            tmp2 = np.max(blk.coords, axis=(0, 1, 2))
             for iDim in range(3):
                 xMin[iDim] = min(xMin[iDim], tmp1[iDim])
                 xMax[iDim] = max(xMax[iDim], tmp2[iDim])
 
         # Call the generic routine
         return simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile)
-
-    def simpleOCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile, userOptions=None):
-        """Generates a Cartesian mesh around the provided grid, surrounded by an O-mesh.
-        This function requires pyHyp to be installed. If this function is run with MPI,
-        pyHyp will be run in parallel.
-        """
-
-        # First run simpleCart with no extension:
-        X, dx = self.simpleCart(dh, 0.0, 0, sym, mgcycle, outFile=None)
-
-        # Pull out the patches. Note that we have to pay attention to
-        # the symmetry and the ordering of the patches to make sure
-        # that all the normals are pointing out.
-        patches = []
-
-        # First take patches that are opposite from the origin planes
-        if "xmax" not in sym:
-            patches.append(X[-1, :, :, :])
-        if "ymax" not in sym:
-            patches.append(X[:, -1, :, :][::-1, :, :])
-        if "zmax" not in sym:
-            patches.append(X[:, :, -1, :])
-
-        if "x" not in sym and "xmin" not in sym:
-            patches.append(X[0, :, :, :][::-1, :, :])
-        if "y" not in sym and "ymin" not in sym:
-            patches.append(X[:, 0, :, :])
-        if "z" not in sym and "zmin" not in sym:
-            patches.append(X[:, :, 0, :][::-1, :, :])
-
-        # Set up the generic input for pyHyp
-        hypOptions = {
-            "patches": patches,
-            "unattachedEdgesAreSymmetry": True,
-            "outerFaceBC": "farfield",
-            "autoConnect": True,
-            "BC": {},
-            "N": nExtra,
-            "s0": numpy.average(dx),
-            "marchDist": hExtra,
-            "cmax": 3.0,
-        }
-
-        # Use user-defined options if provided
-        if userOptions is not None:
-            hypOptions.update(userOptions)
-
-        # Run pyHyp
-        from pyhyp import pyHyp
-
-        hyp = pyHyp(options=hypOptions)
-        hyp.run()
-
-        from mpi4py import MPI
-
-        fName = None
-        if MPI.COMM_WORLD.rank == 0:
-            dirpath = tempfile.mkdtemp()
-            fName = os.path.join(dirpath, "tmp.cgns")
-
-        hyp.writeCGNS(MPI.COMM_WORLD.bcast(fName))
-
-        # Reset symmetry to single axis
-        if "x" in sym or "xmin" in sym or "xmax" in sym:
-            sym = "x"
-        elif "y" in sym or "ymin" in sym or "ymax" in sym:
-            sym = "y"
-        elif "z" in sym or "zmin" in sym or "zmax" in sym:
-            sym = "z"
-
-        if MPI.COMM_WORLD.rank == 0:
-            # Read the pyhyp mesh back in and add our additional "X" from above.
-            grid = readGrid(fName)
-            dims = X.shape[0:3]
-            grid.addBlock(Block("interiorBlock", dims, X))
-            grid.renameBlocks()
-            grid.connect()
-            grid.BCs = []
-            grid.autoFarfieldBC(sym)
-            grid.writeToCGNS(outFile)
-
-            # Delete the temp file
-            os.remove(fName)
 
     def cartesian(self, cartFile, outFile):
         """Generates a Cartesian mesh around the provided grid"""
@@ -750,10 +668,10 @@ class Grid(object):
         print("Running Cartesian grid generator")
 
         # Preallocate arrays
-        extensions = numpy.zeros((2, 3), order="F")
-        nNodes = numpy.zeros(3, order="F")
-        weightGR = numpy.zeros(3, order="F")
-        numBins = numpy.zeros(3, order="F")
+        extensions = np.zeros((2, 3), order="F")
+        nNodes = np.zeros(3, order="F")
+        weightGR = np.zeros(3, order="F")
+        numBins = np.zeros(3, order="F")
 
         # Read four lines of the cartesian specs file
         with open(cartFile, "r") as f:
@@ -767,19 +685,19 @@ class Grid(object):
         numBins[:] = 1  # The tangent law only works for single bin
 
         # Initialize bounding box coordinates using the first point of the first zone
-        xBounds = numpy.zeros((2, 3), order="F")
+        xBounds = np.zeros((2, 3), order="F")
         xBounds[0, 0] = self.blocks[0].coords[0, 0, 0, 0]  # Using the first point for initialization
         xBounds[1, 0] = self.blocks[0].coords[0, 0, 0, 0]  # because I can't use 0
         xBounds[0, 1] = self.blocks[0].coords[0, 0, 0, 1]
         xBounds[1, 1] = self.blocks[0].coords[0, 0, 0, 1]
         xBounds[0, 2] = self.blocks[0].coords[0, 0, 0, 2]
         xBounds[1, 2] = self.blocks[0].coords[0, 0, 0, 2]
-        binVolX = numpy.zeros(numBins[0], order="F")  # Assign zeroes to all bins
-        binVolY = numpy.zeros(numBins[1], order="F")
-        binVolZ = numpy.zeros(numBins[2], order="F")
-        binCellsX = numpy.zeros(numBins[0], order="F", dtype=int)  # Initialize cells counter for each bin
-        binCellsY = numpy.zeros(numBins[1], order="F", dtype=int)
-        binCellsZ = numpy.zeros(numBins[2], order="F", dtype=int)
+        binVolX = np.zeros(numBins[0], order="F")  # Assign zeroes to all bins
+        binVolY = np.zeros(numBins[1], order="F")
+        binVolZ = np.zeros(numBins[2], order="F")
+        binCellsX = np.zeros(numBins[0], order="F", dtype=int)  # Initialize cells counter for each bin
+        binCellsY = np.zeros(numBins[1], order="F", dtype=int)
+        binCellsZ = np.zeros(numBins[2], order="F", dtype=int)
 
         # Loop over all blocks to find the bounding box coordinates
         for index in range(len(self.blocks)):
@@ -903,18 +821,21 @@ class Grid(object):
         # Define tangent bunching law
         def tanDist(Sp1, Sp2, N):
 
-            # This is the tangential spacing developed by Ney Secco
-            # This bunching law is coarse at the ends an fine at the middle
-            # of the interval, just like shown below:
-            # |    |   |  | || |  |   |    |
+            """
+            This is the tangential spacing developed by Ney Secco.
+            This bunching law is coarse at the ends and fine at the middle
+            of the interval, just like shown below:
+            |    |   |  | || |  |   |    |
 
-            # Sp1: initial spacing (within the [0,1] interval)
-            # Sp2: final spacing (within the [0,1] interval)
-            # N: number of nodes
-
-            # IMPORTS
-            from numpy import tan, arange, pi
-            from scipy.optimize import minimize
+            Parameters
+            ----------
+            Sp1 : float
+                Initial spacing (within the [0,1] interval
+            Sp2 : float
+                Final spacing within the [0,1] interval
+            N : int
+                Number of nodes
+            """
 
             # Convert number of nodes to number of cells, because I derived the equations using
             # N the as number of cells =P.
@@ -929,9 +850,9 @@ class Grid(object):
                 # Find b
                 b = e - c
                 # Equations
-                Eq1 = a * (tan(b + c) - tan(c)) - 1
-                Eq2 = a * (tan(b / N + c) - tan(c)) - Sp1
-                Eq3 = a * (tan(b + c) - tan(b * (1 - 1 / N) + c)) - Sp2
+                Eq1 = a * (np.tan(b + c) - np.tan(c)) - 1
+                Eq2 = a * (np.tan(b / N + c) - np.tan(c)) - Sp1
+                Eq3 = a * (np.tan(b + c) - np.tan(b * (1 - 1 / N) + c)) - Sp2
                 # Cost function
                 J = Eq1**2 + Eq2**2 + Eq3**2
                 # Return
@@ -939,14 +860,14 @@ class Grid(object):
 
             # Define bounds for the problem
             a_bounds = [(0, None)]
-            e_bounds = [(0, pi / 2)]
-            c_bounds = [(-pi / 2, 0)]
+            e_bounds = [(0, np.pi / 2)]
+            c_bounds = [(-np.pi / 2, 0)]
             bounds = a_bounds + e_bounds + c_bounds
 
             # Define initial guess
             a_start = 1.0
-            e_start = pi / 4
-            c_start = -pi / 4
+            e_start = np.pi / 4
+            c_start = -np.pi / 4
             x_start = [a_start, e_start, c_start]
 
             # Optimize
@@ -961,11 +882,11 @@ class Grid(object):
 
             # Find other parameters
             b = e - c
-            d = -a * tan(c)
+            d = -a * np.tan(c)
 
             # Generate spacing
-            index = arange(N + 1)
-            S = a * tan(b * index / N + c) + d
+            index = np.arange(N + 1)
+            S = a * np.tan(b * index / N + c) + d
 
             # Force the extremes to 0 and 1 so that we always meet the bounds
             # (this is to avoid numerical issues with symmetry planes)
@@ -975,27 +896,41 @@ class Grid(object):
             # Return spacing
             return S
 
-        # Define function that optimizes bunching law to match grid resolution
-
         def generateGrid(xmin, xmax, extension1, extension2, nNodes, binVol, weightGR):
 
-            # xmin: float -> position where the bounding box begins
-            # xmax: float -> position where the bounding box ends
-            # extension1: float > 0 -> ratio between the negative farfield distance and the bounding box length:
-            #                          extension1 = (xmin-negative_farfield_position)/(xmax-xmin)
-            # extension2: float > 0 -> ratio between the positive farfield distance and the bounding box length:
-            #                          extension2 = (positive_farfield_position-xmax)/(xmax-xmin)
-            # nNodes: integer > 0 -> Number of nodes along the edge
-            # binVol: float > 0 -> Average volume of the bounding box cells (foreground mesh)
-            # weightGR: 0 < float < 1 -> Weight used to balance growth ratio and cell volume during the optimization.
-            #                            If weightGR = 0, the optimizer will not care about the growth ratios at the
-            #                            farfield and will just try to match the bounding box resolution.
-            #                            If weightGR = 1, the optimizer will not care about the bounding box resolution
-            #                            and will just try to get an uniform growth ratio. This results in an uniform mesh.
+            """
+            Function that optimizes bunching law to match grid resolution
 
-            # IMPORTS
-            from numpy import array, mean
-            from scipy.optimize import minimize
+            Parameters
+            ----------
+            xmin : float
+                Position where the bounding box begins
+
+            xmax : float
+                Position where the bounding box ends
+
+            extension1 : float
+                Ratio between the negative farfield distance and the bounding box length:
+                extension1 = (xmin-negative_farfield_position)/(xmax-xmin)
+
+            extension2 : float
+                Ratio between the positive farfield distance and the bounding box length:
+                extension2 = (positive_farfield_position-xmax)/(xmax-xmin)
+
+            nNodes : int
+                Number of nodes along the edge
+
+            binVol : float
+                Average volume of the bounding box cells (foreground mesh)
+
+            weightGR : float
+                Weight between 0 and 1 used to balance growth ratio and cell volume during the optimization.
+                If weightGR = 0, the optimizer will not care about the growth ratios at the
+                farfield and will just try to match the bounding box resolution.
+                If weightGR = 1, the optimizer will not care about the bounding box resolution
+                and will just try to get an uniform growth ratio. This results in an uniform mesh.
+
+            """
 
             # Compute farfield coordinates
             x0 = xmin - (xmax - xmin) * extension1
@@ -1036,7 +971,7 @@ class Grid(object):
                     bolEdges = E[bol]
                     # print bol
                     # Compute edge mismatch and increment variable
-                    edgeError = edgeError + mean((bolEdges - binEdge[binIndex]) ** 2) / 2
+                    edgeError = edgeError + np.mean((bolEdges - binEdge[binIndex]) ** 2) / 2
 
                 # Compute term regarding growing ratios at the ends
                 if nNodes > 3:
@@ -1047,13 +982,13 @@ class Grid(object):
                     growthRatio = 0
 
                 # Return objective function
-                return (1 - weightGR) * edgeError / mean(binEdge) + weightGR * growthRatio
+                return (1 - weightGR) * edgeError / np.mean(binEdge) + weightGR * growthRatio
                 # Note that the edgeError is normalized so that the weighed average makes sense
 
             # Define initial guess based on uniform spacing
             Sp1_start = 1 / (nNodes - 1)
             Sp2_start = 1 / (nNodes - 1)
-            x_start = array([Sp1_start, Sp2_start])
+            x_start = np.array([Sp1_start, Sp2_start])
 
             # Optimize
             res = minimize(
@@ -1107,10 +1042,10 @@ class Grid(object):
         print("")
 
         # Allocate coordinates block
-        X = numpy.zeros((nNodes[0], nNodes[1], nNodes[2], 3))
+        X = np.zeros((nNodes[0], nNodes[1], nNodes[2], 3))
 
         # Write grid coordinates
-        Xx, Xy, Xz = numpy.meshgrid(Sx, Sy, Sz, indexing="ij")
+        Xx, Xy, Xz = np.meshgrid(Sx, Sy, Sz, indexing="ij")
         X[:, :, :, 0] = Xx
         X[:, :, :, 1] = Xy
         X[:, :, :, 2] = Xz
@@ -1148,7 +1083,7 @@ class Grid(object):
                 splits.extend(getSplits(b2b.ptRange))
 
             # Now just add the (unique) splits for this block: DON't
-            # USE numpy.unique it doesn't actually work for tuples.
+            # USE np.unique it doesn't actually work for tuples.
             newSplits = []
             for split in splits:
                 if split not in newSplits:
@@ -1203,7 +1138,7 @@ class Grid(object):
             isize += blk.dims[0] * blk.dims[1] * blk.dims[2]
 
         # Allocate space for all coordinates
-        coords = numpy.zeros(isize * 3)
+        coords = np.zeros(isize * 3)
         sizes = []
         istart = 0
         for i in range(len(self.blocks)):
@@ -1214,7 +1149,7 @@ class Grid(object):
             istart = iend
 
         # Get our list of sizes
-        sizes = numpy.vstack(sizes)
+        sizes = np.vstack(sizes)
 
         # Run the fortran code to generate all the connectivities
         libcgns_utils.utils.computeconnectivity(coords, sizes.T, tol)
@@ -1264,7 +1199,7 @@ class Grid(object):
         for i in range(len(self.blocks)):
             blk = self.blocks[i]
             coords = blk.coords.flatten()
-            sizes = numpy.array([blk.dims])
+            sizes = np.array([blk.dims])
 
             # Run the fortran code to generate all the connectivities
             libcgns_utils.utils.computeconnectivity(coords, sizes.T, tol)
@@ -1302,10 +1237,10 @@ class Grid(object):
 
         # Return the information we computed since other
         # routines (autobc for example) may need this.
-        pointRanges = numpy.moveaxis(numpy.array(pointRanges), 0, -1)
-        faceNormals = numpy.moveaxis(numpy.array(faceNormals), 0, -1)
-        faceAvgs = numpy.moveaxis(numpy.array(faceAvgs), 0, -1)
-        return (numpy.array(types), pointRanges, numpy.array(myIDs), faceAvgs, faceNormals)
+        pointRanges = np.moveaxis(np.array(pointRanges), 0, -1)
+        faceNormals = np.moveaxis(np.array(faceNormals), 0, -1)
+        faceAvgs = np.moveaxis(np.array(faceAvgs), 0, -1)
+        return (np.array(types), pointRanges, np.array(myIDs), faceAvgs, faceNormals)
 
     def autoBC(self, radius, sym, offset):
         """This function will try to generate boundary condition
@@ -1339,7 +1274,7 @@ class Grid(object):
 
             if types[i] == 0:  # Boco
                 coor_check = abs(faceAvg[symAxis, i]) < 1e-3
-                dp_check = abs(numpy.dot(faceNormal[:, i], symNormal)) > 0.98
+                dp_check = abs(np.dot(faceNormal[:, i], symNormal)) > 0.98
                 if dp_check and coor_check:
                     bocoType = BC["bcsymmetryplane"]
                     famName = "sym"
@@ -1347,7 +1282,7 @@ class Grid(object):
                     # Next check for a wall-type boundary condition if
                     # the face avg is inside the sphere:
 
-                    if numpy.linalg.norm(faceAvg[:, i] - offset) < radius:
+                    if np.linalg.norm(faceAvg[:, i] - offset) < radius:
                         bocoType = BC["bcwallviscous"]
                         famName = "wall"
                     else:
@@ -1383,7 +1318,7 @@ class Grid(object):
                 has_bc = False
                 for boco in self.blocks[blockID].bocos:
                     # Get norm of difference of point range
-                    diff_norm = numpy.linalg.norm(pointRanges[:, :, i] - boco.ptRange)
+                    diff_norm = np.linalg.norm(pointRanges[:, :, i] - boco.ptRange)
                     # Check if BC already exists
                     if diff_norm < 1e-10:
                         has_bc = True
@@ -1417,7 +1352,7 @@ class Grid(object):
         ordering changes. Block handendness is not necessairly
         preserved.
         """
-        numpy.random.seed(seed)
+        np.random.seed(seed)
         for blk in self.blocks:
             blk.bocos = []
             blk.B2Bs = []
@@ -1434,9 +1369,6 @@ class Grid(object):
         Zone1, Zone11, Zone12, ..., Zone19, Zone2, Zone21, ...
         This method will add extra digits to the zone names to give the correct ordering.
         """
-
-        # IMPORTS
-        import re
 
         # Initialize list of names
         nameList = []
@@ -1498,17 +1430,17 @@ class Grid(object):
         """
 
         # Normalize the components of the rotation vector
-        normV = numpy.sqrt(vx**2 + vy**2 + vz**2)
+        normV = np.sqrt(vx**2 + vy**2 + vz**2)
         uu = vx / normV
         vv = vy / normV
         ww = vz / normV
 
         # Compute sines and cosines of the rotation angle
-        ss = numpy.sin(theta * numpy.pi / 180.0)
-        cc = numpy.cos(theta * numpy.pi / 180.0)
+        ss = np.sin(theta * np.pi / 180.0)
+        cc = np.cos(theta * np.pi / 180.0)
 
         # Build rotation matrix
-        rotMat = numpy.zeros((3, 3))
+        rotMat = np.zeros((3, 3))
         rotMat[0, 0] = uu * uu + (1.0 - uu * uu) * cc
         rotMat[0, 1] = uu * vv * (1.0 - cc) - ww * ss
         rotMat[0, 2] = uu * ww * (1.0 - cc) + vv * ss
@@ -1520,7 +1452,7 @@ class Grid(object):
         rotMat[2, 2] = ww * ww + (1.0 - ww * ww) * cc
 
         for blk in self.blocks:
-            blk.coords[:, :, :] = numpy.dot(blk.coords[:, :, :], rotMat)
+            blk.coords[:, :, :] = np.dot(blk.coords[:, :, :], rotMat)
 
     def extrude(self, direction):
         """
@@ -1717,9 +1649,9 @@ class Block(object):
                 # for example
                 # old dim: 0 1 2 3 4 5 6 7 8 9
                 # new dim: 1 1 1 2 2 3 3 4 4 5
-                new_dims[i] = int(numpy.ceil((self.dims[i]) / 2))
+                new_dims[i] = int(np.ceil((self.dims[i]) / 2))
 
-        new_coords = numpy.zeros((new_dims[0], new_dims[1], new_dims[2], 3))
+        new_coords = np.zeros((new_dims[0], new_dims[1], new_dims[2], 3))
 
         # Loop over all directions
         s = slice(None)
@@ -1783,7 +1715,7 @@ class Block(object):
                 # Increase the size of the 2D dimension
                 new_dimensions = self.dims[:]
                 new_dimensions[dim_index] = new_dimensions[dim_index] + 1
-                newCoords = numpy.zeros((new_dimensions[0], new_dimensions[1], new_dimensions[2], 3))
+                newCoords = np.zeros((new_dimensions[0], new_dimensions[1], new_dimensions[2], 3))
 
                 if dim_index == 0:
                     for i in range(self.dims[1]):
@@ -1841,7 +1773,7 @@ class Block(object):
         else:
             raise ValueError(f"Direction normal must be x, y, or z. Input was {directionNormal}.")
 
-        return order, numpy.array(newDims)
+        return order, np.array(newDims)
 
     def _extrudeBocoAndAddSymmBoco(self, order, nSteps=2):
         """This is a support function that member functions extrude and revolve call"""
@@ -1876,7 +1808,7 @@ class Block(object):
         family = "sym"
 
         bocoName = "SYMM-{0}".format(0)
-        ptRange = numpy.ones((3, 2))
+        ptRange = np.ones((3, 2))
         ptRange[0, 1] = self.dims[0]
         ptRange[1, 1] = self.dims[1]
         ptRange[2, :] = 1
@@ -1888,7 +1820,7 @@ class Block(object):
         self.addBoco(Boco(bocoName, bocoType, ptRange, family))
 
         bocoName = "SYMM-{0}".format(1)
-        ptRange = numpy.ones((3, 2))
+        ptRange = np.ones((3, 2))
         ptRange[0, 1] = self.dims[0]
         ptRange[1, 1] = self.dims[1]
         ptRange[2, :] = nSteps
@@ -1906,7 +1838,7 @@ class Block(object):
         order, newDims = self._extrudeGetDataOrderAndDIms(direction)
 
         # Allocate memory for new coordinates
-        newCoords = numpy.zeros(newDims)
+        newCoords = np.zeros(newDims)
 
         # Now copy current coords into new coord array.
 
@@ -1943,16 +1875,16 @@ class Block(object):
     def revolve(self, normalDirection, rotationAxis, startAngle, endAngle, nThetas):
         """Revolves a 2D planar grid to create a 3D axisymmetric grid"""
 
-        wedgeAngleRad = numpy.deg2rad(endAngle - startAngle)
+        wedgeAngleRad = np.deg2rad(endAngle - startAngle)
 
-        startAngleRad = numpy.deg2rad(startAngle)
+        startAngleRad = np.deg2rad(startAngle)
         angleRadStep = wedgeAngleRad / (nThetas - 1)
 
         # Get the data order and new dims
         order, newDims = self._extrudeGetDataOrderAndDIms(normalDirection, nThetas)
 
         # Allocate memory for new coordinates
-        newCoords = numpy.zeros(newDims)
+        newCoords = np.zeros(newDims)
 
         # Now copy current coords into new coord array.
         for i in range(self.dims[0]):
@@ -1965,37 +1897,37 @@ class Block(object):
 
                     if normalDirection == "x":
                         if rotationAxis == "y":
-                            r = numpy.linalg.norm(tc[[0, 2]])
-                            tc[0] = numpy.sin(angleRad) * r
-                            tc[2] = numpy.cos(angleRad) * r
+                            r = np.linalg.norm(tc[[0, 2]])
+                            tc[0] = np.sin(angleRad) * r
+                            tc[2] = np.cos(angleRad) * r
                         elif rotationAxis == "z":
-                            r = numpy.linalg.norm(tc[0:2])
-                            tc[0] = numpy.sin(angleRad) * r
-                            tc[1] = numpy.cos(angleRad) * r
+                            r = np.linalg.norm(tc[0:2])
+                            tc[0] = np.sin(angleRad) * r
+                            tc[1] = np.cos(angleRad) * r
 
                         newCoords[k, i, j, :] = tc
 
                     elif normalDirection == "y":
                         if rotationAxis == "x":
-                            r = numpy.linalg.norm(tc[1:])
-                            tc[1] = numpy.sin(angleRad) * r
-                            tc[2] = numpy.cos(angleRad) * r
+                            r = np.linalg.norm(tc[1:])
+                            tc[1] = np.sin(angleRad) * r
+                            tc[2] = np.cos(angleRad) * r
                         elif rotationAxis == "z":
-                            r = numpy.linalg.norm(tc[0:2])
-                            tc[0] = numpy.cos(angleRad) * r
-                            tc[1] = numpy.sin(angleRad) * r
+                            r = np.linalg.norm(tc[0:2])
+                            tc[0] = np.cos(angleRad) * r
+                            tc[1] = np.sin(angleRad) * r
 
                         newCoords[i, k, j, :] = tc
 
                     elif normalDirection == "z":
                         if rotationAxis == "x":
-                            r = numpy.linalg.norm(tc[1:])
-                            tc[2] = numpy.sin(angleRad) * r
-                            tc[1] = numpy.cos(angleRad) * r
+                            r = np.linalg.norm(tc[1:])
+                            tc[2] = np.sin(angleRad) * r
+                            tc[1] = np.cos(angleRad) * r
                         elif rotationAxis == "y":
-                            r = numpy.linalg.norm(tc[0, 2])
-                            tc[0] = numpy.sin(angleRad) * r
-                            tc[2] = numpy.cos(angleRad) * r
+                            r = np.linalg.norm(tc[0, 2])
+                            tc[0] = np.sin(angleRad) * r
+                            tc[2] = np.cos(angleRad) * r
 
                         newCoords[i, j, k, :] = tc
 
@@ -2148,12 +2080,12 @@ class Block(object):
         patches = []
         # Setup the slice dimensions
         ptRanges = [
-            numpy.array([[imin, imin], [jmin, jmax], [kmin, kmax]]),
-            numpy.array([[imax, imax], [jmin, jmax], [kmin, kmax]]),
-            numpy.array([[imin, imax], [jmin, jmin], [kmin, kmax]]),
-            numpy.array([[imin, imax], [jmax, jmax], [kmin, kmax]]),
-            numpy.array([[imin, imax], [jmin, jmax], [kmin, kmin]]),
-            numpy.array([[imin, imax], [jmin, jmax], [kmax, kmax]]),
+            np.array([[imin, imin], [jmin, jmax], [kmin, kmax]]),
+            np.array([[imax, imax], [jmin, jmax], [kmin, kmax]]),
+            np.array([[imin, imax], [jmin, jmin], [kmin, kmax]]),
+            np.array([[imin, imax], [jmax, jmax], [kmin, kmax]]),
+            np.array([[imin, imax], [jmin, jmax], [kmin, kmin]]),
+            np.array([[imin, imax], [jmin, jmax], [kmax, kmax]]),
         ]
 
         for i in range(len(ptRanges)):
@@ -2224,7 +2156,7 @@ class Block(object):
         else:
             raise ValueError(f"Face must be one of iLow, iHigh, jLow, jHigh, kLow, or kHigh. Input was {face}")
 
-        ptRange = numpy.array(ptRange).T
+        ptRange = np.array(ptRange).T
         self.addBoco(Boco("boco_%d" % self.bocoCounter, BC[bocoType.lower()], ptRange, family, dataSet))
         self.bocoCounter += 1
 
@@ -2326,14 +2258,14 @@ class Block(object):
         if nStar == -1:
             nStar = self.dims[2]
 
-        newNodes = numpy.zeros((self.dims[0], self.dims[1], self.dims[2], 3))
+        newNodes = np.zeros((self.dims[0], self.dims[1], self.dims[2], 3))
         for i in range(self.dims[0]):
             for j in range(self.dims[1]):
 
                 xx = self.coords[i, j, :, :]
                 c = Curve(X=xx, localInterp=True)
                 # First get the distance off-wall:
-                d = numpy.linalg.norm(self.coords[i, j, 0, :] - self.coords[i, j, 1, :])
+                d = np.linalg.norm(self.coords[i, j, 0, :] - self.coords[i, j, 1, :])
 
                 # This is the segment of S we are dealing with:
                 sSegment = c.s[0:nStar]
@@ -2343,7 +2275,7 @@ class Block(object):
                 # Get the newS.
                 newS = getS(len(sSegment) + extraCells + 1, s0, sSegment[-1])
                 # The final 's' for evaluation
-                newS = numpy.hstack([newS, c.s[nStar + 1 :]])
+                newS = np.hstack([newS, c.s[nStar + 1 :]])
                 newNodes[i, j, :, :] = c(newS)
 
         self.coords = newNodes
@@ -2353,7 +2285,7 @@ class Block(object):
         change BCs or B2Bs since these should be deleted already
         """
         flipCount = 0
-        if numpy.random.random() > 0.5:
+        if np.random.random() > 0.5:
             # We will flip the i-index
             flipCount += 1
             for k in range(self.dims[2]):
@@ -2361,7 +2293,7 @@ class Block(object):
                     for idim in range(3):
                         self.coords[:, j, k, idim] = self.coords[::-1, j, k, idim]
 
-        if numpy.random.random() > 0.5:
+        if np.random.random() > 0.5:
             flipCount += 1
             # We will flip the j-index
             for k in range(self.dims[2]):
@@ -2369,7 +2301,7 @@ class Block(object):
                     for idim in range(3):
                         self.coords[i, :, k, idim] = self.coords[i, ::-1, k, idim]
 
-        if numpy.random.random() > 0.5:
+        if np.random.random() > 0.5:
             flipCount += 1
             # We will flip the k-index
             for j in range(self.dims[1]):
@@ -2379,40 +2311,40 @@ class Block(object):
 
         # So that filps the order of the axis. We can also perform
         # axis swapping.
-        if numpy.random.random() > 0.5:
+        if np.random.random() > 0.5:
 
             # Swap X and Y axis
-            newCoords = numpy.zeros((self.dims[1], self.dims[0], self.dims[2], 3))
+            newCoords = np.zeros((self.dims[1], self.dims[0], self.dims[2], 3))
             for k in range(self.dims[2]):
                 for idim in range(3):
-                    newCoords[:, :, k, idim] = numpy.rot90(self.coords[:, :, k, idim].copy())
+                    newCoords[:, :, k, idim] = np.rot90(self.coords[:, :, k, idim].copy())
 
             self.dims = list(newCoords.shape[0:3])
             self.coords = newCoords.copy()
 
-        if numpy.random.random() > 0.5:
+        if np.random.random() > 0.5:
             # Swap Z and X axis
-            newCoords = numpy.zeros((self.dims[2], self.dims[1], self.dims[0], 3))
+            newCoords = np.zeros((self.dims[2], self.dims[1], self.dims[0], 3))
             for j in range(self.dims[1]):
                 for idim in range(3):
-                    newCoords[:, j, :, idim] = numpy.rot90(self.coords[:, j, :, idim])
+                    newCoords[:, j, :, idim] = np.rot90(self.coords[:, j, :, idim])
 
             self.dims = list(newCoords.shape[0:3])
             self.coords = newCoords.copy()
 
-        if numpy.random.random() > 0.5:
+        if np.random.random() > 0.5:
             # Swap Y and Z axis
-            newCoords = numpy.zeros((self.dims[0], self.dims[2], self.dims[1], 3))
+            newCoords = np.zeros((self.dims[0], self.dims[2], self.dims[1], 3))
             for i in range(self.dims[0]):
                 for idim in range(3):
-                    newCoords[i, :, :, idim] = numpy.rot90(self.coords[i, :, :, idim])
+                    newCoords[i, :, :, idim] = np.rot90(self.coords[i, :, :, idim])
 
             self.dims = list(newCoords.shape[0:3])
             self.coords = newCoords.copy()
 
         # if the flip count is odd, do one final flip of the j-index
         # to keep the same handed-ness
-        if numpy.mod(flipCount, 2) == 1 and keepRHS:
+        if np.mod(flipCount, 2) == 1 and keepRHS:
             for k in range(self.dims[2]):
                 for j in range(self.dims[1]):
                     for idim in range(3):
@@ -2429,7 +2361,7 @@ class Block(object):
     def symmZeroNoBC(self, idir, tol):
 
         # Find which nodes are closer than the tolerance from the symmetry plane
-        nodeIDs = numpy.where(self.coords[:, :, :, idir] < tol)
+        nodeIDs = np.where(self.coords[:, :, :, idir] < tol)
 
         # Zero those nodes
         self.coords[:, :, :, idir][nodeIDs] = 0.0
@@ -2481,14 +2413,14 @@ class Boco(object):
 
         for idim in range(3):
 
-            self.ptRange[idim, 0] = int(numpy.floor((self.ptRange[idim, 0]) / 2)) + 1
+            self.ptRange[idim, 0] = int(np.floor((self.ptRange[idim, 0]) / 2)) + 1
             if self.ptRange[idim, 1] > 2:
 
                 # coarsen the data set if it is an array
                 if self.dataSets:
                     for data_set in self.dataSets:
                         for dir_arr in data_set.dirichletArrays:
-                            if numpy.prod(dir_arr.dataDimensions) == 1:
+                            if np.prod(dir_arr.dataDimensions) == 1:
                                 # one value is being used for all points
                                 # thus, there is no need to coarsen the data
                                 continue
@@ -2504,11 +2436,11 @@ class Boco(object):
 
                             new_data_mat[tuple(slicer)] = data_mat[tuple(slicer)]
 
-                            dir_arr.dataDimensions[0] = numpy.prod(new_data_mat.shape)
+                            dir_arr.dataDimensions[0] = np.prod(new_data_mat.shape)
 
                             dir_arr.dataArr = new_data_mat.flatten()
 
-                self.ptRange[idim, 1] = int(numpy.ceil((self.ptRange[idim, 1]) / 2))
+                self.ptRange[idim, 1] = int(np.ceil((self.ptRange[idim, 1]) / 2))
 
     def refine(self, axes):
         """refine the range of the BC"""
@@ -2634,7 +2566,7 @@ def getS(N, s0, S):
     b = 4.0
 
     def f(r):
-        s = numpy.zeros(N)
+        s = np.zeros(N)
         s[1] = s0
         for i in range(2, N):
             s[i] = s[i - 1] + r * (s[i - 1] - s[i - 2])
@@ -2653,7 +2585,7 @@ def getS(N, s0, S):
             a = c
         else:
             b = c
-    s = numpy.zeros(N)
+    s = np.zeros(N)
     s[1] = s0
 
     for i in range(2, N):
@@ -2765,9 +2697,9 @@ def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
         assert len(mgcycle) == 3
 
     # Now determine how many nodes we need on the inside
-    N = numpy.zeros(3, "intc")
-    dx = numpy.zeros(3)
-    r = numpy.zeros(3)
+    N = np.zeros(3, "intc")
+    dx = np.zeros(3)
+    r = np.zeros(3)
     Xcart = []
     for iDim in range(3):
         assert isinstance(mgcycle[iDim], int)
@@ -2811,7 +2743,7 @@ def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
             n += nExtra
 
         # cordinates for this dimension
-        x = numpy.zeros(n + 1)
+        x = np.zeros(n + 1)
 
         # First coordinate is at iStart:
         x[iStart] = xMin[iDim]
@@ -2833,12 +2765,12 @@ def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
 
     # Allocate coordinates block
     shp = [Xcart[0].shape[0], Xcart[1].shape[0], Xcart[2].shape[0]]
-    X = numpy.zeros((shp[0], shp[1], shp[2], 3))
+    X = np.zeros((shp[0], shp[1], shp[2], 3))
 
     print("Grid Dimensions:", shp)
     print("Grid Ratios:", r)
     # Write grid coordinates
-    Xx, Xy, Xz = numpy.meshgrid(Xcart[0], Xcart[1], Xcart[2], indexing="ij")
+    Xx, Xy, Xz = np.meshgrid(Xcart[0], Xcart[1], Xcart[2], indexing="ij")
     X[:, :, :, 0] = Xx
     X[:, :, :, 1] = Xy
     X[:, :, :, 2] = Xz
@@ -2932,8 +2864,8 @@ def readGrid(fileName):
 
                         # Create a flat array for the data
                         # Note we make it float64 although it can contain integers.
-                        nDataArr = numpy.prod(dataDimensionVector)
-                        dataArr = numpy.zeros(nDataArr, dtype=numpy.float64, order="F")
+                        nDataArr = np.prod(dataDimensionVector)
+                        dataArr = np.zeros(nDataArr, dtype=np.float64, order="F")
 
                         # Get the data. Note the dataArr is populated when the routine exits
                         libcgns_utils.utils.getbcdataarray(
@@ -3141,7 +3073,7 @@ def mergeGrid(grid):
             blk = grid.blocks[i]
             zoneMap[blk.name] = i
 
-        blockUsed = numpy.zeros(len(grid.blocks), "intc")
+        blockUsed = np.zeros(len(grid.blocks), "intc")
         newBlocks = []
         # Loop over each block:
         for i in range(len(grid.blocks)):
@@ -3180,7 +3112,7 @@ def mergeGrid(grid):
 
                         dims = blk.dims.copy()
                         dims[abs(face) - 1] += otherBlk.dims[abs(transform[abs(face) - 1]) - 1] - 1
-                        newCoords = numpy.zeros((dims[0], dims[1], dims[2], 3))
+                        newCoords = np.zeros((dims[0], dims[1], dims[2], 3))
 
                         # Now transform the other coordinates to make
                         # them conform with the existing
@@ -3197,21 +3129,21 @@ def mergeGrid(grid):
                             # Nothing to do:
                             pass
                         elif tmp[0] == 1 and tmp[1] == 3 and tmp[2] == 2:
-                            otherCoords = numpy.swapaxes(otherCoords, 2, 1)
+                            otherCoords = np.swapaxes(otherCoords, 2, 1)
 
                         elif tmp[0] == 2 and tmp[1] == 1 and tmp[2] == 3:
-                            otherCoords = numpy.swapaxes(otherCoords, 0, 1)
+                            otherCoords = np.swapaxes(otherCoords, 0, 1)
 
                         elif tmp[0] == 2 and tmp[1] == 3 and tmp[2] == 1:
-                            otherCoords = numpy.swapaxes(otherCoords, 0, 1)
-                            otherCoords = numpy.swapaxes(otherCoords, 1, 2)
+                            otherCoords = np.swapaxes(otherCoords, 0, 1)
+                            otherCoords = np.swapaxes(otherCoords, 1, 2)
 
                         elif tmp[0] == 3 and tmp[1] == 1 and tmp[2] == 2:
-                            otherCoords = numpy.swapaxes(otherCoords, 0, 2)
-                            otherCoords = numpy.swapaxes(otherCoords, 1, 2)
+                            otherCoords = np.swapaxes(otherCoords, 0, 2)
+                            otherCoords = np.swapaxes(otherCoords, 1, 2)
 
                         elif tmp[0] == 3 and tmp[1] == 2 and tmp[2] == 1:
-                            otherCoords = numpy.swapaxes(otherCoords, 2, 0)
+                            otherCoords = np.swapaxes(otherCoords, 2, 0)
 
                         # This flips any axis not in the right order
                         if transform[0] < 0:
@@ -3255,7 +3187,7 @@ def mergeGrid(grid):
                         # Now deal with the boundary conditions. These
                         # need to be corrected depending on how the
                         # blocks get added.
-                        offset = numpy.zeros(3, "intc")
+                        offset = np.zeros(3, "intc")
                         if face == 1:
                             offset[0] = blk.dims[0] - 1
                         elif face == 2:

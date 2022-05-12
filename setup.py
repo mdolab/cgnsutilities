@@ -14,8 +14,11 @@ setup(
     license="Apache 2.0",
     packages=["cgnsutilities"],
     package_data={"cgnsutilities": ["*.so"]},
-    install_requires=["numpy>=1.16"],
-    extras_require={"testing": ["mdolab-baseclasses>=1.3", "testflo"]},
+    install_requires=["numpy>=1.16", "scipy"],
+    extras_require={
+        "testing": ["mdolab-baseclasses>=1.3", "testflo", "parameterized"],
+        "advanced": ["pyspline"],
+    },
     classifiers=["Operating System :: Linux", "Programming Language :: Python, Fortran"],
     entry_points={"console_scripts": ["cgns_utils = cgnsutilities.cgns_utils:main"]},
 )

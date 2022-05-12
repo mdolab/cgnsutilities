@@ -1,5 +1,5 @@
-Installation Instructions
-=========================
+Installation
+============
 
 First, copy the default configuration file to the required name. For example, to use gfortran:
 
@@ -35,3 +35,11 @@ To install, type
 
 or optionally with the ``--user`` flag if you are not using a virtual environment.
 A console script called ``cgns_utils``` is provided, which should be installed automatically and available without modifying your ``$PATH``.
+
+Advanced features require additional dependencies.
+Specifically, the ``rebunch`` function requires pySpline.
+This dependency can be checked with
+
+.. prompt:: bash
+
+    pip install .[advanced]
