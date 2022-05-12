@@ -1,14 +1,3 @@
-"""
-This is the new gateway program to all of the cgns_utils.
-
-Run cgns_utils -help to get a list of all available options. The basic
-idea is as follows:
-
-                                              | write new file
-read cngs file -> Do some operations on it -> |     .or.
-                                              | write modified file
-Developed by Dr. Gaetan K. W. Kenway
-"""
 import os
 import re
 import copy
@@ -59,15 +48,8 @@ class Grid(object):
         This is useful because Pointwise specifies boundary conditions on CGNS grids in a way
         that is incompatible with ADflow (family-defined) and these BCs always need to be overwritten.
 
-        Example
-        -------
-        from cgnsutilities.cgnsutilities import Grid, readGrid
-        grid = readGrid("pointwise_vol_grid.cgns")
-        grid.overwriteBCFamilyWithBC('oversetfamily', 'bcoverset', [1,2,4])
-        grid.writeToCGNS("pointwise_vol_grid_converted.cgns")
-
-        Inputs
-        ------
+        Parameters
+        ----------
         familyName : str
             The BC family to overwrite
         newBCType : str
@@ -75,6 +57,12 @@ class Grid(object):
         blockIDs : list of int or None
             The 1-based indices of the blocks to overwrite. None overwrites BCs on all blocks.
 
+        Examples
+        --------
+        >>> from cgnsutilities.cgnsutilities import Grid, readGrid
+        >>> grid = readGrid("pointwise_vol_grid.cgns")
+        >>> grid.overwriteBCFamilyWithBC('oversetfamily', 'bcoverset', [1,2,4])
+        >>> grid.writeToCGNS("pointwise_vol_grid_converted.cgns")
         """
         if newBCType not in BC.keys():
             raise ValueError(f"New BC type '{newBCType}' is not in the cgnsUtilities list of boundary conditions.")
@@ -107,8 +95,8 @@ class Grid(object):
         """
         Returns the total number of Cells and Nodes in the grid.
 
-        Example
-        -------
+        Examples
+        --------
         To determine the number of cells/nodes in a grid use:
             >>> from cgnsutilities.cgnsutilities import Grid, readGrid
             >>> grid = readGrid("gridfilename.cgns")
@@ -126,8 +114,8 @@ class Grid(object):
         """
         Returns the number of Cells and Nodes on wall boundaries
 
-        Example
-        -------
+        Examples
+        --------
         To determine the number of cells/nodes in a grid use:
             >>> from cgnsutilities.cgnsutilities import Grid, readGrid
             >>> grid = readGrid("gridfilename.cgns")
@@ -2491,7 +2479,8 @@ class BocoDataSetArray(object):
 class B2B(object):
     """
     Class for storing information related to a Block-to-block or
-    (1to1 in cgns speak) connection. More details at http://cgns.github.io/CGNS_docs_current/sids/cnct.html#GridConnectivity1to1.
+    (1to1 in cgns speak) connection. More details can be found
+    `here <http://cgns.github.io/CGNS_docs_current/sids/cnct.html#GridConnectivity1to1>`__.
 
     Parameters
     ----------
