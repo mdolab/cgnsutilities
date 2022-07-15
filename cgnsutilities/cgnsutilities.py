@@ -414,6 +414,8 @@ class Grid(object):
             self.blocks[blockID].addBoco(
                 Boco(oldBoco.name + "_" + str(count), oldBoco.type, ptRanges, famName, bcDataSets=oldBoco.dataSets)
             )
+            # TODO check if the .encode is necessary here.
+            # Boco(oldBoco.name + ("_" + str(count)).encode('ascii'), oldBoco.type, ptRanges, famName, bcDataSets=oldBoco.dataSets)
             count = count + 1
 
         self.blocks[blockID].bocos.remove(oldBoco)
@@ -650,8 +652,7 @@ class Grid(object):
         for blk in self.blocks:
             blk.double2D()
 
-    def simpleCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile):
-        """Generates a Cartesian mesh around the provided grid"""
+    def getBoundingBox(self):
 
         # Get the bounds of each grid.
         xMin = 1e20 * numpy.ones(3)
@@ -664,17 +665,29 @@ class Grid(object):
                 xMin[iDim] = min(xMin[iDim], tmp1[iDim])
                 xMax[iDim] = max(xMax[iDim], tmp2[iDim])
 
+        return xMin, xMax
+
+    def simpleCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile):
+        """Generates a Cartesian mesh around the provided grid"""
+
+        xMin, xMax = self.getBoundingBox()
+
         # Call the generic routine
         return simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile)
 
-    def simpleOCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile, userOptions=None):
+    def simpleOCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile, userOptions=None, xBounds=None):
         """Generates a Cartesian mesh around the provided grid, surrounded by an O-mesh.
         This function requires pyHyp to be installed. If this function is run with MPI,
         pyHyp will be run in parallel.
         """
 
         # First run simpleCart with no extension:
-        X, dx = self.simpleCart(dh, 0.0, 0, sym, mgcycle, outFile=None)
+        if xBounds is None:
+            # we will automatically determine the bounding box
+            X, dx = self.simpleCart(dh, 0.0, 0, sym, mgcycle, outFile=None)
+        else:
+            # we are provided the bounding box, skip to the generic simple cart routine
+            X, dx = simpleCart(xBounds[0], xBounds[1], dh, 0, 0, sym, mgcycle, outFile=None)
 
         # Pull out the patches. Note that we have to pay attention to
         # the symmetry and the ordering of the patches to make sure
@@ -3019,15 +3032,21 @@ def convertPlot3d(plot3dFile, cgnsFile):
     libcgns_utils.utils.convertplot3d(plot3dFile, cgnsFile)
 
 
-def mirrorGrid(grid, axis, tol):
+def mirrorGrid(grid, axis, tol, preserve_names=True):
     """Method that takes a grid and mirrors about the axis. Boundary
     condition information is retained if possible"""
 
     # First make sure the grid is face matched:
     grid.split([])
 
-    # Now copy original blocks
+    # create the new grid object
     newGrid = Grid()
+
+    # rename the new grid if asked for
+    if preserve_names:
+        newGrid.name = grid.name
+
+    # Now copy original blocks
     for blk in grid.blocks:
         blk.removeSymBCs()
         blk.B2Bs = []
@@ -3035,10 +3054,14 @@ def mirrorGrid(grid, axis, tol):
 
         mirrorBlk = copy.deepcopy(blk)
         mirrorBlk.flip(axis)
+        if preserve_names:
+            # overwrite the name of the mirror block
+            mirrorBlk.name = blk.name.split(".")[0] + "_mirrored." + blk.name.split(".")[1]
         newGrid.addBlock(mirrorBlk)
 
     # Now rename the blocks and redo-connectivity
-    newGrid.renameBlocks()
+    if not preserve_names:
+        newGrid.renameBlocks()
     newGrid.renameBCs()
     newGrid.connect(tol)
 
