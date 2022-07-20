@@ -603,7 +603,7 @@ class Grid(object):
         # Lastly rename the BCs to be consistent
         self.renameBCs()
 
-    def autoFarfieldBC(self, sym):
+    def autoFarfieldBC(self, sym, use_farfield=True):
         """This is essentially a simplified version of autoBC that flags all
         boundaries as BCFarfield except for possible symmetry planes."""
 
@@ -636,9 +636,14 @@ class Grid(object):
                     bocoType = BC["bcsymmetryplane"]
                     famName = "sym"
                 else:
-                    # Flag as farfield
-                    bocoType = BC["bcfarfield"]
-                    famName = "far"
+                    if use_farfield:
+                        # Flag as farfield
+                        bocoType = BC["bcfarfield"]
+                        famName = "far"
+                    else:
+                        # overset
+                        bocoType = BC["bcoverset"]
+                        famName = "overset"
 
                 # Now simply add the boco
                 self.blocks[blockID].addBoco(Boco("dummy", bocoType, pointRanges[:, :, i], famName))
@@ -722,9 +727,14 @@ class Grid(object):
             "cmax": 3.0,
         }
 
+        use_farfield = True
         # Use user-defined options if provided
         if userOptions is not None:
             hypOptions.update(userOptions)
+
+            # check if we are doing outer faces as overset
+            if userOptions["outerFaceBC"] == "overset":
+                use_farfield = False
 
         # Run pyHyp
         from pyhyp import pyHyp
@@ -757,7 +767,7 @@ class Grid(object):
             grid.renameBlocks()
             grid.connect()
             grid.BCs = []
-            grid.autoFarfieldBC(sym)
+            grid.autoFarfieldBC(sym, use_farfield)
             grid.writeToCGNS(outFile)
 
             # Delete the temp file
@@ -3048,11 +3058,12 @@ def mirrorGrid(grid, axis, tol, preserve_names=True):
 
     # Now copy original blocks
     for blk in grid.blocks:
-        blk.removeSymBCs()
-        blk.B2Bs = []
-        newGrid.addBlock(blk)
+        new_blk = copy.deepcopy(blk)
+        new_blk.removeSymBCs()
+        new_blk.B2Bs = []
+        newGrid.addBlock(new_blk)
 
-        mirrorBlk = copy.deepcopy(blk)
+        mirrorBlk = copy.deepcopy(new_blk)
         mirrorBlk.flip(axis)
         if preserve_names:
             # overwrite the name of the mirror block
@@ -3067,6 +3078,41 @@ def mirrorGrid(grid, axis, tol, preserve_names=True):
 
     return newGrid
 
+def mirrorGrid2D(grid, axis, tol, preserve_names=True):
+    """Method that takes a grid and mirrors about the axis. Boundary
+    condition information is retained if possible"""
+
+    # First make sure the grid is face matched:
+    # grid.split([])
+
+    # create the new grid object
+    newGrid = Grid()
+
+    # rename the new grid if asked for
+    if preserve_names:
+        newGrid.name = grid.name
+
+    # Now copy original blocks
+    for blk in grid.blocks:
+        new_blk = copy.deepcopy(blk)
+        # new_blk.removeSymBCs()
+        new_blk.B2Bs = []
+        newGrid.addBlock(new_blk)
+
+        mirrorBlk = copy.deepcopy(new_blk)
+        mirrorBlk.flip(axis)
+        if preserve_names:
+            # overwrite the name of the mirror block
+            mirrorBlk.name = blk.name.split(".")[0] + "_mirrored." + blk.name.split(".")[1]
+        newGrid.addBlock(mirrorBlk)
+
+    # Now rename the blocks and redo-connectivity
+    if not preserve_names:
+        newGrid.renameBlocks()
+    # newGrid.renameBCs()
+    # newGrid.connect(tol)
+
+    return newGrid
 
 def divideGrid(grid):
     """Method that takes a grid and generates a new grid with 8 times
