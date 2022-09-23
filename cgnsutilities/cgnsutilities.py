@@ -2973,7 +2973,7 @@ def mirrorGrid(grid, axis, tol, useOldNames=True):
         mirrorBlk.flip(axis)
         if useOldNames:
             # overwrite the name of the mirror block
-            mirrorBlk.name = blk.name.split(".")[0] + "_mirror." + blk.name.split(".")[1]
+            mirrorBlk.name = blk.name.split(".")[0] + "_mirror." + blk.name.split(".")[-1]
         newGrid.addBlock(mirrorBlk)
 
     # Now rename the blocks and redo-connectivity
@@ -3007,7 +3007,7 @@ def mirrorGridSurface(grid, axis, useOldNames=True):
         mirrorBlk.flip(axis)
         if useOldNames:
             # overwrite the name of the mirror block
-            mirrorBlk.name = blk.name.split(".")[0] + "_mirror." + blk.name.split(".")[1]
+            mirrorBlk.name = blk.name.split(".")[0] + "_mirror." + blk.name.split(".")[-1]
         newGrid.addBlock(mirrorBlk)
 
     # Now rename the blocks and redo-connectivity
