@@ -641,19 +641,25 @@ class Grid(object):
         for blk in self.blocks:
             blk.double2D()
 
-    def simpleCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile):
-        """Generates a Cartesian mesh around the provided grid"""
+    def getBoundingBox(self):
 
         # Get the bounds of each grid.
         xMin = 1e20 * np.ones(3)
         xMax = -1.0 * np.ones(3)
-
         for blk in self.blocks:
             tmp1 = np.min(blk.coords, axis=(0, 1, 2))
             tmp2 = np.max(blk.coords, axis=(0, 1, 2))
             for iDim in range(3):
                 xMin[iDim] = min(xMin[iDim], tmp1[iDim])
                 xMax[iDim] = max(xMax[iDim], tmp2[iDim])
+
+        return xMin, xMax
+
+    def simpleCart(self, dh, hExtra, nExtra, sym, mgcycle, outFile):
+        """Generates a Cartesian mesh around the provided grid"""
+
+        # Get the bounds of the grid.
+        xMin, xMax = self.getBoundingBox()
 
         # Call the generic routine
         return simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile)
@@ -2942,42 +2948,72 @@ def convertPlot3d(plot3dFile, cgnsFile):
     libcgns_utils.utils.convertplot3d(plot3dFile, cgnsFile)
 
 
-def mirrorGrid(grid, axis, tol, useOldNames=False):
+def mirrorGrid(grid, axis, tol, useOldNames=True):
     """Method that takes a grid and mirrors about the axis. Boundary
     condition information is retained if possible"""
 
     # First make sure the grid is face matched:
     grid.split([])
 
-    # Now copy original blocks
+    # create the new grid object
     newGrid = Grid()
 
+    # rename the new grid if asked for
+    if useOldNames:
+        newGrid.name = grid.name
+
+    # Now copy original blocks
     for blk in grid.blocks:
-        blk.removeSymBCs()
-        blk.B2Bs = []
-        newGrid.addBlock(blk)
+        new_blk = copy.deepcopy(blk)
+        new_blk.removeSymBCs()
+        new_blk.B2Bs = []
+        newGrid.addBlock(new_blk)
 
-        if useOldNames:
-            # Add the current block name to the new grid
-            blk.name = blk.name.split(".")[0]
-
-        mirrorBlk = copy.deepcopy(blk)
+        mirrorBlk = copy.deepcopy(new_blk)
         mirrorBlk.flip(axis)
+        if useOldNames:
+            # overwrite the name of the mirror block
+            mirrorBlk.name = blk.name.split(".")[0] + "_mirror." + blk.name.split(".")[1]
         newGrid.addBlock(mirrorBlk)
 
-        if useOldNames:
-            # Add the new mirrored block name to the new grid
-            newGrid.blocks[-1].name = blk.name.split(".")[0] + "_mirror"
-
-            print(f"Mirroring block: {blk.name} to {newGrid.blocks[-1].name}")
-
     # Now rename the blocks and redo-connectivity
-    newGrid.renameBlocks(useOldNames=useOldNames)
+    if not useOldNames:
+        newGrid.renameBlocks()
     newGrid.renameBCs()
     newGrid.connect(tol)
 
     return newGrid
 
+def mirrorGridSurface(grid, axis, useOldNames=True):
+    """Method that takes a *surface* grid and mirrors about the axis. Boundary
+    condition information is retained if possible"""
+
+    # create the new grid object
+    newGrid = Grid()
+
+    # rename the new grid if asked for
+    if useOldNames:
+        newGrid.name = grid.name
+
+    # Now copy original blocks
+    for blk in grid.blocks:
+        new_blk = copy.deepcopy(blk)
+        # new_blk.removeSymBCs()
+        new_blk.B2Bs = []
+        newGrid.addBlock(new_blk)
+
+        mirrorBlk = copy.deepcopy(new_blk)
+        mirrorBlk.flip(axis)
+        if useOldNames:
+            # overwrite the name of the mirror block
+            mirrorBlk.name = blk.name.split(".")[0] + "_mirror." + blk.name.split(".")[1]
+        newGrid.addBlock(mirrorBlk)
+
+    # Now rename the blocks and redo-connectivity
+    if not useOldNames:
+        newGrid.renameBlocks()
+
+    return newGrid
 
 def divideGrid(grid):
     """Method that takes a grid and generates a new grid with 8 times
