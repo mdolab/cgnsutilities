@@ -860,7 +860,7 @@ class Grid(object):
                 Eq2 = a * (np.tan(b / N + c) - np.tan(c)) - Sp1
                 Eq3 = a * (np.tan(b + c) - np.tan(b * (1 - 1 / N) + c)) - Sp2
                 # Cost function
-                J = Eq1**2 + Eq2**2 + Eq3**2
+                J = Eq1 ** 2 + Eq2 ** 2 + Eq3 ** 2
                 # Return
                 return J
 
@@ -1436,7 +1436,7 @@ class Grid(object):
         """
 
         # Normalize the components of the rotation vector
-        normV = np.sqrt(vx**2 + vy**2 + vz**2)
+        normV = np.sqrt(vx ** 2 + vy ** 2 + vz ** 2)
         uu = vx / normV
         vv = vy / normV
         ww = vz / normV
@@ -2984,6 +2984,7 @@ def mirrorGrid(grid, axis, tol, useOldNames=True):
 
     return newGrid
 
+
 def mirrorGridSurface(grid, axis, useOldNames=True):
     """Method that takes a *surface* grid and mirrors about the axis. Boundary
     condition information is retained if possible"""
@@ -3014,6 +3015,7 @@ def mirrorGridSurface(grid, axis, useOldNames=True):
         newGrid.renameBlocks()
 
     return newGrid
+
 
 def divideGrid(grid):
     """Method that takes a grid and generates a new grid with 8 times
