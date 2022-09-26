@@ -103,6 +103,7 @@ def get_parser():
     p_mirror.add_argument("axis", help="Mirror about plane defined by axis: 'x', 'y', 'z'")
     p_mirror.add_argument("tol", nargs="?", default=1e-12, help="Tolerance for node merge")
     p_mirror.add_argument("useOldNames", nargs="?", default=False, help="Whether to use old block names")
+    p_mirror.add_argument("surface", nargs="?", default=False, help="Whether this is a surface or volume grid")
     p_mirror.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
     # ------------- Options for 'split' mode --------------------
@@ -838,7 +839,7 @@ def main():
         curGrid.scale(args.scale)
 
     elif args.mode == "mirror":
-        curGrid = mirrorGrid(curGrid, args.axis, args.tol, useOldNames=args.useOldNames)
+        curGrid = mirrorGrid(curGrid, args.axis, args.tol, useOldNames=args.useOldNames, surface=args.surface)
 
     elif args.mode == "coarsen":
         curGrid.coarsen()

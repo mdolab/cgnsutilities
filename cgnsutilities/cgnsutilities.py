@@ -2948,12 +2948,39 @@ def convertPlot3d(plot3dFile, cgnsFile):
     libcgns_utils.utils.convertplot3d(plot3dFile, cgnsFile)
 
 
-def mirrorGrid(grid, axis, tol, useOldNames=True):
-    """Method that takes a grid and mirrors about the axis. Boundary
-    condition information is retained if possible"""
+def mirrorGrid(grid, axis, tol, useOldNames=True, surface=False):
+    """
+    Method that takes a grid and mirrors about the axis. Boundary
+    condition information is retained if possible
 
-    # First make sure the grid is face matched:
-    grid.split([])
+    Parameters
+    ----------
+
+    grid : Grid object
+        The grid object to mirror
+
+    axis : str
+        Direction about which to mirror. ('x', 'y', or 'z')
+
+    tol : float
+        Tolerance used for the block to block connections.
+
+    useOldNames : bool, optional
+        Flag to determine if we want to maintain the old names in the original grid
+        object. The default behavior adds the string ``_mirror`` to the block id
+        string thats ahead of the block number at the end. Setting this to ``False``
+        will rename all blocks in this grid with the grid name and increasing block
+        indices starting from 1.
+
+    surface : bool, optional
+        Flag to disable volume mesh specific operations here to get this routine
+        working with surface meshes.
+
+    """
+
+    if not surface:
+        # First make sure the grid is face matched:
+        grid.split([])
 
     # create the new grid object
     newGrid = Grid()
@@ -2965,7 +2992,8 @@ def mirrorGrid(grid, axis, tol, useOldNames=True):
     # Now copy original blocks
     for blk in grid.blocks:
         new_blk = copy.deepcopy(blk)
-        new_blk.removeSymBCs()
+        if not surface:
+            new_blk.removeSymBCs()
         new_blk.B2Bs = []
         newGrid.addBlock(new_blk)
 
@@ -2979,40 +3007,10 @@ def mirrorGrid(grid, axis, tol, useOldNames=True):
     # Now rename the blocks and redo-connectivity
     if not useOldNames:
         newGrid.renameBlocks()
-    newGrid.renameBCs()
-    newGrid.connect(tol)
 
-    return newGrid
-
-
-def mirrorGridSurface(grid, axis, useOldNames=True):
-    """Method that takes a *surface* grid and mirrors about the axis. Boundary
-    condition information is retained if possible"""
-
-    # create the new grid object
-    newGrid = Grid()
-
-    # rename the new grid if asked for
-    if useOldNames:
-        newGrid.name = grid.name
-
-    # Now copy original blocks
-    for blk in grid.blocks:
-        new_blk = copy.deepcopy(blk)
-        # new_blk.removeSymBCs()
-        new_blk.B2Bs = []
-        newGrid.addBlock(new_blk)
-
-        mirrorBlk = copy.deepcopy(new_blk)
-        mirrorBlk.flip(axis)
-        if useOldNames:
-            # overwrite the name of the mirror block
-            mirrorBlk.name = blk.name.split(".")[0] + "_mirror." + blk.name.split(".")[-1]
-        newGrid.addBlock(mirrorBlk)
-
-    # Now rename the blocks and redo-connectivity
-    if not useOldNames:
-        newGrid.renameBlocks()
+    if not surface:
+        newGrid.renameBCs()
+        newGrid.connect(tol)
 
     return newGrid
 
