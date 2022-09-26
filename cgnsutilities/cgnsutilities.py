@@ -3343,7 +3343,7 @@ def combineGrids(grids, useOldNames=False, nameInput="domain"):
                 blockName = name
             else:
                 if blk.name.split(".")[0] == "domain":
-                    blockName = blockName
+                    blockName = nameInput
                 else:
                     blockName = blk.name.split(".")[0]
 
