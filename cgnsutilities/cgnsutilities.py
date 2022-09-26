@@ -3294,7 +3294,7 @@ def mergeGrid(grid):
     return grid
 
 
-def combineGrids(grids, useOldNames=False):
+def combineGrids(grids, useOldNames=False, nameInput="domain"):
 
     """Method that takes in a list of grids and returns a new grid object
     containing all zones from each grid. The blocks are renamed as
@@ -3304,6 +3304,9 @@ def combineGrids(grids, useOldNames=False):
 
     If useOldNames=True we will preserve the domain names after merging
     the blocks, otherwise, we will replace all names by the filenames.
+
+    nameInput : if the useOldNames is true, then you can add a specific name to your grids which has the name of "domain". if you don't provide a name, then it ll be set to "domain" as usual
+
     """
 
     # Create a dictionary to contain grid objects with their names
@@ -3339,7 +3342,11 @@ def combineGrids(grids, useOldNames=False):
             if not useOldNames:
                 blockName = name
             else:
-                blockName = blk.name.split(".")[0]
+                if blk.name.split(".")[0] == "domain":
+                    blockName = blockName
+                else:
+                    blockName = blk.name.split(".")[0]
+
             newName = blockName + f".{nBlock:05}"
             zoneMap[blk.name] = newName
             blk.name = newName
