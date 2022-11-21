@@ -10,6 +10,8 @@
 src/libcgns_utils-f2pywrappers2.f90
 src/libcgns_utilsmodule.c
 examples/717_wl_L2_overwriteBCs.cgns
+examples/717_wl_L2_overwriteBCs_array.cgns
 examples/717_wl_L2_overwriteFamilies.cgns
+examples/717_wl_L2_overwriteBCFamilyWithBC.cgns
 
 config.mk

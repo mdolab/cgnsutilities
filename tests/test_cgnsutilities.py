@@ -295,15 +295,15 @@ class TestReturnFuncs(unittest.TestCase):
         # Test mirroring function with useOldNames=True option
         newNameList = [
             "domain.00001",
+            "domain_mirror.00001",
+            "domain.00002",
             "domain_mirror.00002",
             "domain.00003",
+            "domain_mirror.00003",
+            "domain.00004",
             "domain_mirror.00004",
             "domain.00005",
-            "domain_mirror.00006",
-            "domain.00007",
-            "domain_mirror.00008",
-            "domain.00009",
-            "domain_mirror.00010",
+            "domain_mirror.00005",
         ]
         newMirrorGrid = mirrorGrid(self.grid1, "z", 1e-12, useOldNames=True)
         newNames = [blk.name for blk in newMirrorGrid.blocks]
