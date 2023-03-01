@@ -5,6 +5,7 @@
 *.o
 *.so
 *.out
+doc/_build
 
 # auto generated files
 src/libcgns_utils-f2pywrappers2.f90
