@@ -5,8 +5,8 @@
 CGNS_INCLUDE_FLAGS=-I$(CGNS_HOME)/include
 CGNS_LINKER_FLAGS=-L$(CGNS_HOME)/lib -lcgns
 
-# Intel Fortran Compiler
-CC = gcc
+# Intel compilers
+CC = icc
 CFLAGS = -O2 -fPIC
 FC = ifort
 FFLAGS = -O2 -r8 -g -fPIC -stand f08

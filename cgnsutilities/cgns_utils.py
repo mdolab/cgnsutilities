@@ -1040,7 +1040,6 @@ def main():
 
         # Check if the user gave a reference name. Otherwise, use the input name as reference
         if args.outFile is None:
-
             # Get the base name
             outFile = os.path.splitext(os.path.basename(args.gridFile))[0]
 
@@ -1060,7 +1059,6 @@ def main():
                 pickle.dump(curGrid.convArray, fid)
 
         elif args.outType == "tecplot":
-
             # Create a single 2D array that will contain all data
             data = []
 
