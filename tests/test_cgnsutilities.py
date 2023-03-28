@@ -157,7 +157,6 @@ class TestSimpleGrid(unittest.TestCase):
         self.grid = readGrid(os.path.abspath(os.path.join(baseDir, "../examples/block_4x2x3.cgns")))
 
     def test_coarsen(self):
-
         self.grid.coarsen()
         for iDim in range(3):
             self.assertEqual(2, self.grid.blocks[0].dims[iDim])
@@ -249,7 +248,6 @@ class TestReturnFuncs(unittest.TestCase):
         self.grids = [self.grid1, self.grid2]
 
     def test_combineGrids(self, train=False):
-
         combinedNewNames = combineGrids(self.grids)
         combinedOldNames = combineGrids(self.grids, useOldNames=True)
 
@@ -291,7 +289,6 @@ class TestReturnFuncs(unittest.TestCase):
         )
 
     def test_mirror(self):
-
         # Test mirroring function with useOldNames=True option
         newNameList = [
             "domain.00001",
@@ -334,7 +331,6 @@ class TestReturnFuncs(unittest.TestCase):
 
 
 class TestExamples(unittest.TestCase):
-
     # Get all example scripts in the example folder and its subfolders
     exampleDir = os.path.abspath(os.path.join(baseDir, "../examples"))
     examples = []

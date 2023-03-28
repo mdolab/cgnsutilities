@@ -5,7 +5,7 @@
 CGNS_INCLUDE_FLAGS=-I$(CGNS_HOME)/include
 CGNS_LINKER_FLAGS=-L$(CGNS_HOME)/lib -lcgns
 
-# Gfortran compiler
+# GCC
 CC = gcc
 CFLAGS = -O2 -fPIC
 FC = gfortran

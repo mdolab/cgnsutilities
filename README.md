@@ -3,8 +3,7 @@
 [![Documentation Status](https://readthedocs.com/projects/mdolab-cgnsutilities/badge/?version=latest)](https://mdolab-cgnsutilities.readthedocs-hosted.com/en/latest/?badge=latest)
 [![codecov](https://codecov.io/gh/mdolab/cgnsutilities/branch/main/graph/badge.svg?token=ZCO3MR2LNL)](https://codecov.io/gh/mdolab/cgnsutilities)
 
-This repository contains a single program called `cgns_utils` that
-provides many useful functions for working with cgns grids. 
+This repository contains many useful functions for working with CGNS grids and a CLI program called `cgns_utils` to call these functions.
 
 ## License
 

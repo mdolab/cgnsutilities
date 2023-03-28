@@ -212,12 +212,10 @@ class Grid(object):
         print("Total Nodes:", allBlocksInfo["totalNodes"])
 
     def addBlock(self, blk):
-
         """Add a block to the grid"""
         self.blocks.append(blk)
 
     def removeBlocks(self, blockIDs):
-
         """
         This function will remove certain blocks from the grid.
         The user should ensure that the final mesh is still valid
@@ -320,7 +318,6 @@ class Grid(object):
             f = open(fileName, "w")
             f.write("%d\n" % len(patches))
             for i in range(len(patches)):
-
                 f.write("%d %d 1\n" % (patches[i].shape[0], patches[i].shape[1]))
             for i in range(len(patches)):
                 patches[i][:, :, 0].flatten("F").tofile(f, sep="\n", format="%20.15g")
@@ -342,7 +339,6 @@ class Grid(object):
             f = open(fileName, "w")
             f.write("%d\n" % len(patches))
             for i in range(len(patches)):
-
                 f.write("%d %d 1\n" % (patches[i].shape[0], patches[i].shape[1]))
             for i in range(len(patches)):
                 patches[i][:, :, 0].flatten("F").tofile(f, sep="\n", format="%20.15g")
@@ -497,7 +493,6 @@ class Grid(object):
             bcFile = self.name + ".bc"
 
         with open(bcFile, "w") as fid:
-
             for idx_block, block in enumerate(self.blocks):
                 blockID = idx_block + 1
                 block.writeBCs(blockID, fid)
@@ -651,7 +646,6 @@ class Grid(object):
             blk.double2D()
 
     def getBoundingBox(self):
-
         # Get the bounds of each grid.
         xMin = 1e20 * np.ones(3)
         xMax = -1.0 * np.ones(3)
@@ -835,7 +829,6 @@ class Grid(object):
 
         # Define tangent bunching law
         def tanDist(Sp1, Sp2, N):
-
             """
             This is the tangential spacing developed by Ney Secco.
             This bunching law is coarse at the ends and fine at the middle
@@ -912,7 +905,6 @@ class Grid(object):
             return S
 
         def generateGrid(xmin, xmax, extension1, extension2, nNodes, binVol, weightGR):
-
             """
             Function that optimizes bunching law to match grid resolution
 
@@ -1081,7 +1073,6 @@ class Grid(object):
         print("Mesh successfully generated and stored in: " + outFile)
 
     def split(self, extraSplits):
-
         """Recursively propagate splits due to boundary conditions or
         B2B information"""
 
@@ -1328,7 +1319,6 @@ class Grid(object):
             blockID = myIDs[i] - 1
 
             if types[i] == 0:  # Boco
-
                 # Check if face already has a BC
                 has_bc = False
                 for boco in self.blocks[blockID].bocos:
@@ -1435,7 +1425,6 @@ class Grid(object):
             blk.coords[:, :, :] += [dx, dy, dz]
 
     def rotate(self, vx, vy, vz, theta):
-
         """
         This rotates the grid around an axis that passes through the origin.
         vx, vy, vz are the components of the rotation vector
@@ -1656,7 +1645,6 @@ class Block(object):
         new_dims = copy.deepcopy(self.dims)
         for i in range(3):
             if self.dims[i] > 2:
-
                 if self.dims[i] % 2 == 0:
                     print(f"INFO: unevenly coarsing block {self.name} along dimension {i} (size {self.dims[i]}) ")
 
@@ -1905,7 +1893,6 @@ class Block(object):
         for i in range(self.dims[0]):
             for j in range(self.dims[1]):
                 for k in range(nThetas):
-
                     tc = self.coords[i, j, 0, :].copy()
 
                     angleRad = startAngleRad + angleRadStep * k
@@ -2202,7 +2189,6 @@ class Block(object):
 
             data_arr_str = ""
             for data_arr in boco.dataSets:
-
                 # use the BC dictionary in reverse to find the bc type string
                 for bctype in BC:
                     if data_arr.type == BC[bctype]:
@@ -2276,7 +2262,6 @@ class Block(object):
         newNodes = np.zeros((self.dims[0], self.dims[1], self.dims[2], 3))
         for i in range(self.dims[0]):
             for j in range(self.dims[1]):
-
                 xx = self.coords[i, j, :, :]
                 c = Curve(X=xx, localInterp=True)
                 # First get the distance off-wall:
@@ -2327,7 +2312,6 @@ class Block(object):
         # So that filps the order of the axis. We can also perform
         # axis swapping.
         if np.random.random() > 0.5:
-
             # Swap X and Y axis
             newCoords = np.zeros((self.dims[1], self.dims[0], self.dims[2], 3))
             for k in range(self.dims[2]):
@@ -2374,7 +2358,6 @@ class Block(object):
                 self.coords[r[0, 0] - 1 : r[0, 1], r[1, 0] - 1 : r[1, 1], r[2, 0] - 1 : r[2, 1], idir] = 0.0
 
     def symmZeroNoBC(self, idir, tol):
-
         # Find which nodes are closer than the tolerance from the symmetry plane
         nodeIDs = np.where(self.coords[:, :, :, idir] < tol)
 
@@ -2427,10 +2410,8 @@ class Boco(object):
         """Coarsen the range of the BC"""
 
         for idim in range(3):
-
             self.ptRange[idim, 0] = int(np.floor((self.ptRange[idim, 0]) / 2)) + 1
             if self.ptRange[idim, 1] > 2:
-
                 # coarsen the data set if it is an array
                 if self.dataSets:
                     for data_set in self.dataSets:
@@ -2533,11 +2514,9 @@ class B2B(object):
     def coarsen(self):
         """Coarsen the range of the B2B along the specified direction"""
         for idim in range(3):
-
             donorDir = abs(self.transform[idim]) - 1
 
             for j in range(2):
-
                 if self.ptRange[idim, j] > 2:
                     self.ptRange[idim, j] = (self.ptRange[idim, j] - 1) // 2 + 1
 
@@ -2820,6 +2799,7 @@ def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
 #     # otherwise:
 #     return 1
 
+
 # -----------------------------------------------------------------
 # These functions perform operations that return new 'Grid' objects
 # -----------------------------------------------------------------
@@ -2857,7 +2837,6 @@ def readGrid(fileName):
             if nDataSets != 0:
                 # Loop over all the datasets for this BC
                 for iBocoDataSet in range(1, nDataSets + 1):
-
                     (
                         bocoDatasetName,
                         bocoDataSetType,
@@ -2895,7 +2874,6 @@ def readGrid(fileName):
                     if nDirichletArrays > 0:
                         # Loop over Dirichlet data and get the actual data
                         for iDir in range(1, nDirichletArrays + 1):
-
                             # Get the data set
                             bcDSetArr = getBocoDataSetArray(BCDATATYPE["Dirichlet"], iDir)
 
@@ -2908,7 +2886,6 @@ def readGrid(fileName):
                     if nNeumannArrays > 0:
                         # Loop over Neumann data sets
                         for iDir in range(1, nNeumannArrays + 1):
-
                             # Get the data set
                             bcDSetArr = getBocoDataSetArray(BCDATATYPE["Neumann"], iDir)
 
@@ -3085,7 +3062,6 @@ def mergeGrid(grid):
     blocks in the mesh"""
 
     def fullFace(blk, ptRange):
-
         # Face size of the patch:
         fSize = abs(ptRange[:, 1] - ptRange[:, 0])
 
@@ -3119,7 +3095,6 @@ def mergeGrid(grid):
     cont = True
     iteration = 0
     while cont:
-
         # First create a mapping of the blocks from the name to the index
         zoneMap = {}
 
@@ -3135,7 +3110,6 @@ def mergeGrid(grid):
 
             # We haven't used this block yet:
             if blockUsed[i] == 0:
-
                 # Loop over the B2B of this block:
                 for b2b in blk.B2Bs:
                     otherIndex = zoneMap[b2b.donorName]
@@ -3149,7 +3123,6 @@ def mergeGrid(grid):
                         and blockUsed[otherIndex] == 0
                         and i != otherIndex
                     ):
-
                         print("Merging:", i + 1, otherIndex + 1)
 
                         # Great! These block match. Let's make the new
@@ -3271,7 +3244,6 @@ def mergeGrid(grid):
                         # block. This is tricky since we need to
                         # offset and potentially reorient them .
                         for boco in otherBlk.bocos:
-
                             tmp = boco.ptRange.copy()
                             if face > 0:
                                 # blk then otherBlk. BCs need to be increemented by offset.
@@ -3349,7 +3321,6 @@ def mergeGrid(grid):
 
 
 def combineGrids(grids, useOldNames=False):
-
     """Method that takes in a list of grids and returns a new grid object
     containing all zones from each grid. The blocks are renamed as
     there could (almost most certainly) be conflicts between the zone
@@ -3364,7 +3335,6 @@ def combineGrids(grids, useOldNames=False):
     # as the corresponding keys
     gridDict = {}
     for grid in grids:
-
         # Create a dictionary of copies so the original grids are not modified
         gridDict[grid.name] = copy.deepcopy(grid)
 
@@ -3378,7 +3348,6 @@ def combineGrids(grids, useOldNames=False):
     # to the newGrid object
 
     for name in nameList:
-
         # Get the grid object corresponding to this name
         grid = gridDict[name]
 
@@ -3475,7 +3444,6 @@ def explodeByZoneName(grid):
 
     # Loop over all keys and add the grid to the output list
     for name in nameList:
-
         # Now rename the blocks, bcs and redo-connectivity, only if we have full mesh
         gridDict[name].renameBlocks(useOldNames=True)
         gridDict[name].renameBCs()
@@ -3489,7 +3457,6 @@ def explodeByZoneName(grid):
 
 
 def write_tecplot_file(filename, title, variable_names, data_points):
-
     """
     Auxiliary function that writes tecplot files
     """
