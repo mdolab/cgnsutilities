@@ -2850,14 +2850,14 @@ def readGrid(fileName):
                 else:
                     # TODO fix
                     print("something wrong with userdata?")
-                print(bocoType, internalBocoType, cgnsUserDefined)
+                print(bocoType, family.strip().decode(), internalBocoType, cgnsUserDefined)
             else:
                 # we dont have user defined bc, so we can figure out what bc this is based on the integer
                 for key, val in BC.items():
                     if val == bocoType:
                         internalBocoType = key
                         break
-                print(bocoType, internalBocoType)
+                print(bocoType, family.strip().decode(), internalBocoType)
 
             bc = Boco(bocoName.decode(), internalBocoType, ptRange, family.strip().decode())
 
