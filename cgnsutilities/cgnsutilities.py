@@ -302,6 +302,15 @@ class Grid(object):
                 boco.name = "BC%d" % i
                 i += 1
 
+    def renameFamilies(self, old_family, new_family):
+        """
+        renames all BC families to new_family if the current family name matches old_family
+        """
+        for blk in self.blocks:
+            for boco in blk.bocos:
+                if boco.family == old_family:
+                    boco.family = new_family
+
     def extractSurface(self, fileName):
         """Extract wall surfaces and write to plot3d file"""
         patches = []
@@ -2948,7 +2957,7 @@ def convertPlot3d(plot3dFile, cgnsFile):
     libcgns_utils.utils.convertplot3d(plot3dFile, cgnsFile)
 
 
-def mirrorGrid(grid, axis, tol, useOldNames=True, surface=False):
+def mirrorGrid(grid, axis, tol, useOldNames=True, surface=False, flipOnly=False, renameFamilies=False):
     """
     Method that takes a grid and mirrors about the axis. Boundary
     condition information is retained if possible
@@ -2991,17 +3000,26 @@ def mirrorGrid(grid, axis, tol, useOldNames=True, surface=False):
 
     # Now copy original blocks
     for blk in grid.blocks:
+
         new_blk = copy.deepcopy(blk)
         if not surface:
             new_blk.removeSymBCs()
         new_blk.B2Bs = []
-        newGrid.addBlock(new_blk)
+
+        if not flipOnly:
+            # if we only flip, we dont add the original block back in
+            newGrid.addBlock(new_blk)
 
         mirrorBlk = copy.deepcopy(new_blk)
         mirrorBlk.flip(axis)
+
         if useOldNames:
             # overwrite the name of the mirror block
             mirrorBlk.name = blk.name.split(".")[0] + "_mirror." + blk.name.split(".")[-1]
+        if renameFamilies:
+            for boco in mirrorBlk.bocos:
+                if boco.family.lower() not in ["default", "wall", "overset", "far", "sym"]:
+                    boco.family = f"{boco.family}_mirror"
         newGrid.addBlock(mirrorBlk)
 
     # Now rename the blocks and redo-connectivity
