@@ -187,7 +187,7 @@ contains
 
     end subroutine getBlockInfo
 
-    subroutine getBCInfo(cg, iBlock, iBC, cellDim, bocoName, bocoType, ptRange, family, nDataSet)
+    subroutine getBCInfo(cg, iBlock, iBC, cellDim, bocoName, bocoType, ptRange, family, nDataSet, bocoUserDefined)
         ! Get the BCInfor for 'iBC' condition on block 'iBlock' We determine
         ! the bocoName, the botoType, and pointRange which is sufficient to
         ! reproduce the boundary condition.
@@ -200,14 +200,13 @@ contains
         ! Input/Output
         integer, intent(in) :: cg, iBlock, iBC, cellDim
         integer, intent(out) :: bocoType, ptRange(3, 2), nDataSet
-        character(len=256), intent(out) :: bocoName, family
+        character(len=256), intent(out) :: bocoName, family, bocoUserDefined
 
         ! Working
         integer :: ier, base, i
         integer :: NormalIndex(3), NormalDataType
         integer :: ptset_type, pnts_donor(cellDim, 2), ncon
         integer :: nuserdata
-        character(len=256) :: name
         integer(kind=cgsize_t) :: npnts, NormalListSize, tmpPtRange(cellDim, 2)
         base = 1
         call cg_goto_f(cg, base, ier, 'end')
@@ -238,10 +237,11 @@ contains
             if (ier .eq. CG_ERROR) call cg_error_exit_f
 
             ! Loop over all user defined data to check for overset bc
+            ! TODO this needs to work for multiple n user data. fix it
             do i = 1, nuserdata
 
                 ! Read user defined data
-                call cg_user_data_read_f(i, name, ier)
+                call cg_user_data_read_f(i, bocoUserDefined, ier)
                 if (ier .eq. CG_ERROR) call cg_error_exit_f
 
             end do
@@ -576,7 +576,7 @@ contains
 
     end subroutine writeCoordinates
 
-    subroutine writeBC(cg, iBlock, bcName, bcFam, ptRange, bcType, bcOut)
+    subroutine writeBC(cg, iBlock, bcName, bcFam, ptRange, bcType, bcuserdefined, bcOut)
 
         ! This function writes a BC to 'iBlockt' with bcName 'bcName' and
         ! family of 'bcFam'. The pt_start and pt_end range defines the range
@@ -589,6 +589,7 @@ contains
         integer, intent(in) :: cg, iBlock, ptRange(3, 2), bcType
         character*(*), intent(in) :: bcName
         character*(*), intent(in) :: bcFam
+        character*(*), intent(in) :: bcuserdefined
         integer, intent(out) :: bcOut
 
         ! Working
@@ -612,7 +613,7 @@ contains
         if (ier .eq. CG_ERROR) call cg_error_exit_f
 
         !Add an user-defined data node for the overset BC case
-        if (bcType == 1) call cg_user_data_write_f('BCOverset', ier)
+        if (bcType == 1) call cg_user_data_write_f(bcuserdefined, ier)
         if (ier .eq. CG_ERROR) call cg_error_exit_f
 
     end subroutine writeBC
