@@ -188,7 +188,7 @@ Examples:
     p_fam.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
     # ------------ Options for 'writeSubfaceFamily' mode --------------------
-    p_fam = subparsers.add_parser("writeSubfaceFamiliy", help="""Overwrite the family information on a subface.""")
+    p_fam = subparsers.add_parser("writeSubfaceFamily", help="""Overwrite the family information on a subface.""")
     p_fam.add_argument("gridFile", help="Name of inputCGNS file")
     p_fam.add_argument(
         "familyFile",
