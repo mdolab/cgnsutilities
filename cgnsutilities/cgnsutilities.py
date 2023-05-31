@@ -439,7 +439,8 @@ class Grid(object):
 
         with open(bcFile, "r") as f:
             for line in f:
-                if line.strip():
+
+                if line.strip() and line[0] != "#":
                     aux = line.split()
                     blockID = int(aux[0]) - 1
                     face = aux[1].lower()
