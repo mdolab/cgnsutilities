@@ -34,24 +34,6 @@ BCUSERDEFINED = {
 }
 CGNSUSERDEFINEDTYPE = 1
 
-# function that does the BC type logic based on the internal names
-def _getCGNSBCType(internalBocoType):
-    # sets the cgns index and any potential user defined BC name
-
-    if internalBocoType in BCUSERDEFINED:
-        cgnsType = CGNSUSERDEFINEDTYPE
-        cgnsUserDefined = BCUSERDEFINED[internalBocoType]
-    elif internalBocoType in BCSTANDARD:
-        cgnsType = BCSTANDARD[internalBocoType]
-        cgnsUserDefined = ""
-    else:
-        raise Error(
-            f"The provided BC type '{internalBocoType}' is not known to cgnsutilities. Either use a default CGNS BC type, or add the custom BC name to the 'BCUSERDEFINED' dictionary"
-        )
-
-    return cgnsType, cgnsUserDefined
-
-
 BCDATATYPE = {"Dirichlet": 2, "Neumann": 3}
 
 CGNSDATATYPES = {"Integer": 2, "RealSingle": 3, "RealDouble": 4, "Character": 5, "LongInteger": 6}
@@ -472,7 +454,6 @@ class Grid(object):
 
         with open(bcFile, "r") as f:
             for line in f:
-
                 if line.strip() and line[0] != "#":
                     aux = line.split()
                     blockID = int(aux[0]) - 1
@@ -3070,7 +3051,6 @@ def mirrorGrid(grid, axis, tol, useOldNames=True, surface=False, flipOnly=False,
 
     # Now copy original blocks
     for blk in grid.blocks:
-
         new_blk = copy.deepcopy(blk)
         if not surface:
             new_blk.removeSymBCs()
