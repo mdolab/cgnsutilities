@@ -3,10 +3,11 @@ import re
 import copy
 import numpy as np
 from scipy.optimize import minimize
+from baseclasses.utils import Error
 from . import libcgns_utils
 
 # These are taken from the CGNS include file (cgnslib_f.h in your cgns library folder)
-BC = {
+BCSTANDARD = {
     "bcfarfield": 7,
     "bcsymmetryplane": 16,
     "bcwall": 20,
@@ -21,9 +22,35 @@ BC = {
     "bcinflow": 9,
     "bcinflowsubsonic": 10,
     "bcinflowssupersonic": 11,
-    "bcoverset": 1,
-    "bcantisymm": 1,
-}  # The Overset and antiSymm BCs will be considered as a CG_USERDEFINED option
+}
+
+# dictionary of internal naming of userdefined bc types.
+# The key is the internal reference to the BC type in cgnsutilities.
+# The value is what is written to the CGNS file to be read later on.
+# the bc type integer value for these are set to 1; user defined.
+BCUSERDEFINED = {
+    "bcoverset": "BCOverset",
+    "bcantisymm": "BCAntiSymmetry",
+}
+CGNSUSERDEFINEDTYPE = 1
+
+# function that does the BC type logic based on the internal names
+def _getCGNSBCType(internalBocoType):
+    # sets the cgns index and any potential user defined BC name
+
+    if internalBocoType in BCUSERDEFINED:
+        cgnsType = CGNSUSERDEFINEDTYPE
+        cgnsUserDefined = BCUSERDEFINED[internalBocoType]
+    elif internalBocoType in BCSTANDARD:
+        cgnsType = BCSTANDARD[internalBocoType]
+        cgnsUserDefined = ""
+    else:
+        raise Error(
+            f"The provided BC type '{internalBocoType}' is not known to cgnsutilities. Either use a default CGNS BC type, or add the custom BC name to the 'BCUSERDEFINED' dictionary"
+        )
+
+    return cgnsType, cgnsUserDefined
+
 
 BCDATATYPE = {"Dirichlet": 2, "Neumann": 3}
 
@@ -65,7 +92,7 @@ class Grid(object):
         >>> grid.overwriteBCFamilyWithBC('oversetfamily', 'bcoverset', [1,2,4])
         >>> grid.writeToCGNS("pointwise_vol_grid_converted.cgns")
         """
-        if newBCType not in BC.keys():
+        if newBCType not in BCSTANDARD.keys():
             raise ValueError(f"New BC type '{newBCType}' is not in the cgnsUtilities list of boundary conditions.")
 
         nBCOverwritten = 0
@@ -134,7 +161,7 @@ class Grid(object):
         ]
         for blk in self.blocks:
             for boco in blk.bocos:
-                if boco.type in wallBCs:
+                if boco.internalType in wallBCs:
                     ptRange = boco.ptRange
                     if ptRange[0, 0] == ptRange[0, 1]:
                         boundaryCells += (ptRange[1, 1] - ptRange[1, 0]) * (ptRange[2, 1] - ptRange[2, 0])
@@ -181,7 +208,7 @@ class Grid(object):
             blockInfo["nCells"] = blk.getNumCells()
             blockInfo["nNodes"] = blk.getNumNodes()
             blockInfo["dims"] = list(blk.dims)
-            blockInfo["BCs"] = [boco.type for boco in blk.bocos]
+            blockInfo["BCs"] = [boco.internalType for boco in blk.bocos]
             allBlocksInfo[f"{counter}"] = blockInfo
             counter += 1
 
@@ -409,7 +436,13 @@ class Grid(object):
                 raise ValueError("familyFile is incorrectly formatted.")
 
             self.blocks[blockID].addBoco(
-                Boco(oldBoco.name + "_" + str(count), oldBoco.type, ptRanges, famName, bcDataSets=oldBoco.dataSets)
+                Boco(
+                    oldBoco.name + "_" + str(count),
+                    oldBoco.internalType,
+                    ptRanges,
+                    famName,
+                    bcDataSets=oldBoco.dataSets,
+                )
             )
             count = count + 1
 
@@ -715,7 +748,7 @@ class Grid(object):
             # Loop over all BCs of this block
             for boco in self.blocks[index].bocos:
                 # Check if we have an overset boundary condition
-                if boco.type == "bcoverset":
+                if boco.internalType == "bcoverset":
                     # Find overset BC face and select some inner layers to compute volume
                     r = boco.ptRange
                     if r[0][0] == r[0][1] == 1:  # ilow detected
@@ -770,7 +803,7 @@ class Grid(object):
             # Loop over all BCs of this block
             for boco in self.blocks[index].bocos:
                 # Check if we have an overset boundary condition
-                if boco.type == "bcoverset":
+                if boco.internalType == "bcoverset":
                     # Find overset BC face and select some inner layers to compute volume
                     r = boco.ptRange
                     if r[0][0] == r[0][1] == 1:  # ilow detected
@@ -1549,11 +1582,12 @@ class Block(object):
         zoneID = libcgns_utils.utils.writezone(cg, self.name, self.dims)
         libcgns_utils.utils.writecoordinates(cg, zoneID, self.coords)
         for boco in self.bocos:
-            iBC = libcgns_utils.utils.writebc(cg, zoneID, boco.name, boco.family, boco.ptRange, boco.cgnsType, boco.cgnsUserDefined)
+            iBC = libcgns_utils.utils.writebc(
+                cg, zoneID, boco.name, boco.family, boco.ptRange, boco.cgnsType, boco.cgnsUserDefined
+            )
             for dataSet in boco.dataSets:
                 # Write the header for the BCDataSet
-                # TODO fix
-                iDataSet = libcgns_utils.utils.writebcdataheader(cg, zoneID, dataSet.type, iBC, dataSet.name)
+                iDataSet = libcgns_utils.utils.writebcdataheader(cg, zoneID, dataSet.cgnsType, iBC, dataSet.name)
 
                 # Loop over all Dirichlet and Neumann sets
                 writeBCDataHeader = True
@@ -1975,7 +2009,9 @@ class Block(object):
                         chkRange = [[s[0][i], s[0][i]], [s[1][j], s[1][j + 1]], [s[2][k], s[2][k + 1]]]
 
                         if inRange(boco.ptRange, chkRange):
-                            blk.addBoco(Boco(boco.name, boco.type, [[1, 1], [1, dims[1]], [1, dims[2]]], boco.family))
+                            blk.addBoco(
+                                Boco(boco.name, boco.internalType, [[1, 1], [1, dims[1]], [1, dims[2]]], boco.family)
+                            )
 
                         # iHigh
                         chkRange = [[s[0][i + 1], s[0][i + 1]], [s[1][j], s[1][j + 1]], [s[2][k], s[2][k + 1]]]
@@ -1983,7 +2019,10 @@ class Block(object):
                         if inRange(boco.ptRange, chkRange):
                             blk.addBoco(
                                 Boco(
-                                    boco.name, boco.type, [[dims[0], dims[0]], [1, dims[1]], [1, dims[2]]], boco.family
+                                    boco.name,
+                                    boco.internalType,
+                                    [[dims[0], dims[0]], [1, dims[1]], [1, dims[2]]],
+                                    boco.family,
                                 )
                             )
 
@@ -1991,7 +2030,9 @@ class Block(object):
                         chkRange = [[s[0][i], s[0][i + 1]], [s[1][j], s[1][j]], [s[2][k], s[2][k + 1]]]
 
                         if inRange(boco.ptRange, chkRange):
-                            blk.addBoco(Boco(boco.name, boco.type, [[1, dims[0]], [1, 1], [1, dims[2]]], boco.family))
+                            blk.addBoco(
+                                Boco(boco.name, boco.internalType, [[1, dims[0]], [1, 1], [1, dims[2]]], boco.family)
+                            )
 
                         # jHigh
                         chkRange = [[s[0][i], s[0][i + 1]], [s[1][j + 1], s[1][j + 1]], [s[2][k], s[2][k + 1]]]
@@ -1999,7 +2040,10 @@ class Block(object):
                         if inRange(boco.ptRange, chkRange):
                             blk.addBoco(
                                 Boco(
-                                    boco.name, boco.type, [[1, dims[0]], [dims[1], dims[1]], [1, dims[2]]], boco.family
+                                    boco.name,
+                                    boco.internalType,
+                                    [[1, dims[0]], [dims[1], dims[1]], [1, dims[2]]],
+                                    boco.family,
                                 )
                             )
 
@@ -2007,7 +2051,9 @@ class Block(object):
                         chkRange = [[s[0][i], s[0][i + 1]], [s[1][j], s[1][j + 1]], [s[2][k], s[2][k]]]
 
                         if inRange(boco.ptRange, chkRange):
-                            blk.addBoco(Boco(boco.name, boco.type, [[1, dims[0]], [1, dims[1]], [1, 1]], boco.family))
+                            blk.addBoco(
+                                Boco(boco.name, boco.internalType, [[1, dims[0]], [1, dims[1]], [1, 1]], boco.family)
+                            )
 
                         # kHigh
                         chkRange = [[s[0][i], s[0][i + 1]], [s[1][j], s[1][j + 1]], [s[2][k + 1], s[2][k + 1]]]
@@ -2015,7 +2061,10 @@ class Block(object):
                         if inRange(boco.ptRange, chkRange):
                             blk.addBoco(
                                 Boco(
-                                    boco.name, boco.type, [[1, dims[0]], [1, dims[1]], [dims[2], dims[2]]], boco.family
+                                    boco.name,
+                                    boco.internalType,
+                                    [[1, dims[0]], [1, dims[1]], [dims[2], dims[2]]],
+                                    boco.family,
                                 )
                             )
 
@@ -2036,13 +2085,13 @@ class Block(object):
 
     def removeSymBCs(self):
         """Remove any sym BC's there may be"""
-        self.bocos = [boco for boco in self.bocos if not boco.type == "bcsymmetryplane"]
+        self.bocos = [boco for boco in self.bocos if not boco.internalType == "bcsymmetryplane"]
 
     def extractWallSurfaces(self):
         """Return patches for any surfaces that have BCViscous on them"""
         patches = []
         for boco in self.bocos:
-            if isWall(boco.type):
+            if isWall(boco.internalType):
                 ptRange = boco.ptRange - 1  # Convert to python ordering
                 patches.append(
                     self.coords[
@@ -2192,8 +2241,7 @@ class Block(object):
 
             data_arr_str = ""
             for data_arr in boco.dataSets:
-                # TODO
-                bctype_str = data_arr.type
+                bctype_str = data_arr.internalType
                 data_arr_str += " " + data_arr.name
                 data_arr_str += " " + bctype_str
 
@@ -2211,7 +2259,7 @@ class Block(object):
                         data_arr_str += " " + n_arr.name
                         data_arr_str += " " + " ".join([f"{data}" for data in n_arr.dataArr])
 
-            bctype_str = boco.type
+            bctype_str = boco.internalType
             fam_name = boco.family
             file_handle.write(f"{blk_num} {face} {bctype_str} {fam_name} {data_arr_str}\n")
 
@@ -2345,7 +2393,7 @@ class Block(object):
 
     def symmZero(self, idir):
         for bc in self.bocos:
-            if bc.type == "bcsymmetryplane":
+            if bc.internalType == "bcsymmetryplane":
                 # 'r' is the range. We need to subtract off -1 from
                 # the low end since it was in fortran 1-based ordering
                 r = bc.ptRange.copy()
@@ -2381,9 +2429,22 @@ class Boco(object):
 
     """Class for storing information related to a boundary condition"""
 
-    def __init__(self, bocoName, bocoType, ptRange, family, bcDataSets=None):
+    def __init__(self, bocoName, internalType, ptRange, family, bcDataSets=None):
         self.name = bocoName.strip()
-        self.setBCType(bocoType)
+        self.internalType = internalType.lower()
+
+        # figure out the CGNS BC type based on internal type
+        if self.internalType in BCUSERDEFINED:
+            self.cgnsType = CGNSUSERDEFINEDTYPE
+            self.cgnsUserDefined = BCUSERDEFINED[self.internalType]
+        elif self.internalType in BCSTANDARD:
+            self.cgnsType = BCSTANDARD[self.internalType]
+            self.cgnsUserDefined = ""
+        else:
+            raise Error(
+                f"The provided BC type '{self.internalType}' is not known to cgnsutilities. Either use a default CGNS BC type, or add the custom BC name to the 'BCUSERDEFINED' dictionary"
+            )
+
         self.ptRange = ptRange
 
         if bcDataSets is None:
@@ -2438,28 +2499,20 @@ class Boco(object):
             for j in range(2):
                 self.ptRange[i, j] = (self.ptRange[i, j] - 1) * 2 ** (axis in axes) + 1
 
-    def setBCType(self, bocoType):
-        # sets the cgns index and any potential user defined BC name
-
-        # convert to lowercase
-        bocoType = bocoType.lower()
-        self.type = bocoType
-        self.cgnsType = BC[bocoType]
-
-        if bocoType == "bcoverset":
-            self.cgnsUserDefined = "BCOverset"
-        elif bocoType == "bcantisymm":
-            self.cgnsUserDefined = "BCAntiSymmetry"
-        else:
-            self.cgnsUserDefined = ""
-
 
 class BocoDataSet(object):
     """Container class that contains list of data arrays that are associated to a boundary condition"""
 
-    def __init__(self, bocoSetName, bocoDataSetType):
+    def __init__(self, bocoSetName, internalType):
         self.name = bocoSetName.strip()
-        self.type = bocoDataSetType  # BC type
+        self.internalType = internalType.lower()  # BC type
+
+        # figure out the CGNS BC type based on internal type. We only support standard BCs for now
+        if self.internalType in BCSTANDARD:
+            self.cgnsType = BCSTANDARD[self.internalType]
+        else:
+            raise Error("Datasets on userdefined BC types are not supported yet.")
+
         self.dirichletArrays = []
         self.neumannArrays = []
 
@@ -2840,25 +2893,36 @@ def readGrid(fileName):
             bocoName, bocoType, ptRange, family, nDataSets, cgnsUserDefined = libcgns_utils.utils.getbcinfo(
                 inFile, iBlock, iBoco, cellDim
             )
+
             # figure out the boco type from the cgns index and a potential user defined data
-            if bocoType == 1:
+            if bocoType == CGNSUSERDEFINEDTYPE:
                 # we must have a user defined data
                 cgnsUserDefined = cgnsUserDefined.decode().strip()
-                if cgnsUserDefined == "BCOverset":
-                    internalBocoType = "bcoverset"
-                elif cgnsUserDefined == "BCAntiSymmetry":
-                    internalBocoType = "bcantisymm"
-                else:
-                    # TODO fix
-                    print("something wrong with userdata?")
-                # print(bocoType, family.strip().decode(), internalBocoType, cgnsUserDefined)
+                # check if cgnsUserDefined is defined as a value in the BCUSERDEFINED dictionary
+                bcNameFound = False
+                for key, val in BCUSERDEFINED.items():
+                    if val == cgnsUserDefined:
+                        internalBocoType = key
+                        bcNameFound = True
+                        break
+
+                if not bcNameFound:
+                    raise Error(
+                        f"The provided user defined BC '{cgnsUserDefined}' is not known to cgnsutilities. Add the user defined BC definition to the 'BCUSERDEFINED' dictionary"
+                    )
+
             else:
                 # we dont have user defined bc, so we can figure out what bc this is based on the integer
-                for key, val in BC.items():
+                bcNameFound = False
+                for key, val in BCSTANDARD.items():
                     if val == bocoType:
                         internalBocoType = key
+                        bcNameFound = True
                         break
-                # print(bocoType, family.strip().decode(), internalBocoType)
+                if not bcNameFound:
+                    raise Error(
+                        f"The provided BC index '{bocoType}' is not known to cgnsutilities. Check the 'BCSTANDARD' dictionary for potential CGNS standard BCs, or add this index with the correct name to the dictionary."
+                    )
 
             bc = Boco(bocoName.decode(), internalBocoType, ptRange, family.strip().decode())
 
@@ -2872,7 +2936,7 @@ def readGrid(fileName):
                         nDirichletArrays,
                         nNeumannArrays,
                     ) = libcgns_utils.utils.getbcdatasetinfo(inFile, iBlock, iBoco, iBocoDataSet)
-                    bcDSet = BocoDataSet(bocoDatasetName.decode(), bocoType)
+                    bcDSet = BocoDataSet(bocoDatasetName.decode(), internalBocoType)
 
                     def getBocoDataSetArray(flagDirNeu, iDir):
                         # Get data information

@@ -237,14 +237,16 @@ contains
             if (ier .eq. CG_ERROR) call cg_error_exit_f
 
             ! Loop over all user defined data to check for overset bc
-            ! TODO this needs to work for multiple n user data. fix it
-            do i = 1, nuserdata
 
-                ! Read user defined data
-                call cg_user_data_read_f(i, bocoUserDefined, ier)
-                if (ier .eq. CG_ERROR) call cg_error_exit_f
-
-            end do
+            ! check if we have more than one user data defined. if so, the resulting BC might be ambiguous
+            ! print a warning saying we only used the first userdata
+            if (nuserdata .gt. 1) then
+                print *, "Multiple userdata found in block ", iBlock, " bc ", iBC, " while reading the grid."
+                print *, "Using only the first entry and ignoring the rest"
+            end if
+            ! Read user defined data. We only read the first value.
+            call cg_user_data_read_f(1, bocoUserDefined, ier)
+            if (ier .eq. CG_ERROR) call cg_error_exit_f
         end if
 
     end subroutine getBCInfo
@@ -576,7 +578,7 @@ contains
 
     end subroutine writeCoordinates
 
-    subroutine writeBC(cg, iBlock, bcName, bcFam, ptRange, bcType, bcuserdefined, bcOut)
+    subroutine writeBC(cg, iBlock, bcName, bcFam, ptRange, bcType, bcUserDefined, bcOut)
 
         ! This function writes a BC to 'iBlockt' with bcName 'bcName' and
         ! family of 'bcFam'. The pt_start and pt_end range defines the range
@@ -589,7 +591,7 @@ contains
         integer, intent(in) :: cg, iBlock, ptRange(3, 2), bcType
         character*(*), intent(in) :: bcName
         character*(*), intent(in) :: bcFam
-        character*(*), intent(in) :: bcuserdefined
+        character*(*), intent(in) :: bcUserDefined
         integer, intent(out) :: bcOut
 
         ! Working
@@ -612,8 +614,8 @@ contains
         call cg_famname_write_f(bcFam, ier)
         if (ier .eq. CG_ERROR) call cg_error_exit_f
 
-        !Add an user-defined data node for the overset BC case
-        if (bcType == 1) call cg_user_data_write_f(bcuserdefined, ier)
+        !Add an user-defined data mode for the custom BC cases. e.g. overset and antisymmetry
+        if (bcType == 1) call cg_user_data_write_f(bcUserDefined, ier)
         if (ier .eq. CG_ERROR) call cg_error_exit_f
 
     end subroutine writeBC
