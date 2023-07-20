@@ -4,7 +4,14 @@ import unittest
 from parameterized import parameterized
 import numpy as np
 from baseclasses import BaseRegTest
-from cgnsutilities.cgnsutilities import readGrid, BCSTANDARD, BCUSERDEFINED, combineGrids, mirrorGrid
+from cgnsutilities.cgnsutilities import (
+    readGrid,
+    BCSTANDARD,
+    BCUSERDEFINED,
+    CGNSUSERDEFINEDTYPE,
+    combineGrids,
+    mirrorGrid,
+)
 import copy
 
 baseDir = os.path.dirname(os.path.abspath(__file__))
@@ -82,6 +89,7 @@ class TestGrid(unittest.TestCase):
 
         # block 1 Far family should be overwritten with bcoverset
         self.assertEqual(self.grid.blocks[1].bocos[1].family, "Far")
+        self.assertEqual(self.grid.blocks[1].bocos[1].cgnsType, CGNSUSERDEFINEDTYPE)
         self.assertEqual(self.grid.blocks[1].bocos[1].cgnsUserDefined, BCUSERDEFINED["bcoverset"])
 
         # Check that using a non-existent blockID gives an error

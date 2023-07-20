@@ -74,8 +74,6 @@ class Grid(object):
         >>> grid.overwriteBCFamilyWithBC('oversetfamily', 'bcoverset', [1,2,4])
         >>> grid.writeToCGNS("pointwise_vol_grid_converted.cgns")
         """
-        if newBCType not in BCSTANDARD.keys():
-            raise ValueError(f"New BC type '{newBCType}' is not in the cgnsUtilities list of boundary conditions.")
 
         nBCOverwritten = 0
         blockHits = set()
@@ -2414,17 +2412,7 @@ class Boco(object):
         self.name = bocoName.strip()
         self.internalType = internalType.lower()
 
-        # figure out the CGNS BC type based on internal type
-        if self.internalType in BCUSERDEFINED:
-            self.cgnsType = CGNSUSERDEFINEDTYPE
-            self.cgnsUserDefined = BCUSERDEFINED[self.internalType]
-        elif self.internalType in BCSTANDARD:
-            self.cgnsType = BCSTANDARD[self.internalType]
-            self.cgnsUserDefined = ""
-        else:
-            raise Error(
-                f"The provided BC type '{self.internalType}' is not known to cgnsutilities. Either use a default CGNS BC type, or add the custom BC name to the 'BCUSERDEFINED' dictionary"
-            )
+        self.setBCType(self.internalType)
 
         self.ptRange = ptRange
 
@@ -2479,6 +2467,19 @@ class Boco(object):
         for i, axis in enumerate(["i", "j", "k"]):
             for j in range(2):
                 self.ptRange[i, j] = (self.ptRange[i, j] - 1) * 2 ** (axis in axes) + 1
+
+    def setBCType(self, internalType):
+        # figure out the CGNS BC type based on internal type
+        if internalType in BCUSERDEFINED:
+            self.cgnsType = CGNSUSERDEFINEDTYPE
+            self.cgnsUserDefined = BCUSERDEFINED[internalType]
+        elif internalType in BCSTANDARD:
+            self.cgnsType = BCSTANDARD[internalType]
+            self.cgnsUserDefined = ""
+        else:
+            raise Error(
+                f"The provided BC type '{internalType}' is not known to cgnsutilities. Either use a default CGNS BC type, or add the custom BC name to the 'BCUSERDEFINED' dictionary"
+            )
 
 
 class BocoDataSet(object):
