@@ -92,6 +92,11 @@ class TestGrid(unittest.TestCase):
         self.assertEqual(self.grid.blocks[1].bocos[1].cgnsType, CGNSUSERDEFINEDTYPE)
         self.assertEqual(self.grid.blocks[1].bocos[1].cgnsUserDefined, BCUSERDEFINED["bcoverset"])
 
+        # Test if we can rename families, then overwrite the BC using the family name to a user defined BC
+        self.grid.renameFamilies("wall", "antisym")
+        self.grid.overwriteBCFamilyWithBC("antisym", "bcantisymm")
+        self.assertEqual(self.grid.blocks[1].bocos[0].cgnsUserDefined, BCUSERDEFINED["bcantisymm"])
+
         # Check that using a non-existent blockID gives an error
         with self.assertRaises(IndexError):
             self.grid.overwriteBCFamilyWithBC("Far", "bcoverset", blockIDs=[0, 2])
