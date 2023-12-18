@@ -96,6 +96,12 @@ class TestGrid(unittest.TestCase):
         self.grid.renameFamilies("wall", "antisym")
         self.grid.overwriteBCFamilyWithBC("antisym", "bcantisymm")
         self.assertEqual(self.grid.blocks[1].bocos[0].cgnsUserDefined, BCUSERDEFINED["bcantisymm"])
+        # Now write to a new grid and then read it in to make sure it is 
+        # actually working through the whole f2py stack
+        self.grid.writeToCGNS("test_bcs.cgns")
+        self.overwrittenGrid = readGrid("test_bcs.cgns")
+        self.assertEqual(self.overwrittenGrid.blocks[1].bocos[0].cgnsUserDefined, BCUSERDEFINED["bcantisymm"])
+        os.remove("test_bcs.cgns")
 
         # Check that using a non-existent blockID gives an error
         with self.assertRaises(IndexError):
