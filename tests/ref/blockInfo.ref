@@ -2,9 +2,9 @@
     "Block info": {
         "1": {
             "BCs": [
-                22,
-                7,
-                16
+                "bcwallviscous",
+                "bcfarfield",
+                "bcsymmetryplane"
             ],
             "dims": [
                 {
@@ -36,9 +36,9 @@
         },
         "2": {
             "BCs": [
-                22,
-                7,
-                16
+                "bcwallviscous",
+                "bcfarfield",
+                "bcsymmetryplane"
             ],
             "dims": [
                 {
@@ -70,9 +70,9 @@
         },
         "3": {
             "BCs": [
-                22,
-                7,
-                16
+                "bcwallviscous",
+                "bcfarfield",
+                "bcsymmetryplane"
             ],
             "dims": [
                 {
@@ -104,9 +104,9 @@
         },
         "4": {
             "BCs": [
-                22,
-                7,
-                16
+                "bcwallviscous",
+                "bcfarfield",
+                "bcsymmetryplane"
             ],
             "dims": [
                 {
@@ -138,8 +138,8 @@
         },
         "5": {
             "BCs": [
-                22,
-                7
+                "bcwallviscous",
+                "bcfarfield"
             ],
             "dims": [
                 {

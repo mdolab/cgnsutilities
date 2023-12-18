@@ -4,7 +4,14 @@ import unittest
 from parameterized import parameterized
 import numpy as np
 from baseclasses import BaseRegTest
-from cgnsutilities.cgnsutilities import readGrid, BC, combineGrids, mirrorGrid
+from cgnsutilities.cgnsutilities import (
+    readGrid,
+    BCSTANDARD,
+    BCUSERDEFINED,
+    CGNSUSERDEFINEDTYPE,
+    combineGrids,
+    mirrorGrid,
+)
 import copy
 
 baseDir = os.path.dirname(os.path.abspath(__file__))
@@ -56,43 +63,57 @@ class TestGrid(unittest.TestCase):
         bcFile = os.path.abspath(os.path.join(baseDir, "../examples/overwriteBCs_bcFile"))
         # Check the BC before overwriting. Note that the "updated" BC is first deleted and new appended
         self.assertEqual(self.grid.blocks[0].bocos[0].family, "wall")
-        self.assertEqual(self.grid.blocks[0].bocos[0].type, BC["bcwallviscous"])
+        self.assertEqual(self.grid.blocks[0].bocos[0].cgnsType, BCSTANDARD["bcwallviscous"])
         self.grid.overwriteBCs(bcFile)
         self.assertEqual(self.grid.blocks[0].bocos[-1].family, "wall_inviscid")
-        self.assertEqual(self.grid.blocks[0].bocos[-1].type, BC["bcwallinviscid"])
+        self.assertEqual(self.grid.blocks[0].bocos[-1].cgnsType, BCSTANDARD["bcwallinviscid"])
 
     def test_overwriteBCfamily(self):
         # Find a specific family and overwrite the BCs for the entire family
         # Check the BC before overwriting
         self.assertEqual(self.grid.blocks[0].bocos[1].family, "Far")
-        self.assertEqual(self.grid.blocks[0].bocos[1].type, BC["bcfarfield"])
+        self.assertEqual(self.grid.blocks[0].bocos[1].cgnsType, BCSTANDARD["bcfarfield"])
         self.assertEqual(self.grid.blocks[1].bocos[1].family, "Far")
-        self.assertEqual(self.grid.blocks[1].bocos[1].type, BC["bcfarfield"])
+        self.assertEqual(self.grid.blocks[1].bocos[1].cgnsType, BCSTANDARD["bcfarfield"])
         self.assertEqual(self.grid.blocks[1].bocos[0].family, "wall")
-        self.assertEqual(self.grid.blocks[1].bocos[0].type, BC["bcwallviscous"])
+        self.assertEqual(self.grid.blocks[1].bocos[0].cgnsType, BCSTANDARD["bcwallviscous"])
         self.grid.overwriteBCFamilyWithBC("Far", "bcoverset", blockIDs=[2])
 
         # block 0 should be unchanged even though family matches
         self.assertEqual(self.grid.blocks[0].bocos[1].family, "Far")
-        self.assertEqual(self.grid.blocks[0].bocos[1].type, BC["bcfarfield"])
+        self.assertEqual(self.grid.blocks[0].bocos[1].cgnsType, BCSTANDARD["bcfarfield"])
 
         # block 1 wall family should be unchanged because family doesn't match
         self.assertEqual(self.grid.blocks[1].bocos[0].family, "wall")
-        self.assertEqual(self.grid.blocks[1].bocos[0].type, BC["bcwallviscous"])
+        self.assertEqual(self.grid.blocks[1].bocos[0].cgnsType, BCSTANDARD["bcwallviscous"])
 
         # block 1 Far family should be overwritten with bcoverset
         self.assertEqual(self.grid.blocks[1].bocos[1].family, "Far")
-        self.assertEqual(self.grid.blocks[1].bocos[1].type, BC["bcoverset"])
+        self.assertEqual(self.grid.blocks[1].bocos[1].cgnsType, CGNSUSERDEFINEDTYPE)
+        self.assertEqual(self.grid.blocks[1].bocos[1].cgnsUserDefined, BCUSERDEFINED["bcoverset"])
 
         # Check that using a non-existent blockID gives an error
         with self.assertRaises(IndexError):
             self.grid.overwriteBCFamilyWithBC("Far", "bcoverset", blockIDs=[0, 2])
 
+    def test_renameBCFamily(self):
+        # Test if we can rename families, then overwrite the BC using the family name to a user defined BC
+        self.grid.renameFamilies("wall", "antisym")
+        self.grid.overwriteBCFamilyWithBC("antisym", "bcantisymm")
+        self.assertEqual(self.grid.blocks[1].bocos[0].cgnsUserDefined, BCUSERDEFINED["bcantisymm"])
+
+        # Now write to a new grid and then read it in to make sure it is
+        # actually working through the whole f2py stack
+        self.grid.writeToCGNS("test_bcs.cgns")
+        self.overwrittenGrid = readGrid("test_bcs.cgns")
+        self.assertEqual(self.overwrittenGrid.blocks[1].bocos[0].cgnsUserDefined, BCUSERDEFINED["bcantisymm"])
+        os.remove("test_bcs.cgns")
+
     def test_overwriteBCs_array(self):
         self.grid.removeBCs()
         self.grid.overwriteBCs(os.path.abspath(os.path.join(baseDir, "../examples/hotwall_boco.info")))
 
-        self.assertEqual(self.grid.blocks[4].bocos[0].type, BC["bcwallviscousisothermal"])
+        self.assertEqual(self.grid.blocks[4].bocos[0].cgnsType, BCSTANDARD["bcwallviscousisothermal"])
         np.testing.assert_array_equal(
             self.grid.blocks[4].bocos[0].dataSets[0].dirichletArrays[0].dataArr, np.array(range(300, 300 + 19 * 3))
         )

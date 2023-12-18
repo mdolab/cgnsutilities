@@ -29,7 +29,7 @@ python module libcgns_utils ! in
             integer intent(out) :: nboco
             integer intent(out) :: nb2b
         end subroutine getblockinfo
-        subroutine getbcinfo(cg,iblock,ibc,celldim,boconame,bocotype,ptrange,family,ndataset) ! in :libcgns_utils:cgns_utilities.F90
+        subroutine getbcinfo(cg,iblock,ibc,celldim,boconame,bocotype,ptrange,family,ndataset,bocouserdefined) ! in :libcgns_utils:cgns_utilities.F90
             integer intent(in) :: cg
             integer intent(in) :: iblock
             integer intent(in) :: ibc
@@ -39,6 +39,7 @@ python module libcgns_utils ! in
             integer dimension(3,2),intent(out) :: ptrange
             character*256 intent(out) :: family
             integer intent(out) :: ndataset
+            character*256 intent(out) :: bocouserdefined
         end subroutine getbcinfo
         subroutine getbcdatasetinfo(cg,iblock,ibc,ibcdataset,bocodatasetname,bocotype,ndirichletarrays,nneumannarrays) ! in :libcgns_utils:cgns_utilities.F90
             integer intent(in) :: cg
@@ -114,13 +115,14 @@ python module libcgns_utils ! in
             integer, optional,intent(in),check(shape(x,2)==kl),depend(x) :: kl=shape(x,2)
             real(kind=8) dimension(il,jl,kl,3),intent(in) :: x
         end subroutine writecoordinates
-        subroutine writebc(cg,iblock,bcname,bcfam,ptrange,bctype,bcout) ! in :libcgns_utils:cgns_utilities.F90
+        subroutine writebc(cg,iblock,bcname,bcfam,ptrange,bctype,bcuserdefined,bcout) ! in :libcgns_utils:cgns_utilities.F90
             integer intent(in) :: cg
             integer intent(in) :: iblock
             character*(*) intent(in) :: bcname
             character*(*) intent(in) :: bcfam
             integer dimension(3,2),intent(in) :: ptrange
             integer intent(in) :: bctype
+            character*(*) intent(in) :: bcuserdefined
             integer intent(out) :: bcout
         end subroutine writebc
         subroutine writebcdataheader(cg,iblock,bctype,ibc,datasetname,idataset) ! in :libcgns_utils:cgns_utilities.F90
