@@ -92,7 +92,6 @@ class TestGrid(unittest.TestCase):
         self.assertEqual(self.grid.blocks[1].bocos[1].cgnsType, CGNSUSERDEFINEDTYPE)
         self.assertEqual(self.grid.blocks[1].bocos[1].cgnsUserDefined, BCUSERDEFINED["bcoverset"])
 
-
         # Check that using a non-existent blockID gives an error
         with self.assertRaises(IndexError):
             self.grid.overwriteBCFamilyWithBC("Far", "bcoverset", blockIDs=[0, 2])
