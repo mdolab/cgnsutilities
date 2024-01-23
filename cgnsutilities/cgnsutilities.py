@@ -22,6 +22,7 @@ BC = {
     "bcinflowsubsonic": 10,
     "bcinflowssupersonic": 11,
     "bcoverset": 1,
+    "bcaxisymmetricwedge": 2,
 }  # The Overset BC will be considered as a CG_USERDEFINED option ()
 
 BCDATATYPE = {"Dirichlet": 2, "Neumann": 3}
