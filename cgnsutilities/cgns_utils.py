@@ -22,7 +22,6 @@ import numpy as np
 from cgnsutilities.cgnsutilities import (
     Block,
     Boco,
-    BC,
     Grid,
     explodeGrid,
     readGrid,
@@ -188,7 +187,7 @@ Examples:
     p_fam.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
     # ------------ Options for 'writeSubfaceFamily' mode --------------------
-    p_fam = subparsers.add_parser("writeSubfaceFamiliy", help="""Overwrite the family information on a subface.""")
+    p_fam = subparsers.add_parser("writeSubfaceFamily", help="""Overwrite the family information on a subface.""")
     p_fam.add_argument("gridFile", help="Name of inputCGNS file")
     p_fam.add_argument(
         "familyFile",
@@ -784,12 +783,12 @@ def main():
         X[:, :, :, 2] = Xz
         b = Block("domain.00001", [nx, ny, nz], X)
         # Add bocos so we can run it:
-        b.addBoco(Boco("iMin", BC["bcfarfield"], [[1, 1], [1, ny], [1, nz]], "far"))
-        b.addBoco(Boco("iMax", BC["bcfarfield"], [[nx, nx], [1, ny], [1, nz]], "far"))
-        b.addBoco(Boco("jMin", BC["bcsymmetryplane"], [[1, nx], [1, 1], [1, nz]], "sym"))
-        b.addBoco(Boco("jMax", BC["bcsymmetryplane"], [[1, nx], [ny, ny], [1, nz]], "sym"))
-        b.addBoco(Boco("kMin", BC["bcwallviscous"], [[1, nx], [1, ny], [1, 1]], "wall"))
-        b.addBoco(Boco("kMax", BC["bcfarfield"], [[1, nx], [1, ny], [nz, nz]], "far"))
+        b.addBoco(Boco("iMin", "bcfarfield", [[1, 1], [1, ny], [1, nz]], "far"))
+        b.addBoco(Boco("iMax", "bcfarfield", [[nx, nx], [1, ny], [1, nz]], "far"))
+        b.addBoco(Boco("jMin", "bcsymmetryplane", [[1, nx], [1, 1], [1, nz]], "sym"))
+        b.addBoco(Boco("jMax", "bcsymmetryplane", [[1, nx], [ny, ny], [1, nz]], "sym"))
+        b.addBoco(Boco("kMin", "bcwallviscous", [[1, nx], [1, ny], [1, 1]], "wall"))
+        b.addBoco(Boco("kMax", "bcfarfield", [[1, nx], [1, ny], [nz, nz]], "far"))
         g = Grid()
         g.addBlock(b)
         g.writeToCGNS(args.outFile)
@@ -919,6 +918,7 @@ def main():
         curGrid.overwriteBCFamilyWithBC(args.familyName, args.newBCType, args.blockIDs)
 
     elif args.mode == "overwriteBC":
+        print("overwriting bc with file", args.bcFile)
         curGrid.overwriteBCs(args.bcFile)
 
     elif args.mode == "writebcinfo":
@@ -953,7 +953,7 @@ def main():
         found_overset = False
         for block in curGrid.blocks:
             for boco in block.bocos:
-                if boco.type == BC["bcoverset"]:
+                if boco.internalType == "bcoverset":
                     found_overset = True
         if found_overset:
             curGrid.cartesian(args.cartFile, args.outFile)
@@ -993,7 +993,7 @@ def main():
         curGrid.autoFarfieldBC(args.sym)
 
     elif args.mode == "fillOpenBCs":
-        curGrid.fillOpenBCs(BC[args.bocoType], args.famName)
+        curGrid.fillOpenBCs(args.bocoType, args.famName)
 
     elif args.mode == "include":
         toWrite = []
