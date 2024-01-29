@@ -1012,7 +1012,10 @@ class Grid(object):
 
             # Optimize
             res = minimize(
-                func, x_start, method="Nelder-Mead", options={"maxiter": 2000, "disp": True, "xatol": 1e-8, "fatol": 1e-8}
+                func,
+                x_start,
+                method="Nelder-Mead",
+                options={"maxiter": 2000, "disp": True, "xatol": 1e-8, "fatol": 1e-8},
             )
 
             # Split variables
