@@ -1,9 +1,11 @@
+import copy
 import os
 import re
-import copy
+
 import numpy as np
-from scipy.optimize import minimize
 from baseclasses.utils import Error
+from scipy.optimize import minimize
+
 from . import libcgns_utils
 
 # These are taken from the CGNS include file (cgnslib_f.h in your cgns library folder)
@@ -24,6 +26,7 @@ BCSTANDARD = {
     "bcinflowssupersonic": 11,
     "bcoverset": 1,
     "bcaxisymmetricwedge": 2,
+    "bcsymmetrypolar": 17,
 }  # The Overset BC will be considered as a CG_USERDEFINED option ()
 
 # dictionary of internal naming of userdefined bc types.
@@ -1414,7 +1417,7 @@ class Grid(object):
         # Reorder blocks based on their new names
         self.blocks = [blk for (n, blk) in sorted(zip(nameList, self.blocks))]
 
-    def symmZero(self, sym):
+    def symmZero(self, sym, name=None):
         """Zero nodes along axis 'sym'"""
         if sym == "x":
             idir = 0
@@ -1423,7 +1426,7 @@ class Grid(object):
         elif sym == "z":
             idir = 2
         for blk in self.blocks:
-            blk.symmZero(idir)
+            blk.symmZero(idir, name)
 
     def symmZeroNoBC(self, sym, tol):
         """Zero nodes below tol distance from symmetry plane"""
@@ -1856,7 +1859,7 @@ class Block(object):
         """Extrudes from 2D panar grid to 3D"""
 
         # Get the data order and new dims
-        order, newDims = self._extrudeGetDataOrderAndDIms(direction)
+        order, newDims = self._extrudeGetDataOrderAndDIms(direction, 1)
 
         # Allocate memory for new coordinates
         newCoords = np.zeros(newDims)
@@ -2202,7 +2205,8 @@ class Block(object):
 
         for boco in self.bocos:
             # check the point range to see what face it is on
-            ptRange = boco.ptRange
+            ptRange = np.array(boco.ptRange, dtype=np.int32)
+
             if (ptRange[0] == [1, 1]).all():
                 face = "ilow"
             elif (ptRange[0] == [d[0], d[0]]).all():
@@ -2372,9 +2376,11 @@ class Block(object):
                     for idim in range(3):
                         self.coords[:, j, k, idim] = self.coords[::-1, j, k, idim]
 
-    def symmZero(self, idir):
+    def symmZero(self, idir, name=None):
         for bc in self.bocos:
             if bc.internalType == "bcsymmetryplane":
+                if name is not None and bc.name != name:
+                    continue
                 # 'r' is the range. We need to subtract off -1 from
                 # the low end since it was in fortran 1-based ordering
                 r = bc.ptRange.copy()
@@ -2407,7 +2413,6 @@ class Block(object):
 
 
 class Boco(object):
-
     """Class for storing information related to a boundary condition"""
 
     def __init__(self, bocoName, internalType, ptRange, family, bcDataSets=None):
