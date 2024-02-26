@@ -1042,15 +1042,15 @@ class Grid(object):
         if nNodes[0] > 3:
             gx = max((Sx[1] - Sx[0]) / (Sx[2] - Sx[1]), (Sx[-1] - Sx[-2]) / (Sx[-2] - Sx[-3]))
         else:
-            gx = None
+            gx = 0.0
         if nNodes[1] > 3:
             gy = max((Sy[1] - Sy[0]) / (Sy[2] - Sy[1]), (Sy[-1] - Sy[-2]) / (Sy[-2] - Sy[-3]))
         else:
-            gy = None
+            gy = 0.0
         if nNodes[2] > 3:
             gz = max((Sz[1] - Sz[0]) / (Sz[2] - Sz[1]), (Sz[-1] - Sz[-2]) / (Sz[-2] - Sz[-3]))
         else:
-            gz = None
+            gz = 0.0
 
         # Print growth ratios
         print("")
