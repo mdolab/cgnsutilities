@@ -692,9 +692,9 @@ class Grid(object):
 
         # Preallocate arrays
         extensions = np.zeros((2, 3), order="F")
-        nNodes = np.zeros(3, order="F")
+        nNodes = np.zeros(3, order="F", dtype=int)
         weightGR = np.zeros(3, order="F")
-        numBins = np.zeros(3, order="F")
+        numBins = np.zeros(3, order="F", dtype=int)
 
         # Read four lines of the cartesian specs file
         with open(cartFile, "r") as f:
@@ -2405,7 +2405,6 @@ class Block(object):
 
 
 class Boco(object):
-
     """Class for storing information related to a boundary condition"""
 
     def __init__(self, bocoName, internalType, ptRange, family, bcDataSets=None):
