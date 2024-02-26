@@ -988,7 +988,7 @@ class Grid(object):
                     x0bin = xmin + dxBin * binIndex
                     xfbin = xmin + dxBin * (binIndex + 1)
                     # Find cells that touch this interval and get their edges
-                    bol = -(((S[:-1] < x0bin) * (S[1:] < x0bin)) + ((S[:-1] > xfbin) * (S[1:] > xfbin)))
+                    bol = np.logical_not(((S[:-1] < x0bin) * (S[1:] < x0bin)) + ((S[:-1] > xfbin) * (S[1:] > xfbin)))
                     bolEdges = E[bol]
                     # print bol
                     # Compute edge mismatch and increment variable
