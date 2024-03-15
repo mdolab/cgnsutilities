@@ -1417,7 +1417,7 @@ class Grid(object):
         # Reorder blocks based on their new names
         self.blocks = [blk for (n, blk) in sorted(zip(nameList, self.blocks))]
 
-    def symmZero(self, sym, name=None):
+    def symmZero(self, sym, family=None):
         """Zero nodes along axis 'sym'"""
         if sym == "x":
             idir = 0
@@ -1426,7 +1426,7 @@ class Grid(object):
         elif sym == "z":
             idir = 2
         for blk in self.blocks:
-            blk.symmZero(idir, name)
+            blk.symmZero(idir, family)
 
     def symmZeroNoBC(self, sym, tol):
         """Zero nodes below tol distance from symmetry plane"""
@@ -2376,15 +2376,16 @@ class Block(object):
                     for idim in range(3):
                         self.coords[:, j, k, idim] = self.coords[::-1, j, k, idim]
 
-    def symmZero(self, idir, name=None):
+    def symmZero(self, idir, family=None):
         for bc in self.bocos:
-            if bc.internalType == "bcsymmetryplane":
-                if name is not None and bc.name != name:
-                    continue
-                # 'r' is the range. We need to subtract off -1 from
-                # the low end since it was in fortran 1-based ordering
-                r = bc.ptRange.copy()
-                self.coords[r[0, 0] - 1 : r[0, 1], r[1, 0] - 1 : r[1, 1], r[2, 0] - 1 : r[2, 1], idir] = 0.0
+            if "symmetry" in bc.internalType:
+                # If None, all symmetry BCs are zeroed along idir, otherwise only BCs for the specified
+                # family are zeroed along idir.
+                if family is None or bc.family == family:
+                    # 'r' is the range. We need to subtract off -1 from
+                    # the low end since it was in fortran 1-based ordering
+                    r = bc.ptRange.copy()
+                    self.coords[r[0, 0] - 1 : r[0, 1], r[1, 0] - 1 : r[1, 1], r[2, 0] - 1 : r[2, 1], idir] = 0.0
 
     def symmZeroNoBC(self, idir, tol):
         # Find which nodes are closer than the tolerance from the symmetry plane
