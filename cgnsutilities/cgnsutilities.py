@@ -1442,7 +1442,8 @@ class Grid(object):
         """
         This rotates the grid around an axis that passes through the origin.
         vx, vy, vz are the components of the rotation vector
-        theta is the rotation angle, in degrees.
+        theta is the rotation angle, in degrees. The rotation
+        follows the right hand rule about the given axis.
 
         Ney Secco 2016-11
         """
@@ -1454,8 +1455,8 @@ class Grid(object):
         ww = vz / normV
 
         # Compute sines and cosines of the rotation angle
-        ss = np.sin(theta * np.pi / 180.0)
-        cc = np.cos(theta * np.pi / 180.0)
+        ss = np.sin(-theta * np.pi / 180.0)
+        cc = np.cos(-theta * np.pi / 180.0)
 
         # Build rotation matrix
         rotMat = np.zeros((3, 3))
