@@ -1455,8 +1455,8 @@ class Grid(object):
         ww = vz / normV
 
         # Compute sines and cosines of the rotation angle
-        ss = np.sin(-theta * np.pi / 180.0)
-        cc = np.cos(-theta * np.pi / 180.0)
+        ss = np.sin(theta * np.pi / 180.0)
+        cc = np.cos(theta * np.pi / 180.0)
 
         # Build rotation matrix
         rotMat = np.zeros((3, 3))
@@ -1471,7 +1471,7 @@ class Grid(object):
         rotMat[2, 2] = ww * ww + (1.0 - ww * ww) * cc
 
         for blk in self.blocks:
-            blk.coords[:, :, :] = np.dot(blk.coords[:, :, :], rotMat)
+            blk.coords[:, :, :] = blk.coords[:, :, :] @ rotMat.T
 
     def extrude(self, direction):
         """
