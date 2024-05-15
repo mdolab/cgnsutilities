@@ -6,8 +6,7 @@ CGNS_INCLUDE_FLAGS=-I$(CGNS_HOME)/include
 CGNS_LINKER_FLAGS=-L$(CGNS_HOME)/lib -lcgns
 
 # Intel compilers
-ICC_EXISTS := $(shell command -v icc;) # Note that ";" is there to avoid make shell optimization, otherwise the shell command may fail
-ifdef ICC_EXISTS
+ifneq ($(shell command -v icc 2> /dev/null;),)
   # icc only exists on older Intel versions
   # Assume that we want to use the old compilers
   FC = ifort
