@@ -6,9 +6,20 @@ CGNS_INCLUDE_FLAGS=-I$(CGNS_HOME)/include
 CGNS_LINKER_FLAGS=-L$(CGNS_HOME)/lib -lcgns
 
 # Intel compilers
-CC = icc
+ICC_EXISTS := $(shell command -v icc;) # Note that ";" is there to avoid make shell optimization, otherwise the shell command may fail
+ifdef ICC_EXISTS
+  # icc only exists on older Intel versions
+  # Assume that we want to use the old compilers
+  FC = ifort
+  CC = icc
+else
+  # Use the new compilers
+  FC = ifx
+  CC = icx
+endif
+
+# Compiler flags
 CFLAGS = -O2 -fPIC
-FC = ifort
 FFLAGS = -O2 -r8 -g -fPIC -stand f08
 
 # Define potentially different python, python-config and f2py executables:
