@@ -1442,7 +1442,8 @@ class Grid(object):
         """
         This rotates the grid around an axis that passes through the origin.
         vx, vy, vz are the components of the rotation vector
-        theta is the rotation angle, in degrees.
+        theta is the rotation angle, in degrees. The rotation
+        follows the right hand rule about the given axis.
 
         Ney Secco 2016-11
         """
@@ -1470,7 +1471,7 @@ class Grid(object):
         rotMat[2, 2] = ww * ww + (1.0 - ww * ww) * cc
 
         for blk in self.blocks:
-            blk.coords[:, :, :] = np.dot(blk.coords[:, :, :], rotMat)
+            blk.coords[:, :, :] = blk.coords[:, :, :] @ rotMat.T
 
     def extrude(self, direction):
         """
