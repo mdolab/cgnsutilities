@@ -3445,7 +3445,9 @@ def combineGrids(grids, useOldNames=False, useOldNumbers=False):
             if useOldNames and useOldNumbers:
                 blockName = blk.name
                 if blockName in zoneMap.keys():
-                    raise RuntimeError(f"Duplicate block name {blockName}, try without useOldNumbers or rename the block")
+                    raise RuntimeError(
+                        f"Duplicate block name {blockName}, try without useOldNumbers or rename the block"
+                    )
             elif useOldNames:
                 blockName = blk.name.split(".")[0] + f".{nBlock:05}"
             else:
