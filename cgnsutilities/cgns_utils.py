@@ -834,7 +834,7 @@ def main():
         xMin = [args.xmin, args.ymin, args.zmin]
         xMax = [args.xmax, args.ymax, args.zmax]
 
-        # Change dh to a list of integers, since we had
+        # Change dh to a list of floats, since we had
         # to define it as a string in arg_parser to avoid
         # issues with variable number of inputs.
         # (The user could give a single dh, or a set of three values)
@@ -983,7 +983,7 @@ def main():
         sys.exit(0)
 
     elif args.mode == "simpleCart":
-        # Change dh to a list of integers, since we had
+        # Change dh to a list of floats, since we had
         # to define it as a string in arg_parser to avoid
         # issues with variable number of inputs.
         # (The user could give a single dh, or a set of three values)
