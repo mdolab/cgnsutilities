@@ -1444,7 +1444,8 @@ class Grid(object):
         """
         This rotates the grid around an axis that passes through the origin.
         vx, vy, vz are the components of the rotation vector
-        theta is the rotation angle, in degrees.
+        theta is the rotation angle, in degrees. The rotation
+        follows the right hand rule about the given axis.
 
         Ney Secco 2016-11
         """
@@ -1472,7 +1473,7 @@ class Grid(object):
         rotMat[2, 2] = ww * ww + (1.0 - ww * ww) * cc
 
         for blk in self.blocks:
-            blk.coords[:, :, :] = np.dot(blk.coords[:, :, :], rotMat)
+            blk.coords[:, :, :] = blk.coords[:, :, :] @ rotMat.T
 
     def extrude(self, direction):
         """
@@ -3396,7 +3397,7 @@ def mergeGrid(grid):
     return grid
 
 
-def combineGrids(grids, useOldNames=False):
+def combineGrids(grids, useOldNames=False, useOldNumbers=False):
     """Method that takes in a list of grids and returns a new grid object
     containing all zones from each grid. The blocks are renamed as
     there could (almost most certainly) be conflicts between the zone
@@ -3405,7 +3406,16 @@ def combineGrids(grids, useOldNames=False):
 
     If useOldNames=True we will preserve the domain names after merging
     the blocks, otherwise, we will replace all names by the filenames.
+    However, it will still update the block name's numbers. To preserve
+    the original numbers, set useOldNumbers=True.
     """
+    # Check that no grids have the same name. If they do, they will
+    # overwrite each other when added to the grid dict.
+    gridNames = set()
+    for grid in grids:
+        if grid.name in gridNames:
+            raise RuntimeError(f"Two grids have the name {grid.name}, but grid names must be unique")
+        gridNames.add(grid.name)
 
     # Create a dictionary to contain grid objects with their names
     # as the corresponding keys
@@ -3435,13 +3445,18 @@ def combineGrids(grids, useOldNames=False):
         # Loop over the blocks and obtain the name mapping
         for blk in grid.blocks:
             nBlock += 1
-            if not useOldNames:
-                blockName = name
+            if useOldNames and useOldNumbers:
+                blockName = blk.name
+                if blockName in zoneMap.keys():
+                    raise RuntimeError(
+                        f"Duplicate block name {blockName}, try without useOldNumbers or rename the block"
+                    )
+            elif useOldNames:
+                blockName = blk.name.split(".")[0] + f".{nBlock:05}"
             else:
-                blockName = blk.name.split(".")[0]
-            newName = blockName + f".{nBlock:05}"
-            zoneMap[blk.name] = newName
-            blk.name = newName
+                blockName = name + f".{nBlock:05}"
+            zoneMap[blk.name] = blockName
+            blk.name = blockName
 
         # Now loop back over the blocks, replacing the donorName using
         # the map we defined above
