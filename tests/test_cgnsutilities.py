@@ -367,7 +367,7 @@ class TestExtrude(unittest.TestCase):
         grid.extrude("z")
 
         # Check that the dims match the coord shape, there are two k layers after extrusion, and it's 3D
-        for blk in grid.blocks
+        for blk in grid.blocks:
             self.assertEqual(tuple(blk.dims), blk.coords.shape[:-1])
             self.assertEqual(blk.dims[2], 2)
         self.assertEqual(grid.cellDim, 3)
