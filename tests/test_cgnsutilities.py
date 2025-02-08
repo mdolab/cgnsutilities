@@ -11,6 +11,8 @@ from cgnsutilities.cgnsutilities import (
     CGNSUSERDEFINEDTYPE,
     combineGrids,
     mirrorGrid,
+    Grid,
+    Block,
 )
 import copy
 
@@ -349,6 +351,39 @@ class TestReturnFuncs(unittest.TestCase):
 
         totalCells = newMirrorGrid.getTotalCellsNodes()[0]
         self.assertEqual(15120 * 2, totalCells)
+
+
+class TestExtrude(unittest.TestCase):
+    def test_grid(self):
+        x, y = np.meshgrid(np.linspace(0, 1, 20), np.linspace(0, 1, 13))
+        coords = np.zeros((x.shape[0], x.shape[1], 1, 3))
+        coords[:, :, 0, 0] = x
+        coords[:, :, 0, 1] = y
+
+        block = Block("blk", coords.shape[:-1], coords)
+        grid = Grid()
+        grid.blocks.append(block)
+        grid.cellDim = 2
+        grid.extrude("z")
+
+        # Check that the dims match the coord shape, there are two k layers after extrusion, and it's 3D
+        for blk in grid.blocks
+            self.assertEqual(tuple(blk.dims), blk.coords.shape[:-1])
+            self.assertEqual(blk.dims[2], 2)
+        self.assertEqual(grid.cellDim, 3)
+
+    def test_block(self):
+        x, y = np.meshgrid(np.linspace(0, 1, 20), np.linspace(0, 1, 13))
+        coords = np.zeros((x.shape[0], x.shape[1], 1, 3))
+        coords[:, :, 0, 0] = x
+        coords[:, :, 0, 1] = y
+
+        block = Block("blk", coords.shape[:-1], coords)
+        block.extrude("z")
+
+        # Check that the dims match the coord shape and there are two k layers after extrusion
+        self.assertEqual(tuple(block.dims), block.coords.shape[:-1])
+        self.assertEqual(block.dims[2], 2)
 
 
 class TestExamples(unittest.TestCase):
