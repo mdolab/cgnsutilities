@@ -987,6 +987,7 @@ class Grid(object):
                     x0bin = xmin + dxBin * binIndex
                     xfbin = xmin + dxBin * (binIndex + 1)
                     # Find cells that touch this interval and get their edges
+                    # Note that ~ is an inverse operation (eqv. to np.invert) inverting the boolean array
                     bol = ~(((S[:-1] < x0bin) * (S[1:] < x0bin)) + ((S[:-1] > xfbin) * (S[1:] > xfbin)))
                     bolEdges = E[bol]
                     # print bol
