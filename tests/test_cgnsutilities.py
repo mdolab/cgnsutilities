@@ -366,7 +366,7 @@ class TestExtrude(unittest.TestCase):
         grid = Grid()
 
         # Add the block and then add the same block but shifted by 1.0 in x
-        blk2 = copy.deepcopy(self.blk)
+        blk2 = Block("blk2", self.blk.coords.shape[:-1], self.blk.coords.copy())
         blk2.coords[:, :, 0, 0] += 1.0
         grid.blocks.extend([self.blk, blk2])
         grid.cellDim = 2
