@@ -1,3 +1,4 @@
+import copy
 import os
 import subprocess
 import unittest
@@ -354,16 +355,24 @@ class TestReturnFuncs(unittest.TestCase):
 
 
 class TestExtrude(unittest.TestCase):
-    def test_grid(self):
+    def setUp(self):
         x, y = np.meshgrid(np.linspace(0, 1, 20), np.linspace(0, 1, 13))
         coords = np.zeros((x.shape[0], x.shape[1], 1, 3))
         coords[:, :, 0, 0] = x
         coords[:, :, 0, 1] = y
 
-        block = Block("blk", coords.shape[:-1], coords)
+        self.blk = Block("blk", coords.shape[:-1], coords)
+
+    def test_grid(self):
         grid = Grid()
-        grid.blocks.append(block)
+
+        # Add the block and then add the same block but shifted by 1.0 in x
+        blk2 = copy.deepcopy(self.blk)
+        blk2.coords[:, :, 0, 0] += 1.0
+        grid.blocks.extend([self.blk, blk2])
         grid.cellDim = 2
+        grid.connect()
+
         grid.extrude("z")
 
         # Check that the dims match the coord shape, there are two k layers after extrusion, and it's 3D
@@ -373,17 +382,11 @@ class TestExtrude(unittest.TestCase):
         self.assertEqual(grid.cellDim, 3)
 
     def test_block(self):
-        x, y = np.meshgrid(np.linspace(0, 1, 20), np.linspace(0, 1, 13))
-        coords = np.zeros((x.shape[0], x.shape[1], 1, 3))
-        coords[:, :, 0, 0] = x
-        coords[:, :, 0, 1] = y
-
-        block = Block("blk", coords.shape[:-1], coords)
-        block.extrude("z")
+        self.blk.extrude("z")
 
         # Check that the dims match the coord shape and there are two k layers after extrusion
-        self.assertEqual(tuple(block.dims), block.coords.shape[:-1])
-        self.assertEqual(block.dims[2], 2)
+        self.assertEqual(tuple(self.blk.dims), self.blk.coords.shape[:-1])
+        self.assertEqual(self.blk.dims[2], 2)
 
 
 class TestExamples(unittest.TestCase):
