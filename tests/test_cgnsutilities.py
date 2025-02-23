@@ -370,7 +370,6 @@ class TestExtrude(unittest.TestCase):
         blk2.coords[:, :, 0, 0] += 1.0
         grid.blocks.extend([self.blk, blk2])
         grid.cellDim = 2
-        grid.connect()
 
         grid.extrude("z")
 
