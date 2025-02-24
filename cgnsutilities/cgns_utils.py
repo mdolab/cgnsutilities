@@ -493,27 +493,77 @@ The input mesh is not included and BCs are applied.""",
     )
 
     # ------------ Options for 'simpleCart' mode --------------------
-    p_sub = subparsers.add_parser("simpleCart", help="Generates a background cartesian mesh")
+    p_sub = subparsers.add_parser(
+        "simpleCart",
+        help="""Generates a background cartesian mesh containing two
+regions: one internal region with uniform spacing dh
+and an extended region where mesh sizes grow following
+a geometric progression. The internal region is
+defined by the bounding box of the mesh present in gridFile.""",
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
     p_sub.add_argument("gridFile", help="Name of input CGNS file")
-    p_sub.add_argument("dh", help="Uniform spacing size", type=float)
-    p_sub.add_argument("hExtra", help="Extension in each dimension", type=float)
-    p_sub.add_argument("nExtra", help="Number of nodes to use for extension", type=int)
-    p_sub.add_argument("sym", help="Normal for possible sym plane", type=str)
+    p_sub.add_argument(
+        "dh",
+        help="""Uniform spacing size. If a single number is provided,
+the same spacing is applied to all three dimensions (x,y,z).
+But the user can also provide a set of three spacings
+separated by commas, for example: 0.1,0.2,0.3.""",
+        type=str,
+    )
+    p_sub.add_argument("hExtra", help="Length of the extended region", type=float)
+    p_sub.add_argument("nExtra", help="Number of nodes of the extended region", type=int)
+    p_sub.add_argument(
+        "sym",
+        help="""Normal for possible sym planes.
+Possible options are xmin, ymin, zmin, xmax, ymax, zmax.
+The user can also define a combination of them using commas,
+for example: zmin,zmax. This is useful to generate 1-cell wide
+meshes for 2D cases (remember to set dh to the span length
+(mesh width) and mgcycle to 0).
+""",
+        type=str,
+    )
     p_sub.add_argument("mgcycle", help="Minimum MG cycle to enforce", type=int)
     p_sub.add_argument("outFile", help="Name of output CGNS file")
 
     # ------------ Options for 'explicitCart' mode --------------------
-    p_sub = subparsers.add_parser("explicitCart", help="Generates a background cartesian mesh")
-    p_sub.add_argument("xmin", type=float, help="min x coordinate")
-    p_sub.add_argument("ymin", type=float, help="min y coordinate")
-    p_sub.add_argument("zmin", type=float, help="min z coordinate")
-    p_sub.add_argument("xmax", type=float, help="max x coordinate")
-    p_sub.add_argument("ymax", type=float, help="max y coordinate")
-    p_sub.add_argument("zmax", type=float, help="max z coordinate")
-    p_sub.add_argument("dh", help="Uniform spacing size", type=float)
-    p_sub.add_argument("hExtra", help="Extension in each dimension", type=float)
-    p_sub.add_argument("nExtra", help="Number of nodes to use for extension", type=int)
-    p_sub.add_argument("sym", help="Normal for possible sym plane", type=str)
+    p_sub = subparsers.add_parser(
+        "explicitCart",
+        help="""Generates a background cartesian mesh containing two
+regions: one internal region with uniform spacing dh
+and an extended region where mesh sizes grow following
+a geometric progression. The internal region is
+defined by the x,y,z coordinates given as explicit arguments.""",
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    p_sub.add_argument("xmin", type=float, help="min x coordinate of the internal region")
+    p_sub.add_argument("ymin", type=float, help="min y coordinate of the internal region")
+    p_sub.add_argument("zmin", type=float, help="min z coordinate of the internal region")
+    p_sub.add_argument("xmax", type=float, help="max x coordinate of the internal region")
+    p_sub.add_argument("ymax", type=float, help="max y coordinate of the internal region")
+    p_sub.add_argument("zmax", type=float, help="max z coordinate of the internal region")
+    p_sub.add_argument(
+        "dh",
+        help="""Uniform spacing size. If a single number is provided,
+the same spacing is applied to all three dimensions (x,y,z).
+But the user can also provide a set of three spacings
+separated by commas, for example: 0.1,0.2,0.3.""",
+        type=str,
+    )
+    p_sub.add_argument("hExtra", help="Length of the extended region", type=float)
+    p_sub.add_argument("nExtra", help="Number of nodes of the extended region", type=int)
+    p_sub.add_argument(
+        "sym",
+        help="""Normal for possible sym planes.
+Possible options are xmin, ymin, zmin, xmax, ymax, zmax.
+The user can also define a combination of them using commas,
+for example: zmin,zmax. This is useful to generate 1-cell wide
+meshes for 2D cases (remember to set dh to the span length
+(mesh width) and mgcycle to 0).
+""",
+        type=str,
+    )
     p_sub.add_argument("mgcycle", help="Minimum MG cycle to enforce", type=int)
     p_sub.add_argument("outFile", help="Name of output CGNS file")
 
@@ -784,7 +834,18 @@ def main():
         xMin = [args.xmin, args.ymin, args.zmin]
         xMax = [args.xmax, args.ymax, args.zmax]
 
-        simpleCart(xMin, xMax, args.dh, args.hExtra, args.nExtra, args.sym, args.mgcycle, args.outFile)
+        # Change dh to a list of floats, since we had
+        # to define it as a string in arg_parser to avoid
+        # issues with variable number of inputs.
+        # (The user could give a single dh, or a set of three values)
+        dh = list(map(float, args.dh.split(",")))
+        if len(dh) == 1:
+            dh = dh[0]
+
+        # A similar procedure is necessary for the symmetry planes argument
+        sym = args.sym.split(",")
+
+        simpleCart(xMin, xMax, dh, args.hExtra, args.nExtra, sym, args.mgcycle, args.outFile)
 
         sys.exit(0)
 
@@ -922,7 +983,18 @@ def main():
         sys.exit(0)
 
     elif args.mode == "simpleCart":
-        curGrid.simpleCart(args.dh, args.hExtra, args.nExtra, args.sym, args.mgcycle, args.outFile)
+        # Change dh to a list of floats, since we had
+        # to define it as a string in arg_parser to avoid
+        # issues with variable number of inputs.
+        # (The user could give a single dh, or a set of three values)
+        dh = list(map(float, args.dh.split(",")))
+        if len(dh) == 1:
+            dh = dh[0]
+
+        # A similar procedure is necessary for the symmetry planes argument
+        sym = args.sym.split(",")
+
+        curGrid.simpleCart(dh, args.hExtra, args.nExtra, sym, args.mgcycle, args.outFile)
         sys.exit(0)
 
     elif args.mode == "translate":
