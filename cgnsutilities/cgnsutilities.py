@@ -1489,6 +1489,10 @@ class Grid(object):
         for blk in self.blocks:
             blk.extrude(direction)
 
+        # Update cell dimension to three if it starts as two
+        if self.cellDim == 2:
+            self.cellDim = 3
+
         # Rebuild B2B connectivity
         self.connect()
 
@@ -1774,7 +1778,7 @@ class Block(object):
                 self.coords = newCoords
                 self.dims = new_dimensions[:]
 
-    def _extrudeGetDataOrderAndDIms(self, directionNormal, nSteps):
+    def _extrudeGetDataOrderAndDims(self, directionNormal, nSteps):
         """This is a support function that member functions extrude and revolve call"""
 
         # Note that the self.dims always has data in the first and second
@@ -1855,10 +1859,10 @@ class Block(object):
         self.addBoco(Boco(bocoName, bocoType, ptRange, family))
 
     def extrude(self, direction):
-        """Extrudes from 2D panar grid to 3D"""
+        """Extrudes from 2D planar grid to 3D"""
 
         # Get the data order and new dims
-        order, newDims = self._extrudeGetDataOrderAndDIms(direction)
+        order, newDims = self._extrudeGetDataOrderAndDims(direction, 2)
 
         # Allocate memory for new coordinates
         newCoords = np.zeros(newDims)
@@ -1904,7 +1908,7 @@ class Block(object):
         angleRadStep = wedgeAngleRad / (nThetas - 1)
 
         # Get the data order and new dims
-        order, newDims = self._extrudeGetDataOrderAndDIms(normalDirection, nThetas)
+        order, newDims = self._extrudeGetDataOrderAndDims(normalDirection, nThetas)
 
         # Allocate memory for new coordinates
         newCoords = np.zeros(newDims)
