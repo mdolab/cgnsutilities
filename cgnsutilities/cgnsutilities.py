@@ -2406,7 +2406,7 @@ class Block(object):
             By default None.
         """
         for bc in self.bocos:
-            if "symmetry" in bc.internalType:
+            if bc.internalType == "bcsymmetryplane":
                 # If None, all symmetry BCs are zeroed along idir, otherwise only BCs for the specified
                 # family are zeroed along idir.
                 if family is None or bc.family == family:
