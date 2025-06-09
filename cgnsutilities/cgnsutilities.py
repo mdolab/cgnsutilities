@@ -1421,7 +1421,17 @@ class Grid(object):
         self.blocks = [blk for (n, blk) in sorted(zip(nameList, self.blocks))]
 
     def symmZero(self, sym, family=None):
-        """Zero nodes along axis 'sym'"""
+        """Zero nodes along axis 'sym'
+
+        Parameters
+        ----------
+        sym : str
+            The axis to zero the nodes along.
+        family : str, optional
+            The family of the boundary condition.
+            If not provided, all symmetryboundary conditions will be zeroed.
+            By default None.
+        """
         if sym == "x":
             idir = 0
         elif sym == "y":
@@ -2385,6 +2395,17 @@ class Block(object):
                         self.coords[:, j, k, idim] = self.coords[::-1, j, k, idim]
 
     def symmZero(self, idir, family=None):
+        """Zero nodes along axis 'sym'
+
+        Parameters
+        ----------
+        sym : str
+            The axis to zero the nodes along.
+        family : str, optional
+            The family of the boundary condition.
+            If not provided, all symmetry boundary conditions will be zeroed.
+            By default None.
+        """
         for bc in self.bocos:
             if "symmetry" in bc.internalType:
                 # If None, all symmetry BCs are zeroed along idir, otherwise only BCs for the specified
