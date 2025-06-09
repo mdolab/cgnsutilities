@@ -1428,7 +1428,7 @@ class Grid(object):
             The axis to zero the nodes along.
         family : str, optional
             The family of the boundary condition.
-            If not provided, all symmetryboundary conditions will be zeroed.
+            If not provided, all bcsymmetryplane conditions will be zeroed.
             By default None.
         """
         if sym == "x":
@@ -2402,7 +2402,7 @@ class Block(object):
             The axis to zero the nodes along.
         family : str, optional
             The family of the boundary condition.
-            If not provided, all symmetry boundary conditions will be zeroed.
+            If not provided, all bcsymmetryplane boundary conditions will be zeroed.
             By default None.
         """
         for bc in self.bocos:
