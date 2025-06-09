@@ -24,7 +24,6 @@ BCSTANDARD = {
     "bcinflow": 9,
     "bcinflowsubsonic": 10,
     "bcinflowssupersonic": 11,
-    "bcoverset": 1,
     "bcaxisymmetricwedge": 2,
     "bcsymmetrypolar": 17,
 }  # The Overset BC will be considered as a CG_USERDEFINED option ()
