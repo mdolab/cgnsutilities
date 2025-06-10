@@ -1,20 +1,22 @@
+import copy
 import os
 import subprocess
 import unittest
-from parameterized import parameterized
+
 import numpy as np
 from baseclasses import BaseRegTest
+from parameterized import parameterized
+
 from cgnsutilities.cgnsutilities import (
-    readGrid,
     BCSTANDARD,
     BCUSERDEFINED,
     CGNSUSERDEFINEDTYPE,
+    Block,
+    Grid,
     combineGrids,
     mirrorGrid,
-    Grid,
-    Block,
+    readGrid,
 )
-import copy
 
 baseDir = os.path.dirname(os.path.abspath(__file__))
 
@@ -173,6 +175,26 @@ class TestGrid(unittest.TestCase):
         self.grid.refine("j")
         totalCells = self.grid.getTotalCellsNodes()[0]
         self.assertEqual(15120 * 8, totalCells)
+
+    def test_symmZero_nofamily(self):
+        self.grid.symmZero("z")
+        for block in self.grid.blocks:
+            for boco in block.bocos:
+                if boco.internalType == "bcsymmetryplane":
+                    ptRange = boco.ptRange
+                    ist, iend, jst, jend, kst, kend = ptRange.flatten()
+                    coords = block.coords[ist:iend, jst - 1, kst:kend, :]
+                    np.testing.assert_allclose(coords[:, :, 2], 0.0)
+
+    def test_symmZero_family(self):
+        self.grid.symmZero("z", "Sym")
+        for block in self.grid.blocks:
+            for boco in block.bocos:
+                if boco.internalType == "bcsymmetryplane":
+                    ptRange = boco.ptRange
+                    ist, iend, jst, jend, kst, kend = ptRange.flatten()
+                    coords = block.coords[ist:iend, jst - 1, kst:kend, :]
+                    np.testing.assert_allclose(coords[:, :, 2], 0.0)
 
 
 class TestSimpleGrid(unittest.TestCase):

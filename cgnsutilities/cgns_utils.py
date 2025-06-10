@@ -11,30 +11,31 @@ idea is as follows::
 Developed by Dr. Gaetan K. W. Kenway
 
 """
-import sys
-import os
-import shutil
-import tempfile
 import argparse
+import os
 import pickle
+import shutil
+import sys
+import tempfile
+
 import numpy as np
 
 from cgnsutilities.cgnsutilities import (
     Block,
     Boco,
     Grid,
-    explodeGrid,
-    readGrid,
-    explodeByZoneName,
-    write_tecplot_file,
-    simpleCart,
     combineGrids,
     convertPlot3d,
-    mirrorGrid,
-    splitGrid,
-    mergeGrid,
     divideGrid,
+    explodeByZoneName,
+    explodeGrid,
     libcgns_utils,
+    mergeGrid,
+    mirrorGrid,
+    readGrid,
+    simpleCart,
+    splitGrid,
+    write_tecplot_file,
 )
 
 # set width of printing for line wrap
@@ -355,6 +356,7 @@ Examples:
     p_sym = subparsers.add_parser("symmZero", help="Hard-zero any nodes on symmetry plane BCs.")
     p_sym.add_argument("gridFile", help="Name of input CGNS file")
     p_sym.add_argument("sym", help="Normal for possible symmetry plane.", choices=["x", "y", "z"])
+    p_sym.add_argument("family", help="Family of the boundary condition.", default=None)
     p_sym.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
     # ------------ Options for 'symmZeroNoBC' mode --------------------
@@ -959,7 +961,7 @@ def main():
         curGrid.reorder(args.intDigits)
 
     elif args.mode == "symmZero":
-        curGrid.symmZero(args.sym)
+        curGrid.symmZero(args.sym, args.family)
 
     elif args.mode == "symmZeroNoBC":
         curGrid.symmZeroNoBC(args.sym, args.tol)
