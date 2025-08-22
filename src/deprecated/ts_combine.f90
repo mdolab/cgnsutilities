@@ -594,4 +594,3 @@ subroutine getFieldIndex(fieldList, nFields, name, ind)
         end if
     end do
 end subroutine getFieldIndex
-
