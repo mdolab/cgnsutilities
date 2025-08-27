@@ -2905,6 +2905,27 @@ def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
 # -----------------------------------------------------------------
 # These functions perform operations that return new 'Grid' objects
 # -----------------------------------------------------------------
+def _getBocoDataSetArray(inFile, iBlock, iBoco, iBocoDataSet, BCDataType, iDir):
+    # Get data information
+    (
+        dataArrayName,
+        dataType,
+        nDimensions,
+        dataDimensionVector,
+    ) = libcgns_utils.utils.getbcdataarrayinfo(inFile, iBlock, iBoco, iBocoDataSet, iDir, BCDataType)
+
+    # Create a flat array for the data
+    # Note we make it float64 although it can contain integers.
+    nDataArr = np.prod(dataDimensionVector)
+    dataArr = np.zeros(nDataArr, dtype=np.float64, order="F")
+
+    # Get the data. Note the dataArr is populated when the routine exits
+    libcgns_utils.utils.getbcdataarray(inFile, iBlock, iBoco, iBocoDataSet, iDir, BCDataType, dataArr, nDataArr)
+
+    # Create a BocoDataSetArray object and return
+    return BocoDataSetArray(dataArrayName.decode(), dataType, nDimensions, dataDimensionVector, dataArr)
+
+
 def readGrid(fileName):
     """Internal routine to return a 'grid' object that contains all
     the information that is in the file 'fileName'
@@ -2979,37 +3000,13 @@ def readGrid(fileName):
                     ) = libcgns_utils.utils.getbcdatasetinfo(inFile, iBlock, iBoco, iBocoDataSet)
                     bcDSet = BocoDataSet(bocoDatasetName.decode(), internalBocoType)
 
-                    def getBocoDataSetArray(flagDirNeu, iDir):
-                        # Get data information
-                        (
-                            dataArrayName,
-                            dataType,
-                            nDimensions,
-                            dataDimensionVector,
-                        ) = libcgns_utils.utils.getbcdataarrayinfo(
-                            inFile, iBlock, iBoco, iBocoDataSet, iDir, flagDirNeu
-                        )
-
-                        # Create a flat array for the data
-                        # Note we make it float64 although it can contain integers.
-                        nDataArr = np.prod(dataDimensionVector)
-                        dataArr = np.zeros(nDataArr, dtype=np.float64, order="F")
-
-                        # Get the data. Note the dataArr is populated when the routine exits
-                        libcgns_utils.utils.getbcdataarray(
-                            inFile, iBlock, iBoco, iBocoDataSet, iDir, flagDirNeu, dataArr, nDataArr
-                        )
-
-                        # Create a BocoDataSetArray object and return
-                        return BocoDataSetArray(
-                            dataArrayName.decode(), dataType, nDimensions, dataDimensionVector, dataArr
-                        )
-
                     if nDirichletArrays > 0:
                         # Loop over Dirichlet data and get the actual data
                         for iDir in range(1, nDirichletArrays + 1):
                             # Get the data set
-                            bcDSetArr = getBocoDataSetArray(BCDATATYPE["Dirichlet"], iDir)
+                            bcDSetArr = _getBocoDataSetArray(
+                                inFile, iBlock, iBoco, iBocoDataSet, BCDATATYPE["Dirichlet"], iDir
+                            )
 
                             # Append a BocoDataSetArray to the datasets
                             bcDSet.addDirichletDataSet(bcDSetArr)
@@ -3021,7 +3018,9 @@ def readGrid(fileName):
                         # Loop over Neumann data sets
                         for iDir in range(1, nNeumannArrays + 1):
                             # Get the data set
-                            bcDSetArr = getBocoDataSetArray(BCDATATYPE["Neumann"], iDir)
+                            bcDSetArr = _getBocoDataSetArray(
+                                inFile, iBlock, iBoco, iBocoDataSet, BCDATATYPE["Neumann"], iDir
+                            )
 
                             # Append a BocoDataSetArray to the datasets
                             bcDSet.addNeumannDataSet(bcDSetArr)
