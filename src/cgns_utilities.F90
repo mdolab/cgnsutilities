@@ -294,7 +294,7 @@ contains
     end subroutine getBCDataSetInfo
 
     subroutine getBCDataArrayInfo(cg, iBlock, iBC, iBCDataSet, iDataArr, &
-                                  BCDataType, dataArrayName, dataType, nDataDimensions, &
+                                  flagDirNeu, dataArrayName, dataType, nDataDimensions, &
                                   dataDimensionVector)
 
         ! This subroutine returns information about data arrays in a particular BC dataset.
@@ -302,7 +302,7 @@ contains
         implicit none
 
         ! Input/Output
-        integer, intent(in) :: cg, iBlock, iBC, iBCDataSet, iDataArr, BCDataType
+        integer, intent(in) :: cg, iBlock, iBC, iBCDataSet, iDataArr, flagDirNeu
         integer, intent(out) :: dataType, nDataDimensions
         integer, intent(out), dimension(3) :: dataDimensionVector
         character(len=256), intent(out) :: dataArrayName
@@ -317,7 +317,7 @@ contains
 
         base = 1
         call cg_goto_f(cg, base, ier, 'Zone_t', iBlock, 'ZoneBC_t', 1, 'BC_t', &
-                       iBC, 'BCDataSet_t', iBCDataSet, 'BCData_t', BCDataType, 'end')
+                       iBC, 'BCDataSet_t', iBCDataSet, 'BCData_t', flagDirNeu, 'end')
         if (ier .eq. CG_ERROR) call cg_error_exit_f
 
         call cg_array_info_f(iDataArr, &
@@ -327,13 +327,13 @@ contains
 
     end subroutine getBCDataArrayInfo
 
-    subroutine getBCDataArray(cg, iBlock, iBC, iBCDataSet, iDataArr, BCDataType, dataArr, nDataArr)
+    subroutine getBCDataArray(cg, iBlock, iBC, iBCDataSet, iDataArr, flagDirNeu, dataArr, nDataArr)
         ! This subroutine retrieves and returns BC dataset array
 
         implicit none
 
         ! Input/Output
-        integer, intent(in) :: cg, iBlock, iBC, iBCDataSet, iDataArr, BCDataType, nDataArr
+        integer, intent(in) :: cg, iBlock, iBC, iBCDataSet, iDataArr, flagDirNeu, nDataArr
         real(kind=8), intent(inout), dimension(nDataArr) :: dataArr
 
         ! Working
@@ -342,7 +342,7 @@ contains
         ! Call the goto to make sure we are at the right location in the tree
         base = 1
         call cg_goto_f(cg, base, ier, 'Zone_t', iBlock, 'ZoneBC_t', 1, 'BC_t', &
-                       iBC, 'BCDataSet_t', iBCDataSet, 'BCData_t', BCDataType, 'end')
+                       iBC, 'BCDataSet_t', iBCDataSet, 'BCData_t', flagDirNeu, 'end')
         if (ier .eq. CG_ERROR) call cg_error_exit_f
 
         ! Note we read all data as real double even though it is integer or single.
@@ -639,7 +639,7 @@ contains
 
     end subroutine writeBCDataHeader
 
-    subroutine writeBCData(cg, iBlock, iBC, iDataSet, BCDataType, writeBCDataHeader, &
+    subroutine writeBCData(cg, iBlock, iBC, iDataSet, flagDirNeu, writeBCDataHeader, &
                            dataArrayName, dataType, nDataDimensions, dataDimensionVector, &
                            dataArr, nDataArr)
 
@@ -648,7 +648,7 @@ contains
         implicit none
 
         ! Input/Output
-        integer, intent(in) :: cg, iBlock, iBC, iDataSet, BCDataType
+        integer, intent(in) :: cg, iBlock, iBC, iDataSet, flagDirNeu
         integer, intent(in) :: dataType, nDataDimensions, nDataArr
         logical, intent(in) :: writeBCDataHeader
         character*(*), intent(in) :: dataArrayName
@@ -661,12 +661,12 @@ contains
         base = 1
 
         if (writeBCDataHeader) then
-            call cg_bcdata_write_f(cg, base, iBlock, iBC, iDataSet, BCDataType, ier)
+            call cg_bcdata_write_f(cg, base, iBlock, iBC, iDataSet, flagDirNeu, ier)
             if (ier .eq. CG_ERROR) call cg_error_exit_f
         end if
 
         call cg_goto_f(cg, base, ier, 'Zone_t', iBlock, "ZoneBC_t", 1, &
-                       "BC_t", iBC, "BCDataSet_t", idataSet, "BCData_t", BCDataType, "end")
+                       "BC_t", iBC, "BCDataSet_t", idataSet, "BCData_t", flagDirNeu, "end")
         if (ier .eq. CG_ERROR) call cg_error_exit_f
 
         ! Note that dataType is ignored here since the data is stored
