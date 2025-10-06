@@ -2956,7 +2956,7 @@ def readGrid(fileName):
                     ) = libcgns_utils.utils.getbcdatasetinfo(inFile, iBlock, iBoco, iBocoDataSet)
                     bcDSet = BocoDataSet(bocoDatasetName.decode(), internalBocoType)
 
-                    def getBocoDataSetArray(flagDirNeu, iDir):
+                    def getBocoDataSetArray(bcDataType, iDir):
                         # Get data information
                         (
                             dataArrayName,
@@ -2964,7 +2964,7 @@ def readGrid(fileName):
                             nDimensions,
                             dataDimensionVector,
                         ) = libcgns_utils.utils.getbcdataarrayinfo(
-                            inFile, iBlock, iBoco, iBocoDataSet, iDir, flagDirNeu
+                            inFile, iBlock, iBoco, iBocoDataSet, iDir, bcDataType
                         )
 
                         # Create a flat array for the data
@@ -2974,7 +2974,7 @@ def readGrid(fileName):
 
                         # Get the data. Note the dataArr is populated when the routine exits
                         libcgns_utils.utils.getbcdataarray(
-                            inFile, iBlock, iBoco, iBocoDataSet, iDir, flagDirNeu, dataArr, nDataArr
+                            inFile, iBlock, iBoco, iBocoDataSet, iDir, bcDataType, dataArr, nDataArr
                         )
 
                         # Create a BocoDataSetArray object and return

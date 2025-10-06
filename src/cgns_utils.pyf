@@ -51,25 +51,25 @@ python module libcgns_utils ! in
             integer intent(out) :: ndirichletarrays
             integer intent(out) :: nneumannarrays
         end subroutine getbcdatasetinfo
-        subroutine getbcdataarrayinfo(cg,iblock,ibc,ibcdataset,idataarr,flagdirneu,dataarrayname,datatype,ndatadimensions,datadimensionvector) ! in :libcgns_utils:cgns_utilities.F90
+        subroutine getbcdataarrayinfo(cg,iblock,ibc,ibcdataset,idataarr,bcdatatype,dataarrayname,datatype,ndatadimensions,datadimensionvector) ! in :libcgns_utils:cgns_utilities.F90
             integer intent(in) :: cg
             integer intent(in) :: iblock
             integer intent(in) :: ibc
             integer intent(in) :: ibcdataset
             integer intent(in) :: idataarr
-            integer intent(in) :: flagdirneu
+            integer intent(in) :: bcdatatype
             character*256 intent(out) :: dataarrayname
             integer intent(out) :: datatype
             integer intent(out) :: ndatadimensions
             integer intent(out), dimension(3) :: datadimensionvector
         end subroutine getbcdataarrayinfo
-        subroutine getbcdataarray(cg,iblock,ibc,ibcdataset,idataarr,flagdirneu, dataarr,ndataarr) ! in :libcgns_utils:cgns_utilities.F90
+        subroutine getbcdataarray(cg,iblock,ibc,ibcdataset,idataarr,bcdatatype, dataarr,ndataarr) ! in :libcgns_utils:cgns_utilities.F90
             integer intent(in) :: cg
             integer intent(in) :: iblock
             integer intent(in) :: ibc
             integer intent(in) :: ibcdataset
             integer intent(in) :: idataarr
-            integer intent(in) :: flagdirneu
+            integer intent(in) :: bcdatatype
             real(kind=8) intent(inout), dimension(ndataarr) :: dataarr
             integer intent(in) :: ndataarr
         end subroutine getbcdataarray
@@ -133,12 +133,12 @@ python module libcgns_utils ! in
             character*(*) intent(in) :: datasetname
             integer intent(out) :: idataset
         end subroutine writebcdataheader
-        subroutine writebcdata(cg,iblock,ibc,idataset,flagdirneu,writeheader,dataarrayname,datatype,ndatadimensions,datadimensionvector,dataarr,ndataarr) ! in :libcgns_utils:cgns_utilities.F90
+        subroutine writebcdata(cg,iblock,ibc,idataset,bcdatatype,writeheader,dataarrayname,datatype,ndatadimensions,datadimensionvector,dataarr,ndataarr) ! in :libcgns_utils:cgns_utilities.F90
             integer intent(in) :: cg
             integer intent(in) :: iblock
             integer intent(in) :: ibc
             integer intent(in) :: idataset
-            integer intent(in) :: flagdirneu
+            integer intent(in) :: bcdatatype
             logical intent(in) :: writeheader
             character*(*) intent(in) :: dataarrayname
             integer intent(in) :: datatype
