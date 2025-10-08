@@ -16,3 +16,7 @@ examples/717_wl_L2_overwriteFamilies.cgns
 examples/717_wl_L2_overwriteBCFamilyWithBC.cgns
 
 config.mk
+
+# Ignore ruff and pre-commit config files
+ruff.toml
+.pre-commit-config.yaml
