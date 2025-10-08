@@ -75,7 +75,7 @@ class Grid(object):
         --------
         >>> from cgnsutilities.cgnsutilities import Grid, readGrid
         >>> grid = readGrid("pointwise_vol_grid.cgns")
-        >>> grid.overwriteBCFamilyWithBC('oversetfamily', 'bcoverset', [1,2,4])
+        >>> grid.overwriteBCFamilyWithBC("oversetfamily", "bcoverset", [1, 2, 4])
         >>> grid.writeToCGNS("pointwise_vol_grid_converted.cgns")
         """
 
@@ -182,7 +182,8 @@ class Grid(object):
     def getBlockInfo(self):
         """Get the number of nodes, number of cells, BCs, and
         the dimensions for each block. This info can be helpful
-        for assessing overset meshes."""
+        for assessing overset meshes.
+        """
 
         counter = 1
         allBlocksInfo = {}
@@ -207,7 +208,8 @@ class Grid(object):
     def printBlockInfo(self):
         """Print the number of nodes, number of cells, and
         the dimensions for each block. This info can be helpful
-        for assessing overset meshes."""
+        for assessing overset meshes.
+        """
 
         allBlocksInfo = self.getBlockInfo()
 
@@ -257,7 +259,8 @@ class Grid(object):
 
     def writePlot3d(self, fileName):
         """Write what is in this grid tree to the plot3d filename
-        provided. This is mostly done in python so will be slow-ish."""
+        provided. This is mostly done in python so will be slow-ish.
+        """
         f = open(fileName, "w")
         f.write("%d\n" % len(self.blocks))
         for blk in self.blocks:
@@ -314,7 +317,7 @@ class Grid(object):
 
     def renameFamilies(self, old_family, new_family):
         """
-        renames all BC families to new_family if the current family name matches old_family
+        Renames all BC families to new_family if the current family name matches old_family
         """
         for blk in self.blocks:
             for boco in blk.bocos:
@@ -365,7 +368,8 @@ class Grid(object):
 
     def overwriteFamilies(self, familyFile):
         """Overwrite families of BC with information given in the
-        family file"""
+        family file
+        """
 
         with open(familyFile, "r") as f:
             for line in f:
@@ -506,7 +510,7 @@ class Grid(object):
                     self.blocks[blockID].overwriteBCs(face, bocoType, family, dataSet)
 
     def writeBCs(self, bcFile):
-        """write BCs to file"""
+        """Write BCs to file"""
         if bcFile is None:
             bcFile = self.name + ".bc"
 
@@ -517,7 +521,8 @@ class Grid(object):
 
     def autoOversetBC(self, sym, connectSelf, tol):
         """This is essentially a simplified version of autoBC that flags all
-        kMin faces as walls and all kMax faces as BCOverset"""
+        kMin faces as walls and all kMax faces as BCOverset
+        """
 
         # Remove any BCinfo/B2B info we may have.
         for blk in self.blocks:
@@ -573,7 +578,8 @@ class Grid(object):
 
     def autoNearfieldBC(self, sym):
         """This is essentially a simplified version of autoBC that flags all
-        boundaries as BCOverset except for possible symmetry planes."""
+        boundaries as BCOverset except for possible symmetry planes.
+        """
 
         # Remove any BCinfo/B2B info we may have.
         for blk in self.blocks:
@@ -616,7 +622,8 @@ class Grid(object):
 
     def autoFarfieldBC(self, sym):
         """This is essentially a simplified version of autoBC that flags all
-        boundaries as BCFarfield except for possible symmetry planes."""
+        boundaries as BCFarfield except for possible symmetry planes.
+        """
 
         # Remove any BCinfo/B2B info we may have.
         for blk in self.blocks:
@@ -659,7 +666,8 @@ class Grid(object):
 
     def double2D(self):
         """Doubles a mesh in the "2d" direction. Ie the direction with one
-        cell"""
+        cell
+        """
         for blk in self.blocks:
             blk.double2D()
 
@@ -1095,7 +1103,8 @@ class Grid(object):
 
     def split(self, extraSplits):
         """Recursively propagate splits due to boundary conditions or
-        B2B information"""
+        B2B information
+        """
 
         # First generate a mapping between block name and its index:
         mapping = {}
@@ -1126,7 +1135,8 @@ class Grid(object):
 
     def _addSplit(self, iBlock, iDim, index, mapping):
         """Recursive routine to add a split to block 'iBlock', on
-        dimension 'iDim' at index 'index'. NOTE IDIM is 1 based!"""
+        dimension 'iDim' at index 'index'. NOTE IDIM is 1 based!
+        """
         if index in self.blocks[iBlock].splits[iDim - 1]:
             return  # This is the main recursive return
         else:
@@ -1158,7 +1168,8 @@ class Grid(object):
 
     def connect(self, tol=1e-12):
         """Generate block-to-block connectivity information for a grid. It
-        does not need to be face matched, only point matched"""
+        does not need to be face matched, only point matched
+        """
         isize = 0
         for i in range(len(self.blocks)):
             blk = self.blocks[i]
@@ -1275,7 +1286,8 @@ class Grid(object):
         block-to-block connection. If a surface is inside the sphere,
         it gets counted as a wall, if it is outside it is a farfield
         condition. If the surface is flat and a coordinate is zero, it
-        gets treated as a symmetry plane."""
+        gets treated as a symmetry plane.
+        """
 
         # Remove any BCinfo/B2B info we may have.
         for blk in self.blocks:
@@ -1325,7 +1337,8 @@ class Grid(object):
 
     def fillOpenBCs(self, bocoType, famName):
         """This function will add the desired BC for all faces that are not
-        block to block and also do not have any previously assigned BC."""
+        block to block and also do not have any previously assigned BC.
+        """
 
         # Remove any B2B info we may have.
         for blk in self.blocks:
@@ -1362,7 +1375,8 @@ class Grid(object):
         grids that that have 'O-type' topologies around the
         surface. This is typical of viscous grids. The main
         application is to rebunch nodes in the boundary layer to adapt
-        an existing grid for a different reynolds number"""
+        an existing grid for a different reynolds number
+        """
 
         for blk in self.blocks:
             blk.rebunch(spacing, extraCells, nStar)
@@ -1559,7 +1573,8 @@ class Grid(object):
 
 class Block(object):
     """Class for storing information related to a single block
-    structured zone"""
+    structured zone
+    """
 
     def __init__(self, zoneName, dims, coords):
         self.name = zoneName.strip()
@@ -1675,7 +1690,8 @@ class Block(object):
 
     def coarsen(self):
         """Coarsen the block uniformly. We will update the boundary
-        conditions and B2B if necessary"""
+        conditions and B2B if necessary
+        """
         # We will coarsen one direction at a time. We do this to check if the block
         # is already 1-cell wide, which can't be coarsened any further
 
@@ -1728,7 +1744,8 @@ class Block(object):
 
     def refine(self, axes):
         """Refine the block uniformly. We will also update the
-        boundary conditions and B2Bs if necessary"""
+        boundary conditions and B2Bs if necessary
+        """
         axes = "".join(axes)
         self.coords = libcgns_utils.utils.refine(self.coords, "i" in axes, "j" in axes, "k" in axes)
         self.dims[0] = self.coords.shape[0]
@@ -1988,7 +2005,8 @@ class Block(object):
         """Return a list of blocks that have been split according to
         the self.splits array. This is used for the 'split' operation
         as well as for the 'divide' operation. Boundary information is
-        kept but connectivity information is removed"""
+        kept but connectivity information is removed
+        """
         blkList = []
         s = self.splits  # For cleaner code below
 
@@ -2075,7 +2093,8 @@ class Block(object):
     def divide(self):
         """Return a list of 8 blocks split derivied from the current
         block. Boundary condition information is kept, but
-        connectivity information is removed"""
+        connectivity information is removed
+        """
 
         # Just add the splits and run getSplitBlocks
         for iDim in range(3):
@@ -2216,7 +2235,7 @@ class Block(object):
         self.bocoCounter += 1
 
     def writeBCs(self, blk_num, file_handle):
-        """write the bc data to a file"""
+        """Write the bc data to a file"""
 
         d = self.dims
 
@@ -2499,7 +2518,7 @@ class Boco(object):
                 self.ptRange[idim, 1] = int(np.ceil((self.ptRange[idim, 1]) / 2))
 
     def refine(self, axes):
-        """refine the range of the BC"""
+        """Refine the range of the BC"""
         for i, axis in enumerate(["i", "j", "k"]):
             for j in range(2):
                 self.ptRange[i, j] = (self.ptRange[i, j] - 1) * 2 ** (axis in axes) + 1
@@ -2604,7 +2623,7 @@ class B2B(object):
                     self.donorRange[donorDir, j] = (self.donorRange[donorDir, j] + 1) // 2
 
     def refine(self, axes):
-        """refine the range of the B2B"""
+        """Refine the range of the B2B"""
         for i, axis in enumerate(["i", "j", "k"]):
             for j in range(2):
                 self.ptRange[i, j] = (self.ptRange[i, j] - 1) * 2 ** (axis in axes) + 1
@@ -2630,7 +2649,8 @@ def isWall(bc):
 
 def getS(N, s0, S):
     """Determine the new set of parameters that geometrically fit N
-    nodes with the last distance S"""
+    nodes with the last distance S
+    """
 
     # function 'f' is 1 - s0*(1-r^n)/(1-r), s0 is initial ratio and r
     # is the grid ratio.
@@ -2670,7 +2690,8 @@ def getS(N, s0, S):
 
 def getSplits(ptRange):
     """Return info required to split this face to make it face
-    matched"""
+    matched
+    """
     if ptRange[0][0] == ptRange[0][1]:
         splits = [(1, ptRange[1][0]), (1, ptRange[1][1]), (2, ptRange[2][0]), (2, ptRange[2][1])]
     elif ptRange[1][0] == ptRange[1][1]:
@@ -2691,13 +2712,14 @@ def generalizedCoordDir(iFace):
 
 
 def isodd(num):
-    """check if a number is odd"""
+    """Check if a number is odd"""
     return num & 1 and True or False
 
 
 def getPointRange(iFace, dims):
     """Return the correct point range for face iFace on a block with
-    dimensions given in dims"""
+    dimensions given in dims
+    """
     il = dims[0]
     jl = dims[1]
     kl = dims[2]
@@ -2883,9 +2905,31 @@ def simpleCart(xMin, xMax, dh, hExtra, nExtra, sym, mgcycle, outFile):
 # -----------------------------------------------------------------
 # These functions perform operations that return new 'Grid' objects
 # -----------------------------------------------------------------
+def _getBocoDataSetArray(inFile, iBlock, iBoco, iBocoDataSet, BCDataType, iDir):
+    # Get data information
+    (
+        dataArrayName,
+        dataType,
+        nDimensions,
+        dataDimensionVector,
+    ) = libcgns_utils.utils.getbcdataarrayinfo(inFile, iBlock, iBoco, iBocoDataSet, iDir, BCDataType)
+
+    # Create a flat array for the data
+    # Note we make it float64 although it can contain integers.
+    nDataArr = np.prod(dataDimensionVector)
+    dataArr = np.zeros(nDataArr, dtype=np.float64, order="F")
+
+    # Get the data. Note the dataArr is populated when the routine exits
+    libcgns_utils.utils.getbcdataarray(inFile, iBlock, iBoco, iBocoDataSet, iDir, BCDataType, dataArr, nDataArr)
+
+    # Create a BocoDataSetArray object and return
+    return BocoDataSetArray(dataArrayName.decode(), dataType, nDimensions, dataDimensionVector, dataArr)
+
+
 def readGrid(fileName):
     """Internal routine to return a 'grid' object that contains all
-    the information that is in the file 'fileName'"""
+    the information that is in the file 'fileName'
+    """
 
     inFile = libcgns_utils.utils.openfile(fileName, CG_MODE_READ, 3)
     cellDim = libcgns_utils.utils.getgriddimension(inFile)
@@ -2956,37 +3000,13 @@ def readGrid(fileName):
                     ) = libcgns_utils.utils.getbcdatasetinfo(inFile, iBlock, iBoco, iBocoDataSet)
                     bcDSet = BocoDataSet(bocoDatasetName.decode(), internalBocoType)
 
-                    def getBocoDataSetArray(flagDirNeu, iDir):
-                        # Get data information
-                        (
-                            dataArrayName,
-                            dataType,
-                            nDimensions,
-                            dataDimensionVector,
-                        ) = libcgns_utils.utils.getbcdataarrayinfo(
-                            inFile, iBlock, iBoco, iBocoDataSet, iDir, flagDirNeu
-                        )
-
-                        # Create a flat array for the data
-                        # Note we make it float64 although it can contain integers.
-                        nDataArr = np.prod(dataDimensionVector)
-                        dataArr = np.zeros(nDataArr, dtype=np.float64, order="F")
-
-                        # Get the data. Note the dataArr is populated when the routine exits
-                        libcgns_utils.utils.getbcdataarray(
-                            inFile, iBlock, iBoco, iBocoDataSet, iDir, flagDirNeu, dataArr, nDataArr
-                        )
-
-                        # Create a BocoDataSetArray object and return
-                        return BocoDataSetArray(
-                            dataArrayName.decode(), dataType, nDimensions, dataDimensionVector, dataArr
-                        )
-
                     if nDirichletArrays > 0:
                         # Loop over Dirichlet data and get the actual data
                         for iDir in range(1, nDirichletArrays + 1):
                             # Get the data set
-                            bcDSetArr = getBocoDataSetArray(BCDATATYPE["Dirichlet"], iDir)
+                            bcDSetArr = _getBocoDataSetArray(
+                                inFile, iBlock, iBoco, iBocoDataSet, BCDATATYPE["Dirichlet"], iDir
+                            )
 
                             # Append a BocoDataSetArray to the datasets
                             bcDSet.addDirichletDataSet(bcDSetArr)
@@ -2998,7 +3018,9 @@ def readGrid(fileName):
                         # Loop over Neumann data sets
                         for iDir in range(1, nNeumannArrays + 1):
                             # Get the data set
-                            bcDSetArr = getBocoDataSetArray(BCDATATYPE["Neumann"], iDir)
+                            bcDSetArr = _getBocoDataSetArray(
+                                inFile, iBlock, iBoco, iBocoDataSet, BCDATATYPE["Neumann"], iDir
+                            )
 
                             # Append a BocoDataSetArray to the datasets
                             bcDSet.addNeumannDataSet(bcDSetArr)
@@ -3052,7 +3074,6 @@ def mirrorGrid(grid, axis, tol, useOldNames=True, surface=False, flipOnly=False,
 
     Parameters
     ----------
-
     grid : Grid object
         The grid object to mirror
 
@@ -3122,7 +3143,8 @@ def mirrorGrid(grid, axis, tol, useOldNames=True, surface=False, flipOnly=False,
 
 def divideGrid(grid):
     """Method that takes a grid and generates a new grid with 8 times
-    as many blocks"""
+    as many blocks
+    """
     newGrid = Grid()
     for blk in grid.blocks:
         newBlks = blk.divide()
@@ -3140,7 +3162,8 @@ def divideGrid(grid):
 def splitGrid(grid, splitFile):
     """Method that takes a grid and propagates any splits using
     connectivity information. This is a rewrite of the original
-    Fortran implementation that is quite a bit simpler due to Python"""
+    Fortran implementation that is quite a bit simpler due to Python
+    """
     # Split the current grid
     extraSplits = []
     if splitFile is not None:
@@ -3169,7 +3192,8 @@ def splitGrid(grid, splitFile):
 def mergeGrid(grid):
     """Method that that takes a grid with block to block connections and
     merges as many blocks as possible, reducing the total number of
-    blocks in the mesh"""
+    blocks in the mesh
+    """
 
     def fullFace(blk, ptRange):
         # Face size of the patch:

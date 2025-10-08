@@ -18,7 +18,7 @@ To compile, simply type
 
 .. prompt:: bash
 
-    make 
+    make
 
 If all goes well, you will see::
 
