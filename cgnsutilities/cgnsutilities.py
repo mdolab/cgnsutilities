@@ -447,7 +447,6 @@ class Grid(object):
                 print(textwrap.indent(str(boco), "  "))
                 print("")
 
-
     def overwriteBCs(self, bcFile):
         """Overwrite BCs with information given in the file"""
 

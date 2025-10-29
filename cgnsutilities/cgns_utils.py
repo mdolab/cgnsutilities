@@ -18,6 +18,7 @@ import pickle
 import shutil
 import sys
 import tempfile
+import warnings
 
 import numpy as np
 
@@ -746,8 +747,12 @@ meshes for 2D cases (remember to set dh to the span length
     p_test.add_argument("outFile", help="Name of output file")
 
     # ------------- Options for 'blockSizes' mode --------------------
-    p_blockSizes = subparsers.add_parser("blockSizes", help="Print the sizes of each block in the mesh")
+    p_blockSizes = subparsers.add_parser("blockSizes", help="Print the sizes of each block in the mesh (deprecated)")
     p_blockSizes.add_argument("gridFile", help="Name of input CGNS file")
+
+    # ------------- Options for 'printBlockInfo' mode --------------------
+    p_printBlockInfo = subparsers.add_parser("printBlockInfo", help="Print information about each block in the mesh")
+    p_printBlockInfo.add_argument("gridFile", help="Name of input CGNS file")
 
     # return the parser
     return parser
@@ -757,6 +762,14 @@ def main():
     parser = get_parser()
     # Get the arguments we need!
     args = parser.parse_args()
+
+    # Check for deprecated modes
+    if args.mode == "blockSizes":
+        warnings.warn(
+            "The 'blockSizes' mode is deprecated. Please use 'info' or 'printBlockInfo' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
     # -------------------------------------------
     #         Selection of the task
@@ -881,7 +894,7 @@ def main():
         curGrid.writePlot3d(args.plot3dFile)
         sys.exit(0)
 
-    if args.mode == "blockSizes":
+    if args.mode == "blockSizes" or args.mode == "printBlockInfo":
         curGrid.printBlockInfo()
         sys.exit(0)
 
