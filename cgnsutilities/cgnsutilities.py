@@ -1,6 +1,7 @@
 import copy
 import os
 import re
+import textwrap
 
 import numpy as np
 from baseclasses.utils import Error
@@ -206,24 +207,14 @@ class Grid(object):
         return allBlocksInfo
 
     def printBlockInfo(self):
-        """Print the number of nodes, number of cells, and
-        the dimensions for each block. This info can be helpful
-        for assessing overset meshes.
+        """Print basic information about each block.
+        This info can be helpful for assessing overset meshes.
         """
 
-        allBlocksInfo = self.getBlockInfo()
-
-        for i in range(len(self.blocks)):
-            blockNumber = str(i + 1)
-            print("Block Number:", blockNumber)
-            blockInfo = allBlocksInfo[blockNumber]
-            print("Number of Cells:", blockInfo["nCells"])
-            print("Number of Nodes:", blockInfo["nNodes"])
-            print("Block dimensions:", blockInfo["dims"])
-
-        print("Total Zones:", allBlocksInfo["totalZones"])
-        print("Total Cells:", allBlocksInfo["totalCells"])
-        print("Total Nodes:", allBlocksInfo["totalNodes"])
+        for iBlk, blk in enumerate(self.blocks, 1):
+            print(f"Block {iBlk}:")
+            print(textwrap.indent(str(blk), "  "))
+            print("")
 
     def addBlock(self, blk):
         """Add a block to the grid"""
@@ -447,6 +438,15 @@ class Grid(object):
         """Remove any BC's there may be"""
         for i in range(len(self.blocks)):
             self.blocks[i].bocos = []
+
+    def printBCInfo(self):
+        """Print information about all BCs in the grid"""
+        for iBlk, blk in enumerate(self.blocks, 1):
+            print(f"Block {iBlk} - {blk.name}:")
+            for boco in blk.bocos:
+                print(textwrap.indent(str(boco), "  "))
+                print("")
+
 
     def overwriteBCs(self, bcFile):
         """Overwrite BCs with information given in the file"""
@@ -1585,6 +1585,16 @@ class Block(object):
         self.splits = [[1, dims[0]], [1, dims[1]], [1, dims[2]]]
         self.bocoCounter = 0
 
+    def __str__(self):
+        """Print block information"""
+        info = [f"Name: {self.name}"]
+        info.append(f"Dimensions: {self.dims}")
+        info.append(f"Number of Cells: {self.getNumCells()}")
+        info.append(f"Number of Nodes: {self.getNumNodes()}")
+        info.append(f"Boundary Conditions: {len(self.bocos)}")
+        info.append(f"Block-to-Block Connections: {len(self.B2Bs)}")
+        return "\n".join(info)
+
     def addBoco(self, boco):
         """A add a boundary condition to this block"""
         self.bocos.append(boco)
@@ -2481,6 +2491,15 @@ class Boco(object):
         else:
             self.family = family
 
+    def __str__(self):
+        """String representation of the BC"""
+        string = f"Name: {self.name}\n"
+        string += f"Type: {self.internalType}\n"
+        string += f"Range: {self.ptRange.tolist()}\n"
+        string += f"Family: {self.family}\n"
+        string += f"NumDataSets: {len(self.dataSets)}"
+        return string
+
     def addBocoDataSet(self, bocoDataSet):
         """Add a boundary condition dataset to this bc"""
         self.dataSets.append(bocoDataSet)
@@ -3164,14 +3183,16 @@ def splitGrid(grid, splitFile):
     connectivity information. This is a rewrite of the original
     Fortran implementation that is quite a bit simpler due to Python
     """
-    # Split the current grid
+    # Read the split file
+    if not os.path.isfile(splitFile):
+        raise FileNotFoundError(f"The specified split file '{splitFile}' does not exist!")
+
     extraSplits = []
-    if splitFile is not None:
-        f = open(splitFile, "r")
+    with open(splitFile, "r") as f:
         for line in f:
             aux = line.split()
             extraSplits.append([int(aux[0]), int(aux[1]), int(aux[2])])
-        f.close()
+
     grid.split(extraSplits=extraSplits)
 
     # New grid
@@ -3181,7 +3202,7 @@ def splitGrid(grid, splitFile):
         for nblk in newBlks:
             newGrid.addBlock(nblk)
 
-    # # Now rename the blocks, bcs and redo-connectivity
+    # Now rename the blocks, BCs and redo-connectivity
     newGrid.renameBlocks()
     newGrid.renameBCs()
     newGrid.connect()

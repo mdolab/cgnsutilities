@@ -217,6 +217,10 @@ Examples:
     p_rem.add_argument("gridFile", help="Name of input CGNS file")
     p_rem.add_argument("outFile", nargs="?", default=None, help="Optional output file")
 
+    # ------------ Options for 'printBCInfo' mode --------------------
+    p_rem = subparsers.add_parser("printBCInfo", help="Print BC information to screen")
+    p_rem.add_argument("gridFile", help="Name of input CGNS file")
+
     # ------------ Options for 'overwriteBCFamilyWithBC' mode --------------------
     p_sub = subparsers.add_parser(
         "overwriteBCFamilyWithBC",
@@ -951,6 +955,10 @@ def main():
 
     elif args.mode == "removebc":
         curGrid.removeBCs()
+
+    elif args.mode == "printBCInfo":
+        curGrid.printBCInfo()
+        sys.exit(0)
 
     elif args.mode == "rebunch":
         curGrid.rebunch(args.spacing, args.extraCells, args.nodes)
