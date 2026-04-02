@@ -14,7 +14,8 @@ setup(
     license="Apache 2.0",
     packages=["cgnsutilities"],
     package_data={"cgnsutilities": ["*.so"]},
-    install_requires=["numpy>=1.21", "scipy>=1.7"],
+    python_requires=">=3.11",
+    install_requires=["numpy>=1.25", "scipy>=1.11"],
     extras_require={
         "testing": ["mdolab-baseclasses>=1.3", "testflo", "parameterized"],
         "advanced": ["pyspline"],
